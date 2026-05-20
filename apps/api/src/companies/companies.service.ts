@@ -206,6 +206,13 @@ export class CompaniesService {
     if (primaryUser) {
       await this.prisma.user.update({ where: { id: primaryUser.id }, data: { isActive: true } });
       await this.notifications.notifyAccountApproved(primaryUser.email, primaryUser.name, primaryUser.phone ?? undefined).catch(() => {});
+      await this.notifications.createInAppNotification({
+        userId: primaryUser.id,
+        type: 'account_approved',
+        title: 'Company Application Approved',
+        message: `Your company ${company.name} has been approved. Welcome to Ecoloop!`,
+        link: '/vendor/dashboard',
+      }).catch(() => {});
     }
 
     return this.prisma.company.findUnique({ where: { id }, include: { users: { select: { id: true, name: true, email: true, role: true } } } });
@@ -221,6 +228,12 @@ export class CompaniesService {
     if (primaryUser) {
       await this.prisma.user.update({ where: { id: primaryUser.id }, data: { isActive: false } });
       await this.notifications.notifyAccountOnHold(primaryUser.email, primaryUser.name, primaryUser.phone ?? undefined, reason).catch(() => {});
+      await this.notifications.createInAppNotification({
+        userId: primaryUser.id,
+        type: 'account_on_hold',
+        title: 'Company Account On Hold',
+        message: `Your company account has been placed on hold. ${reason ? `Reason: ${reason}` : ''}`,
+      }).catch(() => {});
     }
 
     return this.prisma.company.findUnique({ where: { id }, include: { users: { select: { id: true, name: true, email: true, role: true } } } });
@@ -236,6 +249,12 @@ export class CompaniesService {
     if (primaryUser) {
       await this.prisma.user.update({ where: { id: primaryUser.id }, data: { isActive: false } });
       await this.notifications.notifyAccountRejected(primaryUser.email, primaryUser.name, primaryUser.phone ?? undefined, reason).catch(() => {});
+      await this.notifications.createInAppNotification({
+        userId: primaryUser.id,
+        type: 'account_rejected',
+        title: 'Company Application Update',
+        message: `Your company application was not approved. ${reason ? `Reason: ${reason}` : ''}`,
+      }).catch(() => {});
     }
 
     return this.prisma.company.findUnique({ where: { id }, include: { users: { select: { id: true, name: true, email: true, role: true } } } });
@@ -249,6 +268,12 @@ export class CompaniesService {
       data: { isLocked: true, lockReason: reason },
       include: { users: true }
     });
+
+    await this.notifications.notifyCompanyUsers(id, {
+      type: 'company_locked',
+      title: 'Company Account Locked',
+      message: `Your company account has been locked by an administrator. Reason: ${reason}`,
+    }).catch(() => {});
 
     const primaryUser = company.users[0];
     if (primaryUser?.email) {
@@ -274,6 +299,13 @@ export class CompaniesService {
       data: { isLocked: false, lockReason: null },
       include: { users: true }
     });
+
+    await this.notifications.notifyCompanyUsers(id, {
+      type: 'company_unlocked',
+      title: 'Company Account Unlocked',
+      message: 'Your company account has been unlocked. Full platform services restored.',
+      link: '/vendor/dashboard',
+    }).catch(() => {});
 
     const primaryUser = company.users[0];
     if (primaryUser?.email) {
@@ -302,6 +334,12 @@ export class CompaniesService {
       data: { penaltyAmount: currentPenalty + amount },
       include: { users: true }
     });
+
+    await this.notifications.notifyCompanyUsers(id, {
+      type: 'penalty_applied',
+      title: 'Penalty Notice',
+      message: `A penalty of ₹${amount.toLocaleString('en-IN')} has been applied to your company account. Reason: ${reason}`,
+    }).catch(() => {});
 
     const primaryUser = updated.users[0];
     if (primaryUser?.email) {

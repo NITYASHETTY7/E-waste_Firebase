@@ -1,4 +1,4 @@
-﻿import {
+import {
   BadRequestException,
   ConflictException,
   Injectable,
@@ -121,6 +121,14 @@ async completeVerification(email: string) {
       body: `Thank you for completing your registration on WeConnect.
       Your account is currently being reviewed by our admin team.
       You will receive an email within 24-72 hours once approved.`
+    }).catch(() => {});
+
+    // Send in-app notification to all admins
+    await this.notifications.notifyAdmins({
+      type: 'new_registration_pending',
+      title: 'New User Registration',
+      message: `A new ${user.role.toLowerCase()} "${user.name}" (${user.email}) has registered and requires approval.`,
+      link: '/admin/users',
     }).catch(() => {});
 
     // Fetch ALL admins from database

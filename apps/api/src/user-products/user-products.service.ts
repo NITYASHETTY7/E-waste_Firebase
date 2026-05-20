@@ -39,7 +39,7 @@ export class UserProductsService {
       invoiceFileName = invoice.originalname;
     }
 
-    return this.prisma.userProduct.create({
+    const product = await this.prisma.userProduct.create({
       data: {
         userId,
         name: data.name,
@@ -55,6 +55,16 @@ export class UserProductsService {
       },
       include: { user: { select: { id: true, name: true, email: true } } },
     });
+
+    // Notify admins in-app
+    await this.notifications.notifyAdmins({
+      type: 'new_product_listing',
+      title: 'New Product Listing Pending Review',
+      message: `A new product listing "${product.name}" has been created by "${product.user?.name || 'User'}" and is pending review.`,
+      link: `/admin/individual-products`,
+    }).catch(() => {});
+
+    return product;
   }
 
   async findMyProducts(userId: string) {
@@ -179,6 +189,17 @@ export class UserProductsService {
       }).catch(() => {});
     }
 
+    // In-app notification to the owner user
+    await this.notifications.createInAppNotification({
+      userId: product.userId,
+      type: action === 'approve' ? 'product_approved' : 'product_rejected',
+      title: action === 'approve' ? 'Product Listing Approved' : 'Product Listing Rejected',
+      message: action === 'approve'
+        ? `Your product listing "${product.name}" has been approved and is now open for bidding/quotes.`
+        : `Your product listing "${product.name}" was not approved. Remarks: ${remarks || 'None'}`,
+      link: `/client/listings`,
+    }).catch(() => {});
+
     return updated;
   }
 
@@ -208,6 +229,15 @@ export class UserProductsService {
       where: { id: productId },
       data: { status: UserProductStatus.QUOTE_RECEIVED },
     });
+
+    // Notify product owner in-app
+    await this.notifications.createInAppNotification({
+      userId: product.userId,
+      type: 'quote_received',
+      title: 'New Quote Received',
+      message: `You have received a new quote of ₹${offeredPrice.toLocaleString('en-IN')} from "${quote.vendorCompany.name}" for your product "${product.name}".`,
+      link: `/client/listings`,
+    }).catch(() => {});
 
     return quote;
   }
@@ -269,6 +299,14 @@ export class UserProductsService {
       ).catch(() => {});
     }
 
+    // Notify vendor company users in-app
+    await this.notifications.notifyCompanyUsers(quote.vendorCompanyId, {
+      type: 'quote_accepted',
+      title: 'Quote Accepted & Pickup Requested',
+      message: `Your quote of ₹${quote.offeredPrice.toLocaleString('en-IN')} for "${product.name}" has been accepted. Pickup is requested.`,
+      link: `/vendor/individual-products`,
+    }).catch(() => {});
+
     return { success: true };
   }
 
@@ -286,6 +324,11 @@ export class UserProductsService {
   }
 
   async updatePickupStatus(productId: string, status: string, scheduledDate?: Date) {
+    const product = await this.prisma.userProduct.findUnique({
+      where: { id: productId },
+      select: { userId: true, name: true }
+    });
+
     await this.prisma.userProductPickup.update({
       where: { productId },
       data: { status, ...(scheduledDate && { scheduledDate }) },
@@ -302,6 +345,27 @@ export class UserProductsService {
         where: { id: productId },
         data: { status: statusMap[status] },
       });
+    }
+
+    if (product) {
+      let message = '';
+      if (status === 'scheduled') {
+        message = `Pickup for your product "${product.name}" has been scheduled.`;
+      } else if (status === 'in_transit') {
+        message = `Pickup for your product "${product.name}" is in transit.`;
+      } else if (status === 'completed') {
+        message = `Pickup for your product "${product.name}" has been completed.`;
+      } else {
+        message = `Pickup status for your product "${product.name}" has been updated to ${status}.`;
+      }
+
+      await this.notifications.createInAppNotification({
+        userId: product.userId,
+        type: `pickup_${status}`,
+        title: `Pickup Status: ${status.toUpperCase().replace('_', ' ')}`,
+        message,
+        link: `/client/listings`,
+      }).catch(() => {});
     }
 
     return { success: true };

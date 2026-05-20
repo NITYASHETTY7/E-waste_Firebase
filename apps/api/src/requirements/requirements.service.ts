@@ -136,7 +136,7 @@ export class RequirementsService {
     // Notify client that the processed sheet is ready for review
     const clientUser = await this.prisma.user.findFirst({
       where: { companyId: req.clientId },
-      select: { email: true, name: true },
+      select: { id: true, email: true, name: true },
     });
     if (clientUser) {
       await this.notifications.notifyClientSheetReady(
@@ -145,6 +145,13 @@ export class RequirementsService {
         req.title,
         req.id,
       );
+      await this.notifications.createInAppNotification({
+        userId: clientUser.id,
+        type: 'processed_sheet_ready',
+        title: 'Processed Sheet Ready',
+        message: `Your processed sheet for "${req.title}" has been uploaded and is ready for your review.`,
+        link: `/client/listings/${req.id}`,
+      }).catch(() => {});
     }
 
     return updated;
@@ -347,8 +354,9 @@ export class RequirementsService {
     const req = await this.prisma.requirement.findUnique({ where: { id: requirementId } });
     if (!req) throw new NotFoundException('Requirement not found');
 
+    let updatedReq;
     if (action === 'accept') {
-      return this.prisma.requirement.update({
+      updatedReq = await this.prisma.requirement.update({
         where: { id: requirementId },
         data: {
           acceptedVendorIds: { push: vendorUserId },
@@ -356,7 +364,7 @@ export class RequirementsService {
         },
       });
     } else {
-      return this.prisma.requirement.update({
+      updatedReq = await this.prisma.requirement.update({
         where: { id: requirementId },
         data: {
           declinedVendorIds: { push: vendorUserId },
@@ -364,6 +372,37 @@ export class RequirementsService {
         },
       });
     }
+
+    // In-app notifications
+    const vendor = await this.prisma.user.findUnique({
+      where: { id: vendorUserId },
+      select: { name: true },
+    });
+    const vendorName = vendor?.name || 'A vendor';
+
+    await this.notifications.notifyAdmins({
+      type: 'vendor_invitation_response',
+      title: 'Vendor Invitation Response',
+      message: `${vendorName} has ${action}ed the invitation for "${req.title}".`,
+      link: `/admin/listings/${req.id}`,
+    }).catch(() => {});
+
+    const clientUsers = await this.prisma.user.findMany({
+      where: { companyId: req.clientId },
+    });
+    await Promise.all(
+      clientUsers.map((clientUser) =>
+        this.notifications.createInAppNotification({
+          userId: clientUser.id,
+          type: 'vendor_invitation_response',
+          title: 'Vendor Invitation Response',
+          message: `${vendorName} has ${action}ed the invitation for "${req.title}".`,
+          link: `/client/listings/${req.id}`,
+        }).catch(() => {}),
+      ),
+    );
+
+    return updatedReq;
   }
 
   // ─── STEP 2: Vendor uploads audit documents ───────────────────────────────
@@ -406,11 +445,42 @@ export class RequirementsService {
       }
     }
 
-    return this.prisma.vendorAuditDoc.upsert({
+    const doc = await this.prisma.vendorAuditDoc.upsert({
       where: { requirementId_vendorUserId: { requirementId, vendorUserId } },
       create: { requirementId, vendorUserId, auditReportS3Key, auditReportFileName, excelS3Key, excelFileName, imageS3Keys, imageFileNames },
       update: { auditReportS3Key, auditReportFileName, excelS3Key, excelFileName, imageS3Keys, imageFileNames, status: 'pending' },
     });
+
+    // In-app notifications
+    const vendor = await this.prisma.user.findUnique({
+      where: { id: vendorUserId },
+      select: { name: true },
+    });
+    const vendorName = vendor?.name || 'A vendor';
+
+    await this.notifications.notifyAdmins({
+      type: 'audit_docs_submitted',
+      title: 'Audit Documents Submitted',
+      message: `${vendorName} has submitted audit documents for "${req.title}".`,
+      link: `/admin/listings/${req.id}/audit-docs`,
+    }).catch(() => {});
+
+    const clientUsers = await this.prisma.user.findMany({
+      where: { companyId: req.clientId },
+    });
+    await Promise.all(
+      clientUsers.map((clientUser) =>
+        this.notifications.createInAppNotification({
+          userId: clientUser.id,
+          type: 'audit_docs_submitted',
+          title: 'Audit Documents Submitted',
+          message: `${vendorName} has submitted audit documents for "${req.title}".`,
+          link: `/client/listings/${req.id}`,
+        }).catch(() => {}),
+      ),
+    );
+
+    return doc;
   }
 
   async getAuditDocs(requirementId: string) {

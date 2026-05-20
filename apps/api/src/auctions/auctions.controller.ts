@@ -111,6 +111,22 @@ export class AuctionsController {
     return result;
   }
 
+  @Patch(':id/disqualify-winner')
+  @Roles(UserRole.ADMIN)
+  async disqualifyWinner(
+    @Param('id') id: string,
+    @Body('disqualifiedVendorId') disqualifiedVendorId: string,
+    @Body('reason') reason: string,
+    @Body('fineAmount') fineAmount: number,
+  ) {
+    if (!reason?.trim()) {
+      throw new BadRequestException('Reason for disqualification is required.');
+    }
+    const result = await this.svc.disqualifyWinner(id, disqualifiedVendorId, reason, fineAmount ?? 0);
+    this.gateway.broadcastWinnerSelected(id, result.winnerId ?? '');
+    return result;
+  }
+
   @Post(':id/final-quote')
   @UseInterceptors(FileInterceptor('file'))
   uploadFinalQuote(

@@ -1,6 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import type { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';
+import { PrismaService } from '../prisma/prisma.service';
 
 export interface EmailPayload {
   to: string;
@@ -13,6 +14,7 @@ export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
   constructor(
+    private prisma: PrismaService,
     @Optional() @InjectQueue('email') private emailQueue?: Queue
   ) {}
 
@@ -666,6 +668,50 @@ export class NotificationService {
     });
   }
 
+  async notifyVendorDisqualified(
+    vendorEmail: string,
+    vendorName: string,
+    auctionTitle: string,
+    reason: string,
+    fineAmount: number,
+  ) {
+    const webUrl = process.env.WEB_URL || 'http://localhost:3000';
+    return this.sendEmail({
+      to: vendorEmail,
+      subject: `[WeConnect] Auction Disqualification Notice — ${auctionTitle}`,
+      body: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1e293b">
+          <div style="background:#0f172a;padding:20px 24px;border-radius:8px 8px 0 0">
+            <h1 style="color:#fff;margin:0;font-size:20px">WeConnect Platform</h1>
+          </div>
+          <div style="border:1px solid #e2e8f0;border-top:none;padding:28px;border-radius:0 0 8px 8px">
+            <div style="background:#fef2f2;border:1px solid #fca5a5;padding:16px 20px;border-radius:8px;margin-bottom:20px">
+              <h2 style="color:#991b1b;margin:0">⚠️ Auction Winner Disqualification Notice</h2>
+            </div>
+            <p>Dear <strong>${vendorName}</strong>,</p>
+            <p>We regret to inform you that your selection as the winner for the following auction has been <strong>revoked</strong> by the WeConnect admin team:</p>
+            <div style="background:#f1f5f9;border-left:4px solid #ef4444;padding:14px 18px;border-radius:4px;margin:16px 0">
+              <p style="margin:0;font-weight:700;font-size:15px">${auctionTitle}</p>
+            </div>
+            <h3 style="margin:24px 0 8px;color:#1e293b">Reason for Disqualification</h3>
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;padding:14px 18px;border-radius:6px;margin-bottom:20px">
+              <p style="margin:0;color:#334155">${reason}</p>
+            </div>
+            ${fineAmount > 0 ? `
+            <div style="background:#fff7ed;border:1px solid #fdba74;padding:16px 20px;border-radius:8px;margin:20px 0">
+              <p style="margin:0 0 6px;font-weight:700;color:#9a3412;font-size:13px">⚠️ PENALTY / FINE LEVIED</p>
+              <p style="margin:0;font-size:22px;font-weight:900;color:#c2410c">₹${fineAmount.toLocaleString('en-IN')}</p>
+              <p style="margin:6px 0 0;font-size:12px;color:#9a3412">This fine must be paid within 5 business days. Contact our support team for payment instructions.</p>
+            </div>` : ''}
+            <p style="color:#475569;font-size:13px">If you believe this decision was made in error, please contact our support team with relevant documentation.</p>
+            <a href="${webUrl}/vendor/auctions" style="display:inline-block;background:#1e293b;color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:700;margin:16px 0">Go to Dashboard →</a>
+            <p style="color:#94a3b8;font-size:12px;margin-top:24px">— WeConnect Platform</p>
+          </div>
+        </div>
+      `,
+    });
+  }
+
   /**
    * Sent to the winning vendor after the admin selects them as auction winner.
    */
@@ -766,5 +812,71 @@ export class NotificationService {
         </div>
       `,
     });
+  }
+
+  // ─── In-App Notifications ────────────────────────────────────────────────
+  async createInAppNotification(data: {
+    userId: string;
+    type: string;
+    title: string;
+    message: string;
+    link?: string;
+  }) {
+    try {
+      return await this.prisma.inAppNotification.create({
+        data: {
+          userId: data.userId,
+          type: data.type,
+          title: data.title,
+          message: data.message,
+          link: data.link || null,
+        },
+      });
+    } catch (error) {
+      this.logger.error(`Failed to create in-app notification for user ${data.userId}`, error);
+    }
+  }
+
+  async notifyCompanyUsers(
+    companyId: string,
+    data: { type: string; title: string; message: string; link?: string },
+  ) {
+    try {
+      const users = await this.prisma.user.findMany({ where: { companyId } });
+      await Promise.all(
+        users.map((u) =>
+          this.createInAppNotification({
+            userId: u.id,
+            type: data.type,
+            title: data.title,
+            message: data.message,
+            link: data.link,
+          }),
+        ),
+      );
+    } catch (error) {
+      this.logger.error(`Failed to notify company ${companyId} users`, error);
+    }
+  }
+
+  async notifyAdmins(data: { type: string; title: string; message: string; link?: string }) {
+    try {
+      const admins = await this.prisma.user.findMany({
+        where: { role: 'ADMIN', isActive: true },
+      });
+      await Promise.all(
+        admins.map((admin) =>
+          this.createInAppNotification({
+            userId: admin.id,
+            type: data.type,
+            title: data.title,
+            message: data.message,
+            link: data.link,
+          }),
+        ),
+      );
+    } catch (error) {
+      this.logger.error(`Failed to notify admins`, error);
+    }
   }
 }

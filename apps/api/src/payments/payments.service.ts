@@ -72,11 +72,14 @@ export class PaymentsService {
     file: Express.Multer.File,
     utrNumber?: string,
   ) {
-    const payment = await this.prisma.payment.findUnique({ where: { id } });
+    const payment = await this.prisma.payment.findUnique({
+      where: { id },
+      include: { auction: { include: { winner: true } } },
+    });
     if (!payment) throw new NotFoundException('Payment not found');
 
     const { key } = await this.s3.upload(file, `payments/${payment.auctionId}`);
-    return this.prisma.payment.update({
+    const updatedPayment = await this.prisma.payment.update({
       where: { id },
       data: {
         proofS3Key: key,
@@ -85,6 +88,16 @@ export class PaymentsService {
         status: PaymentStatus.SUBMITTED,
       },
     });
+
+    // Notify admins in-app
+    await this.notifications.notifyAdmins({
+      type: 'payment_proof_uploaded',
+      title: 'Payment Proof Uploaded',
+      message: `Vendor "${payment.auction.winner?.name || 'Winner'}" uploaded payment proof for "${payment.auction.title}".`,
+      link: '/admin/payments',
+    }).catch(() => {});
+
+    return updatedPayment;
   }
 
   // Admin verifies payment → notify vendor and client
@@ -138,6 +151,27 @@ export class PaymentsService {
       }
     } catch (e) {
       // Non-critical — don't fail payment confirmation if email fails
+    }
+
+    // In-app notifications
+    if (vendorUser?.id) {
+      await this.notifications.createInAppNotification({
+        userId: vendorUser.id,
+        type: 'payment_verified',
+        title: 'Payment Confirmed & Verified',
+        message: `Your payment for "${auction.title}" has been verified. Please upload required compliance certificates.`,
+        link: '/vendor/pickups',
+      }).catch(() => {});
+    }
+
+    if (clientUser?.id) {
+      await this.notifications.createInAppNotification({
+        userId: clientUser.id,
+        type: 'payment_verified',
+        title: 'Vendor Payment Verified',
+        message: `Vendor payment for "${auction.title}" has been verified. Please upload the Gate Pass now.`,
+        link: '/client/handover',
+      }).catch(() => {});
     }
 
     return payment;

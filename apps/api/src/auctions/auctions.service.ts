@@ -110,14 +110,23 @@ export class AuctionsService {
     });
 
     const clientUser = updated.client?.users?.[0];
-    if (clientUser?.email) {
-      const configureUrl = `${process.env.WEB_URL || 'http://localhost:3000'}/client/listings/${updated.requirementId || id}/configure-live`;
-      await this.notifications.notifyClientLiveAuctionApproval(
-        clientUser.email,
-        clientUser.name,
-        updated.title,
-        configureUrl
-      ).catch(console.error);
+    if (clientUser) {
+      if (clientUser.email) {
+        const configureUrl = `${process.env.WEB_URL || 'http://localhost:3000'}/client/listings/${updated.requirementId || id}/configure-live`;
+        await this.notifications.notifyClientLiveAuctionApproval(
+          clientUser.email,
+          clientUser.name,
+          updated.title,
+          configureUrl
+        ).catch(console.error);
+      }
+      await this.notifications.createInAppNotification({
+        userId: clientUser.id,
+        type: 'live_auction_approval',
+        title: 'Review Live Auction Parameters',
+        message: `Admin has scheduled the live parameters for "${updated.title}". Please review and approve.`,
+        link: `/client/listings/${updated.requirementId || id}/configure-live`,
+      }).catch(() => {});
     }
 
     return updated;
@@ -146,6 +155,13 @@ export class AuctionsService {
           `${process.env.WEB_URL || 'http://localhost:3000'}/vendor/marketplace/${auction.requirementId || auction.id}`
         ).catch(console.error);
       }
+      await this.notifications.createInAppNotification({
+        userId: bid.vendorId,
+        type: 'live_auction_approved',
+        title: "You're Shortlisted for Live Auction!",
+        message: `The live auction for "${auction.title}" has been approved. Place your bids now!`,
+        link: `/vendor/marketplace/${auction.requirementId || auction.id}`,
+      }).catch(() => {});
     }
 
     return { success: true, message: 'Live auction approved and vendors notified' };
@@ -189,7 +205,7 @@ export class AuctionsService {
       priceSheetFileName = file.originalname;
     }
 
-    return this.prisma.bid.create({
+    const bid = await this.prisma.bid.create({
       data: {
         auctionId,
         vendorId,
@@ -201,6 +217,31 @@ export class AuctionsService {
         priceSheetFileName,
       },
     });
+
+    // Notify client and admins in-app
+    await this.notifications.notifyAdmins({
+      type: 'sealed_bid_submitted',
+      title: 'Sealed Bid Submitted',
+      message: `Vendor "${vendorUser?.company?.name || vendorUser?.name || 'A vendor'}" submitted a sealed bid of ₹${amount.toLocaleString('en-IN')} for "${auction.title}".`,
+      link: `/admin/listings/${auction.requirementId || auctionId}`,
+    }).catch(() => {});
+
+    const clientUsers = await this.prisma.user.findMany({
+      where: { companyId: auction.clientId },
+    });
+    await Promise.all(
+      clientUsers.map((clientUser) =>
+        this.notifications.createInAppNotification({
+          userId: clientUser.id,
+          type: 'sealed_bid_submitted',
+          title: 'Sealed Bid Submitted',
+          message: `Vendor "${vendorUser?.company?.name || vendorUser?.name || 'A vendor'}" submitted a sealed bid of ₹${amount.toLocaleString('en-IN')} for "${auction.title}".`,
+          link: `/client/listings/${auction.requirementId || auctionId}`,
+        }).catch(() => {}),
+      ),
+    );
+
+    return bid;
   }
 
   async selectWinner(id: string, vendorUserId: string) {
@@ -271,6 +312,48 @@ export class AuctionsService {
         )
         .catch(() => {});
     }
+
+    // In-app notification for the winner
+    await this.notifications.createInAppNotification({
+      userId: vendorUserId,
+      type: 'auction_won',
+      title: 'You Won the Auction!',
+      message: `Congratulations! You won the auction for "${auction.title}" with a bid of ₹${winningBid?.amount || 0}.`,
+      link: '/vendor/final-quote',
+    }).catch(() => {});
+
+    // In-app notifications for client users
+    const clientUsers = await this.prisma.user.findMany({
+      where: { companyId: auction.clientId },
+    });
+    await Promise.all(
+      clientUsers.map((clientUser) =>
+        this.notifications.createInAppNotification({
+          userId: clientUser.id,
+          type: 'auction_winner_selected',
+          title: 'Auction Winner Selected',
+          message: `You selected "${winningBid?.vendor?.name || 'a vendor'}" as the winner for "${auction.title}".`,
+          link: `/client/purchase-order`,
+        }).catch(() => {}),
+      ),
+    );
+
+    // In-app notifications for other participants
+    const otherBids = await this.prisma.bid.findMany({
+      where: { auctionId: id, vendorId: { not: vendorUserId } },
+      select: { vendorId: true },
+      distinct: ['vendorId'],
+    });
+    await Promise.all(
+      otherBids.map((ob) =>
+        this.notifications.createInAppNotification({
+          userId: ob.vendorId,
+          type: 'auction_lost',
+          title: 'Auction Concluded',
+          message: `The auction for "${auction.title}" has concluded. Thank you for participating.`,
+        }).catch(() => {}),
+      ),
+    );
 
     return auction;
   }
@@ -403,7 +486,7 @@ export class AuctionsService {
       file,
       `final-quotes/${auctionId}`,
     );
-    return this.prisma.auctionDocument.create({
+    const doc = await this.prisma.auctionDocument.create({
       data: {
         type: type as DocumentType,
         s3Key: key,
@@ -413,6 +496,37 @@ export class AuctionsService {
         auctionId,
       },
     });
+
+    // In-app notifications
+    const auction = await this.prisma.auction.findUnique({
+      where: { id: auctionId },
+      include: { winner: true },
+    });
+    if (auction) {
+      await this.notifications.notifyAdmins({
+        type: 'final_quote_uploaded',
+        title: 'Final Quote Uploaded',
+        message: `Vendor "${auction.winner?.name || 'Winner'}" uploaded the final quote for "${auction.title}".`,
+        link: `/admin/auctions`,
+      }).catch(() => {});
+
+      const clientUsers = await this.prisma.user.findMany({
+        where: { companyId: auction.clientId },
+      });
+      await Promise.all(
+        clientUsers.map((clientUser) =>
+          this.notifications.createInAppNotification({
+            userId: clientUser.id,
+            type: 'final_quote_uploaded',
+            title: 'Final Quote Uploaded',
+            message: `Vendor "${auction.winner?.name || 'Winner'}" uploaded the final quote for "${auction.title}". Please review.`,
+            link: `/client/purchase-order`,
+          }).catch(() => {}),
+        ),
+      );
+    }
+
+    return doc;
   }
 
   async approveQuote(auctionId: string) {
@@ -434,6 +548,17 @@ export class AuctionsService {
       data: { quoteApproved: true },
     });
 
+    // Notify vendor user
+    if (winningBid?.vendorId) {
+      await this.notifications.createInAppNotification({
+        userId: winningBid.vendorId,
+        type: 'final_quote_approved',
+        title: 'Final Quote Approved',
+        message: `Your final quote for "${auction.title}" has been approved. Please submit payment.`,
+        link: '/vendor/payments',
+      }).catch(() => {});
+    }
+
     // Upsert payment record — safe to call multiple times
     const payment = await this.prisma.payment.upsert({
       where: { auctionId },
@@ -445,10 +570,24 @@ export class AuctionsService {
   }
 
   async rejectQuote(auctionId: string, remarks: string) {
-    return this.prisma.auction.update({
+    const auction = await this.prisma.auction.update({
       where: { id: auctionId },
       data: { quoteApproved: false, quoteRemarks: remarks },
+      include: { bids: { orderBy: { amount: 'desc' }, take: 1 } },
     });
+
+    const winningBid = auction.bids[0];
+    if (winningBid?.vendorId) {
+      await this.notifications.createInAppNotification({
+        userId: winningBid.vendorId,
+        type: 'final_quote_rejected',
+        title: 'Final Quote Rejected',
+        message: `Your final quote for "${auction.title}" has been rejected. Remarks: ${remarks}`,
+        link: '/vendor/final-quote',
+      }).catch(() => {});
+    }
+
+    return auction;
   }
 
   async shareSealedBids(auctionId: string, bidIds: string[]) {
@@ -507,6 +646,77 @@ export class AuctionsService {
     }
 
     return { endedAuctionIds: endingAuctions.map(a => a.id) };
+  }
+
+  async disqualifyWinner(
+    auctionId: string,
+    disqualifiedVendorUserId: string,
+    reason: string,
+    fineAmount: number,
+  ) {
+    // 1. Load the auction with all bids ordered by highest amount
+    const auction = await this.prisma.auction.findUnique({
+      where: { id: auctionId },
+      include: {
+        client: true,
+        bids: {
+          orderBy: { amount: 'desc' },
+          include: { vendor: { select: { id: true, name: true, email: true } } },
+        },
+      },
+    });
+    if (!auction) throw new NotFoundException('Auction not found');
+
+    // 2. Get the disqualified vendor's user and company info
+    const disqualifiedUser = await this.prisma.user.findUnique({
+      where: { id: disqualifiedVendorUserId },
+      select: { id: true, name: true, email: true, companyId: true },
+    });
+    if (!disqualifiedUser) throw new NotFoundException('Disqualified vendor not found');
+
+    // 3. Find the next highest unique bidder (excluding the disqualified one)
+    const seenVendors = new Set<string>();
+    let nextWinnerBid: typeof auction.bids[0] | null = null;
+    for (const bid of auction.bids) {
+      if (bid.vendorId === disqualifiedVendorUserId) continue;
+      if (!seenVendors.has(bid.vendorId)) {
+        seenVendors.add(bid.vendorId);
+        if (!nextWinnerBid) nextWinnerBid = bid;
+      }
+    }
+
+    if (!nextWinnerBid) {
+      throw new BadRequestException('No other eligible bidder found to elevate as winner.');
+    }
+
+    // 4. Remove current winner & reset auction status back to allow re-selection
+    await this.prisma.auction.update({
+      where: { id: auctionId },
+      data: { winnerId: null, status: AuctionStatus.PENDING_SELECTION },
+    });
+
+    // 5. Send disqualification email to the rejected vendor
+    if (disqualifiedUser.email) {
+      await this.notifications.notifyVendorDisqualified(
+        disqualifiedUser.email,
+        disqualifiedUser.name,
+        auction.title,
+        reason,
+        fineAmount,
+      ).catch(() => {});
+    }
+
+    // 6. In-app notification to the disqualified vendor
+    await this.notifications.createInAppNotification({
+      userId: disqualifiedUser.id,
+      type: 'auction_disqualified',
+      title: 'You Have Been Disqualified',
+      message: `Your auction win for "${auction.title}" has been revoked by the admin. Reason: ${reason}${fineAmount > 0 ? `. A fine of ₹${fineAmount.toLocaleString('en-IN')} has been levied.` : ''}`,
+      link: '/vendor/auctions',
+    }).catch(() => {});
+
+    // 7. Now select the next winner using the existing logic
+    return this.selectWinner(auctionId, nextWinnerBid.vendorId);
   }
 
   async extendTimer(id: string) {
