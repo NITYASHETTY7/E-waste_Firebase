@@ -52,7 +52,7 @@ export default function AdminListings() {
     }
   };
 
-  const activeVendors = users.filter(u => u.role === "vendor" && u.status === "active");
+  const activeVendors = users.filter(u => u.role === "vendor");
 
   const getDisplayStatus = (l: any) => {
     if (l.requirementStatus === "client_review") return "review";
@@ -144,7 +144,7 @@ export default function AdminListings() {
   const reviewListing = listings.find(l => l.id === reviewModal.listingId);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Toast */}
       {toast && (
         <div className={`fixed top-6 right-6 z-[200] px-5 py-3 rounded-xl shadow-lg text-sm font-bold text-white ${toast.type === "error" ? "bg-red-600" : "bg-emerald-600"}`}>
@@ -159,7 +159,7 @@ export default function AdminListings() {
         </div>
         <div className="relative w-64">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-          <input placeholder="Search listings..." className="input-base pl-10 h-11 text-sm"
+          <input placeholder="Search listings..." className="input-base pl-10 h-11 text-sm text-slate-900 dark:text-white placeholder:text-slate-400"
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
@@ -167,10 +167,10 @@ export default function AdminListings() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Pending Review", value: counts.pending, color: "bg-amber-50", textColor: "text-amber-700", icon: "pending", key: "pending" },
-          { label: "Awaiting Client", value: counts.review, color: "bg-blue-50", textColor: "text-blue-700", icon: "hourglass_top", key: "review" },
-          { label: "Approved & Active", value: counts.active, color: "bg-emerald-50", textColor: "text-emerald-700", icon: "check_circle", key: "active" },
-          { label: "Rejected", value: counts.rejected, color: "bg-red-50", textColor: "text-red-700", icon: "cancel", key: "rejected" },
+          { label: "Pending Review", value: counts.pending, color: "bg-amber-50 dark:bg-amber-900/20", textColor: "text-amber-700 dark:text-amber-400", icon: "pending", key: "pending" },
+          { label: "Awaiting Client", value: counts.review, color: "bg-blue-50 dark:bg-blue-900/20", textColor: "text-blue-700 dark:text-blue-400", icon: "hourglass_top", key: "review" },
+          { label: "Approved & Active", value: counts.active, color: "bg-emerald-50 dark:bg-emerald-900/20", textColor: "text-emerald-700 dark:text-emerald-400", icon: "check_circle", key: "active" },
+          { label: "Rejected", value: counts.rejected, color: "bg-red-50 dark:bg-red-900/20", textColor: "text-red-700 dark:text-red-400", icon: "cancel", key: "rejected" },
         ].map(s => (
           <button key={s.key} onClick={() => setFilter(s.key as any)}
             className={`card p-5 flex items-center gap-4 text-left border-2 transition-all ${filter === s.key ? "border-[color:var(--color-primary)]" : "border-transparent"}`}>
@@ -200,6 +200,7 @@ export default function AdminListings() {
 
       {/* Table */}
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="data-table">
           <thead>
             <tr className="bg-[color:var(--color-inverse-surface)]">
@@ -214,10 +215,10 @@ export default function AdminListings() {
             ) : filtered.map(listing => {
               const displayStatus = getDisplayStatus(listing);
               const statusConfig: Record<string, { label: string; className: string }> = {
-                pending: { label: "Pending Review", className: "bg-amber-100 text-amber-700" },
-                review: { label: "Awaiting Client", className: "bg-blue-100 text-blue-700" },
-                active: { label: "Approved", className: "bg-emerald-100 text-emerald-700" },
-                rejected: { label: "Rejected", className: "bg-red-100 text-red-700" },
+                pending: { label: "Pending Review", className: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400" },
+                review: { label: "Awaiting Client", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+                active: { label: "Approved", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+                rejected: { label: "Rejected", className: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
               };
               const sc = statusConfig[displayStatus] ?? { label: displayStatus, className: "bg-slate-100 text-slate-600" };
               const listingBids = bids.filter(b => b.listingId === listing.id);
@@ -257,7 +258,7 @@ export default function AdminListings() {
                       )}
                       {displayStatus === "active" && listing.auctionPhase === "live" && (!listing.auctionStartDate || new Date() >= new Date(listing.auctionStartDate)) && (
                         <Link href={`/admin/auctions/${listing.id}/live`}
-                          className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-600 hover:text-white transition-colors border border-purple-200">
+                          className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-600 hover:text-white transition-colors border border-purple-200 dark:bg-purple-900/20 dark:border-purple-800 dark:text-purple-400">
                           <span className="material-symbols-outlined text-sm">visibility</span>
                           Watch Live
                         </Link>
@@ -267,7 +268,7 @@ export default function AdminListings() {
                       )}
                       {displayStatus === "active" && listing.auctionPhase !== "live" && listing.auctionPhase !== "completed" && (
                         <Link href={`/admin/listings/${listing.requirementId || listing.id}/audit-docs`}
-                          className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-600 hover:text-white transition-colors border border-blue-200">
+                          className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-600 hover:text-white transition-colors border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400">
                           <span className="material-symbols-outlined text-sm">fact_check</span>
                           Audit Docs
                         </Link>
@@ -285,6 +286,7 @@ export default function AdminListings() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Review Modal */}

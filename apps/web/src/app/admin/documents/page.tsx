@@ -153,7 +153,7 @@ export default function AdminDocuments() {
     t.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">Document Library</h2>

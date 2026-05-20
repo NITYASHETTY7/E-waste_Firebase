@@ -230,7 +230,7 @@ export default function LiveAuctionScreen() {
                 value={customBid}
                 onChange={(e) => setCustomBid(e.target.value)}
                 placeholder="Custom bid"
-                className="bg-transparent text-[#1A1A2E] text-xs font-bold w-24 outline-none placeholder:text-slate-400"
+                className="bg-transparent text-slate-900 dark:text-white text-xs font-bold w-24 outline-none placeholder:text-slate-400"
                 disabled={!isActive}
               />
             </div>
@@ -285,13 +285,13 @@ export default function LiveAuctionScreen() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-[#64748B]">Real-Time Bid Progression</p>
-                <p className="text-[#1A1A2E] font-bold text-sm mt-0.5">{auctionBids.length} bids placed</p>
+                <p className="text-slate-900 dark:text-slate-100 font-bold text-sm mt-0.5">{auctionBids.length} bids placed</p>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
                 {vendorLines.slice(0, 5).map((v) => (
                   <div key={v.id} className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-200 dark:bg-slate-950 dark:border-slate-700">
                     <span className="inline-block w-3 h-3 rounded-full" style={{ background: v.color }} />
-                    <span className="text-[10px] text-[#1A1A2E] font-bold">
+                    <span className="text-[10px] text-slate-900 dark:text-white font-bold">
                       {getRankLabel(v.id)}{v.id === currentUser?.id ? ' (You)' : ''}
                     </span>
                   </div>
@@ -316,7 +316,7 @@ export default function LiveAuctionScreen() {
                   <div key={e.id} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${isMe ? "bg-[#E8F5E9] border-l-4 border-l-[#1E8E3E]" : isLeadingBid ? "bg-blue-50 border border-blue-200" : "bg-white border border-slate-100"}`}>
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: vendorBidsMap.get(e.vendorId)?.color || "#CBD5E1" }} />
-                      <span className={`font-bold ${isMe ? "text-[#1E8E3E]" : "text-[#1A1A2E]"}`}>{getVendorLabel(e.vendorId)}</span>
+                      <span className={`font-bold ${isMe ? "text-[#1E8E3E]" : "text-slate-900 dark:text-slate-200"}`}>{getVendorLabel(e.vendorId)}</span>
                       {getRankLabel(e.vendorId) !== '—' && (
                         <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${
                           getRankLabel(e.vendorId) === 'L1' ? 'bg-emerald-600 text-white' :
@@ -347,7 +347,7 @@ export default function LiveAuctionScreen() {
               ].map(({ label, value, valueColor }) => (
                 <div key={label}>
                   <p className="text-[9px] text-[#94A3B8] uppercase font-black tracking-widest">{label}</p>
-                  <p className={`text-xs font-bold truncate ${valueColor || "text-[#1A1A2E]"}`}>{value}</p>
+                  <p className={`text-xs font-bold truncate ${valueColor || "text-slate-900 dark:text-slate-100"}`}>{value}</p>
                 </div>
               ))}
             </div>
@@ -362,7 +362,7 @@ export default function LiveAuctionScreen() {
                 return (
                   <div key={l.vendorId} className={`rounded-2xl border p-5 text-center shadow-sm ${idx === 0 ? 'bg-gradient-to-br from-[#E8F5E9] to-[#D1FAE5] border-[#1E8E3E]' : 'bg-gradient-to-br from-blue-50 to-blue-100 border-blue-300'}`}>
                     <span className={`text-2xl font-black ${idx === 0 ? 'text-[#1E8E3E]' : 'text-blue-600'}`}>L{idx + 1}</span>
-                    <p className="text-[#1A1A2E] font-black text-base mt-1">{idx === 0 ? 'You Have the Highest Bid!' : `You Are in Position L${idx + 1}`}</p>
+                    <p className="text-slate-900 dark:text-slate-100 font-black text-base mt-1">{idx === 0 ? 'You Have the Highest Bid!' : `You Are in Position L${idx + 1}`}</p>
                     {idx === 0 && approvedWinnerId === currentUser?.id ? (
                       <><span className="material-symbols-outlined text-[#1E8E3E] text-3xl mt-2">emoji_events</span>
                       <p className="text-[#1E8E3E] font-bold text-sm mt-1">Winner Confirmed!</p>

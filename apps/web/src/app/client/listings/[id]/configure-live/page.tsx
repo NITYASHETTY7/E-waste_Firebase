@@ -121,7 +121,7 @@ export default function ConfigureLiveAuction() {
   const adminMaxExtensions = listing.maxExtensions ?? "—";
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-20 animate-fade-in">
+    <div className="max-w-4xl mx-auto space-y-8 pb-20 animate-fade-in px-4 sm:px-6 lg:px-8">
       <div className="flex items-center gap-4">
         <Link href="/client/listings" className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all dark:bg-slate-900 dark:border-slate-700">
           <span className="material-symbols-outlined text-sm">arrow_back</span>

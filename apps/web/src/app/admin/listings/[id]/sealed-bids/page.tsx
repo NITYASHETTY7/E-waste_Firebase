@@ -86,7 +86,7 @@ export default function AdminSealedBidsPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 py-2 relative">
+    <div className="max-w-5xl mx-auto space-y-6 py-2 relative px-4 sm:px-6 lg:px-8">
       {toast && (
         <div className={`fixed top-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-bold text-white ${toast.type === "error" ? "bg-red-600" : "bg-emerald-600"}`}>
           {toast.msg}

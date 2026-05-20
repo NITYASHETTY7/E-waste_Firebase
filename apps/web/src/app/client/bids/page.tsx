@@ -61,7 +61,7 @@ export default function ClientBids() {
     }
 
     return (
-      <div className="max-w-5xl mx-auto pb-20 animate-fade-in">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 animate-fade-in">
         <button onClick={() => setSelectedAuctionId(null)} className="btn-outline px-4 py-2 text-xs font-bold mb-6 flex items-center gap-2">
            <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Auctions
         </button>
@@ -257,7 +257,7 @@ export default function ClientBids() {
   }
 
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-20 animate-fade-in">
+    <div className="space-y-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 animate-fade-in">
       <div>
         <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">Bid Ledgers</h2>
         <p className="text-[color:var(--color-on-surface-variant)] mt-1">Select an auction to view its detailed ledger and millisecond-precision bid history.</p>

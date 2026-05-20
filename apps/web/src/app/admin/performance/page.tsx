@@ -28,7 +28,7 @@ export default function AdminPerformance() {
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto">
+    <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div>
         <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">Performance Metrics</h2>
         <p className="text-[color:var(--color-on-surface-variant)] mt-1">Track vendor win rates, audit accuracy, compliance scores, and client activity.</p>

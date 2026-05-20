@@ -219,7 +219,7 @@ export class PickupsService {
     const pickups = await this.prisma.pickup.findMany({
       where: status ? { status } : {},
       include: {
-        auction: { include: { client: true, winner: true } },
+        auction: { include: { client: true, winner: true, auctionDocs: true } },
         pickupDocs: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -233,7 +233,13 @@ export class PickupsService {
             signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket),
           })),
         );
-        return { ...pickup, pickupDocs: docs };
+        const auctionDocs = await Promise.all(
+          (pickup.auction?.auctionDocs ?? []).map(async (doc) => ({
+            ...doc,
+            signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
+          })),
+        );
+        return { ...pickup, pickupDocs: docs, auctionDocs };
       }),
     );
   }

@@ -402,6 +402,60 @@ export class NotificationService {
     });
   }
 
+  async notifyVendorPickupRequested(
+    vendorEmail: string,
+    vendorName: string,
+    productName: string,
+    offeredPrice: number,
+    userName: string,
+    userEmail: string,
+    userPhone: string | null,
+  ) {
+    const webUrl = process.env.WEB_URL || 'http://localhost:3000';
+    return this.sendEmail({
+      to: vendorEmail,
+      subject: `[WeConnect] Pickup Requested — ${productName}`,
+      body: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;color:#1e293b">
+          <div style="background:#0f172a;padding:20px 24px;border-radius:8px 8px 0 0">
+            <h1 style="color:#fff;margin:0;font-size:20px">WeConnect Platform</h1>
+          </div>
+          <div style="border:1px solid #e2e8f0;border-top:none;padding:28px;border-radius:0 0 8px 8px">
+            <div style="background:#f0fdf4;border:1px solid #86efac;padding:16px 20px;border-radius:8px;margin-bottom:20px">
+              <h2 style="color:#166534;margin:0">🎉 Your Quote Was Accepted — Pickup Requested!</h2>
+            </div>
+            <p>Dear <strong>${vendorName}</strong>,</p>
+            <p>A user has accepted your quote of <strong>₹${offeredPrice.toLocaleString('en-IN')}</strong> for the following product and has requested a pickup:</p>
+            <div style="background:#f1f5f9;border-left:4px solid #166534;padding:14px 18px;border-radius:4px;margin:16px 0">
+              <p style="margin:0;font-weight:700;font-size:15px">${productName}</p>
+              <p style="margin:6px 0 0;color:#64748b;font-size:13px">Accepted Quote: <strong style="color:#166534">₹${offeredPrice.toLocaleString('en-IN')}</strong></p>
+            </div>
+            <h3 style="margin:24px 0 12px;color:#1e293b">📋 User Contact Details</h3>
+            <table style="width:100%;border-collapse:collapse;font-size:14px;border:1px solid #e2e8f0;border-radius:6px;overflow:hidden">
+              <tr style="background:#f8fafc">
+                <td style="padding:10px 14px;color:#64748b;font-weight:600;width:40%">Name</td>
+                <td style="padding:10px 14px;font-weight:700">${userName}</td>
+              </tr>
+              <tr>
+                <td style="padding:10px 14px;color:#64748b;font-weight:600">Email</td>
+                <td style="padding:10px 14px"><a href="mailto:${userEmail}" style="color:#3b82f6;font-weight:700">${userEmail}</a></td>
+              </tr>
+              <tr style="background:#f8fafc">
+                <td style="padding:10px 14px;color:#64748b;font-weight:600">Phone</td>
+                <td style="padding:10px 14px;font-weight:700">${userPhone ? `<a href="tel:${userPhone}" style="color:#3b82f6">${userPhone}</a>` : 'Not provided'}</td>
+              </tr>
+            </table>
+            <p style="margin-top:20px;color:#475569;font-size:14px">Please reach out to the user directly via email or phone to arrange a convenient pickup date and time.</p>
+            <a href="${webUrl}/vendor/individual-products" style="display:inline-block;background:#166534;color:#fff;padding:13px 28px;border-radius:6px;text-decoration:none;font-weight:700;font-size:14px;margin:16px 0">
+              View in Dashboard →
+            </a>
+            <p style="color:#94a3b8;font-size:12px;margin-top:24px">— WeConnect Platform</p>
+          </div>
+        </div>
+      `,
+    });
+  }
+
   async notifyClientUploadGatePass(
     clientEmail: string,
     clientName: string,

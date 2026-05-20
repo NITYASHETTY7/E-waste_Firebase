@@ -96,7 +96,7 @@ export default function VendorPayments() {
   if (!currentUser) return null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20 p-6">
+    <div className="max-w-4xl mx-auto space-y-6 pb-20 px-4 sm:px-6 lg:px-8 py-6">
       {toast && (
         <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-bold text-white ${toast.type === "error" ? "bg-red-600" : "bg-emerald-600"}`}>
           {toast.msg}

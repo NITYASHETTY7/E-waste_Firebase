@@ -24,7 +24,7 @@ export default function VendorAnalytics() {
   const maxCount = Math.max(...categories.map(c => c[1]), 1);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8">
       <div>
         <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">Analytics & Performance</h2>
         <p className="text-[color:var(--color-on-surface-variant)] mt-1">Your bidding performance and earnings overview.</p>

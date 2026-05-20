@@ -155,7 +155,7 @@ export default function AuctionEntryPage() {
   const progressPct = Math.round((uploadedCount / totalDocs) * 100);
 
   return (
-    <div className="max-w-4xl mx-auto pb-20">
+    <div className="max-w-4xl mx-auto pb-20 px-4 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>

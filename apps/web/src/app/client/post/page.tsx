@@ -103,8 +103,9 @@ export default function ClientPost() {
         link: "/client/listings",
       });
       setSuccess(true);
-    } catch {
-      setErrors({ submit: "Failed to submit listing. Please try again." });
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Failed to submit listing. Please try again.";
+      setErrors({ submit: msg });
     } finally {
       setSubmitting(false);
     }
@@ -112,7 +113,7 @@ export default function ClientPost() {
 
   if (success) {
     return (
-      <div className="max-w-xl mx-auto text-center py-16">
+      <div className="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 text-center py-16">
         <div className="w-24 h-24 rounded-full bg-[color:var(--color-primary-fixed)] flex items-center justify-center mx-auto mb-6 animate-bounce">
           <span className="material-symbols-outlined text-5xl text-[color:var(--color-on-primary-fixed)]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
         </div>
@@ -133,7 +134,7 @@ export default function ClientPost() {
   const currentStepIndex = step === "category" ? 0 : step === "details" ? 1 : step === "auction" ? 2 : 3;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 pb-20">
       <div>
         <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">Post E-Waste Listing</h2>
         <p className="text-[color:var(--color-on-surface-variant)] mt-1">Configure your listing for a transparent, legitimate e-auction. Admin will review and select vendors.</p>

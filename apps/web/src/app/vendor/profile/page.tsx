@@ -81,7 +81,7 @@ export default function VendorProfile() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto pb-20">
+    <div className="max-w-4xl mx-auto pb-20 px-4 sm:px-6 lg:px-8">
       <div className="mb-8">
         <h2 className="text-4xl font-black text-slate-900 tracking-tight dark:text-white">Recycler <span className="text-blue-600">Profile</span></h2>
         <p className="text-slate-500 font-medium mt-1">Manage certification, business credentials, and account security.</p>

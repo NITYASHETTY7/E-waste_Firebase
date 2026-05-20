@@ -1,0 +1,89 @@
+// ─── Post-Auction: Payment, Pickup & Ratings ──────────────────────────────────
+
+model Payment {
+  id               String        @id @default(cuid())
+  auctionId        String        @unique
+  status           PaymentStatus @default(PENDING)
+  clientAmount     Float
+  commissionAmount Float
+  totalAmount      Float
+  utrNumber        String?
+  paymentProofUrl  String?
+  proofS3Key       String?
+  proofS3Bucket    String?
+  adminNotes       String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  pickup  Pickup?
+}
+
+model Pickup {
+  id                   String       @id @default(cuid())
+  auctionId            String       @unique
+  paymentId            String?      @unique
+  status               PickupStatus @default(PENDING)
+  scheduledDate        DateTime?
+  adminNotes           String?
+  // Gate pass fields
+  gatePassNumber       String?
+  gatePassIssuedAt     DateTime?
+  vehicleNumber        String?
+  driverName           String?
+  pickupNotes          String?
+  vendorAcknowledgedAt DateTime?
+  // Reconciliation fields
+  finalWeight          Float?
+  reconciliationNotes  String?
+  finalAmount          Float?
+  invoiceNumber        String?
+  invoiceGeneratedAt   DateTime?
+  invoiceS3Key         String?
+  // Gate pass document uploaded by client
+  gatePassDocS3Key     String?
+  gatePassDocBucket    String?
+  gatePassDocFileName  String?
+  // Vendor logistics details (filled when submitting payment)
+  vendorVehicleNumber  String?
+  vendorDriverName     String?
+  vendorPreferredDate  DateTime?
+  // Client compliance verification
+  clientVerifiedAt     DateTime?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  auction    Auction          @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  payment    Payment?         @relation(fields: [paymentId], references: [id])
+  pickupDocs PickupDocument[]
+}
+
+model PickupDocument {
+  id         String       @id @default(cuid())
+  type       DocumentType
+  s3Key      String
+  s3Bucket   String
+  fileName   String
+  mimeType   String?
+  pickupId   String
+  uploadedAt DateTime     @default(now())
+
+  pickup Pickup @relation(fields: [pickupId], references: [id], onDelete: Cascade)
+}
+
+model Rating {
+  id            String   @id @default(cuid())
+  auctionId     String
+  fromCompanyId String
+  toCompanyId   String
+  score         Int
+  comment       String?
+  type          String
+  createdAt     DateTime @default(now())
+
+  auction     Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  fromCompany Company @relation("RatingsGiven", fields: [fromCompanyId], references: [id])
+  toCompany   Company @relation("RatingsReceived", fields: [toCompanyId], references: [id])
+
+  @@unique([auctionId, fromCompanyId, type])
+}

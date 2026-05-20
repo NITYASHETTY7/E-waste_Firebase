@@ -54,7 +54,7 @@ export default function VendorMarketplace() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-20">
+    <div className="max-w-6xl mx-auto space-y-6 pb-20 px-4 sm:px-6 lg:px-8">
       <div>
         <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">E-Waste Listings</h2>
         <p className="text-[color:var(--color-on-surface-variant)] mt-1">Browse past, ongoing, and future time-bound e-auctions.</p>

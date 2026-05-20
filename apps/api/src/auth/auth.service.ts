@@ -205,10 +205,13 @@ async completeVerification(email: string) {
     // Activate account once both email and phone are verified
     const fresh = await this.prisma.user.findUnique({ where: { id: user.id } });
     if (fresh?.emailVerified && fresh?.phoneVerified) {
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: { isActive: true },
-      });
+      // CLIENT/VENDOR are activated via company approval; USER role needs admin approval
+      if (fresh.role !== 'USER') {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { isActive: true },
+        });
+      }
     }
   }
 

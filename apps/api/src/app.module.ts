@@ -18,6 +18,7 @@ import { NotificationModule } from './notifications/notification.module';
 import { DocumentsModule } from './documents/documents.module';
 import { QueueModule } from './queue/queue.module';
 import { RatingsModule } from './ratings/ratings.module';
+import { UserProductsModule } from './user-products/user-products.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { RatingsModule } from './ratings/ratings.module';
     NotificationModule,
     DocumentsModule,
     RatingsModule,
+    UserProductsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

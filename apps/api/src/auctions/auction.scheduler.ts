@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { AuctionsService } from './auctions.service';
+import { AuctionGateway } from './auction.gateway';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { PickupStatus } from '@prisma/client';
@@ -11,14 +12,19 @@ export class AuctionScheduler {
 
   constructor(
     private auctionsService: AuctionsService,
+    private gateway: AuctionGateway,
     private prisma: PrismaService,
-    private notifications: NotificationService
+    private notifications: NotificationService,
   ) {}
 
   // Runs every minute to transition auction phases automatically
   @Cron(CronExpression.EVERY_MINUTE)
   async handlePhaseTransitions() {
-    await this.auctionsService.transitionPhases();
+    const { endedAuctionIds } = await this.auctionsService.transitionPhases();
+    // Notify all WebSocket clients in ended auction rooms so the UI updates immediately
+    for (const id of endedAuctionIds) {
+      await this.gateway.broadcastAuctionEnded(id);
+    }
   }
 
   // Runs daily at 9:00 AM

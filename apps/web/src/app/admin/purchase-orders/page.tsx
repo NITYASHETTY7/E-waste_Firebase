@@ -132,7 +132,7 @@ td{padding:10px;border:1px solid #e2e8f0}
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-20 relative">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20 relative">
       <AnimatePresence>
         {toast && (
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}

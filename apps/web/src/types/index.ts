@@ -1,4 +1,4 @@
-export type UserRole = 'client' | 'vendor' | 'admin' | 'guest' | 'consumer';
+export type UserRole = 'client' | 'vendor' | 'admin' | 'guest' | 'consumer' | 'user';
 
 export interface UploadedDoc {
   name: string;

@@ -21,7 +21,7 @@ export default function AdminAuctions() {
   const [filter, setFilter] = useState<Phase | "all">("all");
   const [search, setSearch] = useState("");
   const [configModal, setConfigModal] = useState<{isOpen: boolean, listingId: string | null}>({isOpen: false, listingId: null});
-  const [configForm, setConfigForm] = useState({ tickSize: "", maxTick: "", extensionTime: "3" });
+  const [configForm, setConfigForm] = useState({ tickSize: "", maxTick: "", extensionTime: "3", maxExtensions: "3" });
   const [launching, setLaunching] = useState(false);
   const [notifyingClient, setNotifyingClient] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
@@ -68,7 +68,7 @@ export default function AdminAuctions() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {toast && (
         <div className={`fixed top-6 right-6 z-[200] px-5 py-3 rounded-xl shadow-lg text-sm font-bold text-white ${toast.type === "error" ? "bg-red-600" : "bg-emerald-600"}`}>
           {toast.msg}
@@ -153,7 +153,7 @@ export default function AdminAuctions() {
                         <button
                           onClick={() => {
                             setConfigModal({ isOpen: true, listingId: listing.id });
-                            setConfigForm({ tickSize: "", maxTick: "", extensionTime: "3" });
+                            setConfigForm({ tickSize: "", maxTick: "", extensionTime: "3", maxExtensions: "3" });
                           }}
                           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-orange-600 text-white text-xs font-black uppercase hover:bg-orange-700 transition-colors"
                         >
@@ -204,7 +204,7 @@ export default function AdminAuctions() {
                       <button
                         onClick={() => {
                           setConfigModal({ isOpen: true, listingId: listing.id });
-                          setConfigForm({ tickSize: "", maxTick: "", extensionTime: "3" });
+                          setConfigForm({ tickSize: "", maxTick: "", extensionTime: "3", maxExtensions: "3" });
                         }}
                         className="px-4 py-2 rounded-xl bg-orange-600 text-white text-xs font-black uppercase hover:bg-orange-700 transition-colors"
                       >
@@ -256,6 +256,10 @@ export default function AdminAuctions() {
                   <option value="10">10 Minutes</option>
                 </select>
               </div>
+              <div>
+                <label className="label">Max Extensions (count)</label>
+                <input type="number" className="input-base" value={configForm.maxExtensions} onChange={e => setConfigForm({...configForm, maxExtensions: e.target.value})} placeholder="e.g. 3" />
+              </div>
             </div>
 
             <div className="flex gap-3 mt-6">
@@ -275,7 +279,7 @@ export default function AdminAuctions() {
                         openPhaseStart: listing.auctionStartDate || new Date().toISOString(),
                         openPhaseEnd: listing.auctionEndDate || new Date(Date.now() + 86400000).toISOString(),
                         tickSize: Number(configForm.tickSize),
-                        maxTicks: configForm.maxTick ? Number(configForm.maxTick) : Number(configForm.tickSize) * 10,
+                        maxTicks: Number(configForm.maxExtensions || 3),
                         extensionMinutes: Number(configForm.extensionTime),
                       }).catch(() => {});
                     }

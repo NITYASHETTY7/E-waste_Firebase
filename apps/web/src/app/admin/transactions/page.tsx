@@ -53,7 +53,7 @@ export default function AdminTransactions() {
   const successRate = totalBids > 0 ? Math.round((acceptedBids.length / totalBids) * 100) : 0;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">Bidding & Transactions</h2>

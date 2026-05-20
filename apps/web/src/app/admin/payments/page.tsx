@@ -99,7 +99,7 @@ export default function AdminPayments() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto relative pb-20">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative pb-20">
       <AnimatePresence>
         {toast && (
           <motion.div

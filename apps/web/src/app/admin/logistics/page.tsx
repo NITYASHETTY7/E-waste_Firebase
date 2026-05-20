@@ -35,7 +35,7 @@ export default function AdminLogistics() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div>
         <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">Pickups & Logistics</h2>
         <p className="text-[color:var(--color-on-surface-variant)] mt-1">Track pickup scheduling, Form 6 submissions, and weight slips.</p>

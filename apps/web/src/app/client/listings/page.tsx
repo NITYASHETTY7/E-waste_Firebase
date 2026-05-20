@@ -22,16 +22,20 @@ export default function ClientListings() {
   const [sealedBidModal, setSealedBidModal] = useState<{ isOpen: boolean; listingId: string | null; title: string }>({ isOpen: false, listingId: null, title: "" });
   const [sealedBids, setSealedBids] = useState<any[]>([]);
   const [sealedBidsLoading, setSealedBidsLoading] = useState(false);
+  const [sealedBidsError, setSealedBidsError] = useState<string | null>(null);
   const [reviewingBidId, setReviewingBidId] = useState<string | null>(null);
 
   const openSealedBidReview = async (listingId: string, title: string) => {
     setSealedBidModal({ isOpen: true, listingId, title });
     setSealedBidsLoading(true);
+    setSealedBidsError(null);
     try {
       const res = await api.get(`/requirements/${listingId}/sealed-bids`);
       setSealedBids(res.data);
-    } catch { setSealedBids([]); }
-    finally { setSealedBidsLoading(false); }
+    } catch (e: any) {
+      setSealedBids([]);
+      setSealedBidsError(e?.response?.data?.message || e?.message || 'Failed to load bids');
+    } finally { setSealedBidsLoading(false); }
   };
 
   const handleReviewBid = async (listingId: string, bidId: string, action: 'approve' | 'reject', remarks?: string) => {
@@ -108,7 +112,7 @@ export default function ClientListings() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-20">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 pb-20">
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">My Inventory & Auctions</h2>
@@ -450,6 +454,12 @@ export default function ClientListings() {
               {sealedBidsLoading ? (
                 <div className="py-16 text-center">
                   <span className="material-symbols-outlined text-4xl text-slate-300 animate-spin">progress_activity</span>
+                </div>
+              ) : sealedBidsError ? (
+                <div className="py-16 text-center">
+                  <span className="material-symbols-outlined text-5xl text-red-300 block mb-3">error</span>
+                  <p className="font-bold text-red-500">Failed to load bids</p>
+                  <p className="text-xs text-slate-400 mt-1">{sealedBidsError}</p>
                 </div>
               ) : sealedBids.length === 0 ? (
                 <div className="py-16 text-center">

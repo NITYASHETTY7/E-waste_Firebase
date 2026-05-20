@@ -9,7 +9,7 @@
     "build": "prisma generate && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
-    "start:dev": "nest start --watch",
+    "start:dev": "node --max-old-space-size=4096 ./node_modules/@nestjs/cli/bin/nest.js start --watch",
     "start:dev:monorepo": "set PRISMA_CLIENT_ENGINE_TYPE=library && node --max-old-space-size=4096 ../../node_modules/@nestjs/cli/bin/nest.js start --watch",
     "start:debug": "set PRISMA_CLIENT_ENGINE_TYPE=library && node --max-old-space-size=4096 ./node_modules/@nestjs/cli/bin/nest.js start --debug --watch",
     "start:prod": "node dist/main",
@@ -104,6 +104,7 @@
     "testEnvironment": "node"
   },
   "prisma": {
+    "schema": "prisma/schema",
     "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
   }
 }

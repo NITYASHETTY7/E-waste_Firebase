@@ -46,7 +46,8 @@
       "Bash(where psql *)",
       "Bash(cat)",
       "Read(//tmp/**)",
-      "PowerShell(Remove-Item *)"
+      "PowerShell(Remove-Item *)",
+      "Bash(npx turbo *)"
     ]
   }
 }

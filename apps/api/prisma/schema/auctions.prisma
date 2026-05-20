@@ -1,0 +1,72 @@
+// ─── Auctions & Bidding ───────────────────────────────────────────────────────
+
+model Auction {
+  id                   String        @id @default(cuid())
+  title                String
+  category             String
+  description          String?
+  status               AuctionStatus @default(DRAFT)
+  basePrice            Float
+  targetPrice          Float?
+  tickSize             Float         @default(1000)
+  maxTicks             Int           @default(24)
+  extensionMinutes     Int           @default(3)
+  sealedPhaseStart     DateTime?
+  sealedPhaseEnd       DateTime?
+  openPhaseStart       DateTime?
+  openPhaseEnd         DateTime?
+  extensionCount       Int           @default(0)
+  liveApprovalStatus   String        @default("pending")
+  liveApprovalRemarks  String?
+  clientId             String
+  winnerId             String?
+  requirementId        String?       @unique
+  quoteApproved        Boolean?
+  quoteRemarks         String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  client      Company          @relation("ClientAuctions", fields: [clientId], references: [id])
+  requirement Requirement?     @relation(fields: [requirementId], references: [id])
+  winner      Company?         @relation("WinnerAuctions", fields: [winnerId], references: [id])
+  auctionDocs AuctionDocument[]
+  bids        Bid[]
+  pickup      Pickup?
+  payment     Payment?
+  ratings     Rating[]
+}
+
+model AuctionDocument {
+  id         String       @id @default(cuid())
+  type       DocumentType
+  s3Key      String
+  s3Bucket   String
+  fileName   String
+  mimeType   String?
+  auctionId  String
+  uploadedAt DateTime     @default(now())
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+}
+
+model Bid {
+  id                 String   @id @default(cuid())
+  amount             Float
+  phase              BidPhase
+  remarks            String?
+  rank               Int?
+  isShortlisted      Boolean  @default(false)
+  auctionId          String
+  vendorId           String
+  priceSheetS3Key    String?
+  priceSheetS3Bucket String?
+  priceSheetFileName String?
+  clientStatus       String   @default("pending")
+  clientRemarks      String?
+  createdAt          DateTime @default(now())
+
+  auction Auction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  vendor  User    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([auctionId, amount])
+}

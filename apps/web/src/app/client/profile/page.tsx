@@ -102,7 +102,7 @@ export default function ClientProfile() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto pb-20">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
       <div className="mb-8">
         <h2 className="text-4xl font-black text-slate-900 tracking-tight dark:text-white">Organization <span className="text-[#1E8E3E]">Profile</span></h2>
         <p className="text-slate-500 font-medium mt-1">Manage entity details, compliance documentation, and security settings.</p>

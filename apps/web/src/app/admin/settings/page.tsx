@@ -54,7 +54,7 @@ export default function AdminSettings() {
   ];
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-12">
+    <div className="space-y-8 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
       {/* Header — matches Stitch Admin Settings reference */}
       <div>
         <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">Admin Settings</h2>

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -350,29 +350,29 @@ function ClientLoginPageContent() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-2 block">Name</label>
-                      <input type="text" required value={regName} onChange={e => setRegName(e.target.value)} placeholder="John Doe" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:border-[#1E8E3E] outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
+                      <input type="text" required value={regName} onChange={e => setRegName(e.target.value)} placeholder="John Doe" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#1E8E3E] focus:bg-white dark:focus:bg-slate-800 dark:focus:text-white outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
                     </div>
                     <div>
                       <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-2 block">Phone</label>
-                      <input type="tel" required value={regPhone} onChange={e => setRegPhone(e.target.value)} placeholder="+91..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:border-[#1E8E3E] outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
+                      <input type="tel" required value={regPhone} onChange={e => setRegPhone(e.target.value)} placeholder="+91..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#1E8E3E] focus:bg-white dark:focus:bg-slate-800 dark:focus:text-white outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
                     </div>
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-2 block">Company Name</label>
-                    <input type="text" required value={regCompany} onChange={e => setRegCompany(e.target.value)} placeholder="Your Ventures Pvt Ltd" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:border-[#1E8E3E] outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
+                    <input type="text" required value={regCompany} onChange={e => setRegCompany(e.target.value)} placeholder="Your Ventures Pvt Ltd" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#1E8E3E] focus:bg-white dark:focus:bg-slate-800 dark:focus:text-white outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-2 block">Company Email</label>
-                    <input type="email" required value={regEmail} onChange={e => setRegEmail(e.target.value)} placeholder="name@company.com" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:border-[#1E8E3E] outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
+                    <input type="email" required value={regEmail} onChange={e => setRegEmail(e.target.value)} placeholder="name@company.com" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#1E8E3E] focus:bg-white dark:focus:bg-slate-800 dark:focus:text-white outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-2 block">Password</label>
-                      <input type="password" required value={regPassword} onChange={e => setRegPassword(e.target.value)} placeholder="Min. 8" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:border-[#1E8E3E] outline-none transition-all font-mono dark:bg-slate-950 dark:text-white dark:border-slate-700" />
+                      <input type="password" required value={regPassword} onChange={e => setRegPassword(e.target.value)} placeholder="Min. 8" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#1E8E3E] focus:bg-white dark:focus:bg-slate-800 dark:focus:text-white outline-none transition-all font-mono dark:bg-slate-950 dark:text-white dark:border-slate-700" />
                     </div>
                     <div>
                       <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-2 block">Confirm</label>
-                      <input type="password" required value={regConfirm} onChange={e => setRegConfirm(e.target.value)} placeholder="Repeat" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:border-[#1E8E3E] outline-none transition-all font-mono dark:bg-slate-950 dark:text-white dark:border-slate-700" />
+                      <input type="password" required value={regConfirm} onChange={e => setRegConfirm(e.target.value)} placeholder="Repeat" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#1E8E3E] focus:bg-white dark:focus:bg-slate-800 dark:focus:text-white outline-none transition-all font-mono dark:bg-slate-950 dark:text-white dark:border-slate-700" />
                     </div>
                   </div>
                   <button type="submit" disabled={loading} className="w-full py-5 bg-[#1E8E3E] text-white font-black text-[11px] uppercase tracking-[0.3em] rounded-2xl mt-6 hover:bg-[#166a2e] shadow-xl hover:shadow-[#1E8E3E]/20 transition-all active:scale-[0.98]">

@@ -145,7 +145,7 @@ export default function VendorInvitationPage() {
   const auditStatus = details.auditDoc?.status || (docsSubmitted ? "pending" : null);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 pb-20">
+    <div className="max-w-3xl mx-auto space-y-6 pb-20 px-4 sm:px-6 lg:px-8">
       {toast && (
         <div className={`fixed top-6 right-6 z-[200] px-5 py-3 rounded-xl shadow-lg text-sm font-bold text-white ${toast.type === "error" ? "bg-red-600" : "bg-emerald-600"}`}>
           {toast.msg}

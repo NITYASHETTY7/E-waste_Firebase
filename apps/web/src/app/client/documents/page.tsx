@@ -81,7 +81,7 @@ export default function ClientDocuments() {
     s + COMPLIANCE_DOCS.filter(d => !!l[d.key]).length, 0);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-20">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 pb-20">
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">My Documents</h2>

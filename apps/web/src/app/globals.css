@@ -376,7 +376,20 @@ h1, h2, h3, h4, h5, h6,
 
 .input-base::placeholder {
   color: var(--color-on-surface-variant);
-  opacity: 0.6;
+  opacity: 0.7;
+}
+
+.dark .input-base::placeholder {
+  color: #94a3b8;
+  opacity: 0.8;
+}
+
+/* Global dark-mode placeholder catch-all — ensures no invisible placeholders */
+.dark input::placeholder,
+.dark textarea::placeholder,
+.dark select::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1 !important;
 }
 
 /* Form Label */
@@ -493,7 +506,7 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .btn-primary:hover {
-  background-color: var(--color-primary-container);
+  background-color: var(--color-primary-dark, #166B2E);
   transform: scale(1.02);
 }
 
@@ -529,7 +542,7 @@ h1, h2, h3, h4, h5, h6,
   gap: 0.5rem;
   padding: 0.75rem 1.5rem;
   background-color: var(--color-tertiary);
-  color: white;
+  color: #291f00;
   font-weight: 700;
   border-radius: 9999px;
   font-size: 0.875rem;

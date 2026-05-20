@@ -659,7 +659,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     else if (!u.companyId && u.isActive) status = 'active'; // ADMIN/USER roles without company
 
     const roleMap: Record<string, User['role']> = {
-      CLIENT: 'client', VENDOR: 'vendor', ADMIN: 'admin', USER: 'guest',
+      CLIENT: 'client', VENDOR: 'vendor', ADMIN: 'admin', USER: 'user',
     };
 
     return {
@@ -1049,13 +1049,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addBid = async (listingId: string, amount: number, remarks?: string) => {
-    try {
-      // For now assume sealed bid, we can detect phase if needed
-      await api.post(`/auctions/${listingId}/sealed-bid`, { amount, remarks });
-      await fetchAllData();
-    } catch (error) {
-      console.error('Failed to add bid', error);
+    const listing = state.listings.find(l => l.id === listingId);
+    const auctionId = listing?.auctionId;
+    if (!auctionId) {
+      throw new Error('No auction found for this listing');
     }
+    await api.post(`/auctions/${auctionId}/sealed-bid`, { amount, remarks });
+    await fetchAllData();
   };
 
   const acceptBid = async (bidId: string) => {

@@ -1,0 +1,108 @@
+// ─── Requirements & Audit ─────────────────────────────────────────────────────
+
+model Requirement {
+  id                      String            @id @default(cuid())
+  title                   String
+  description             String?
+  status                  RequirementStatus @default(UPLOADED)
+  rawS3Key                String?
+  processedS3Key          String?
+  targetPrice             Float?
+  totalWeight             Float?
+  category                String?
+  clientId                String
+  // Vendor IDs (User.id) invited by admin for sealed bidding
+  invitedVendorIds        String[]          @default([])
+  // Vendor responses to sealed bid invitation
+  acceptedVendorIds       String[]          @default([])
+  declinedVendorIds       String[]          @default([])
+  auditApprovedVendorIds  String[]          @default([])
+  // Sealed bid window set by client at listing creation
+  sealedPhaseStart        DateTime?
+  sealedPhaseEnd          DateTime?
+  // Sealed bid event (created by admin after audits are reviewed)
+  sealedBidEventCreatedAt DateTime?
+  sealedBidDeadline       DateTime?
+  // Client-uploaded compliance documents: [{name, s3Key, type}]
+  clientDocuments         Json?             @default("[]")
+  // Admin approval tracking
+  adminApprovedAt         DateTime?
+  adminApprovedById       String?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  auction          Auction?
+  auditInvitations AuditInvitation[]
+  auditDocs        VendorAuditDoc[]
+  client           Company           @relation("ClientRequirements", fields: [clientId], references: [id])
+}
+
+model AuditInvitation {
+  id            String      @id @default(cuid())
+  status        AuditStatus @default(INVITED)
+  requirementId String
+  vendorId      String
+  siteAddress   String?
+  spocName      String?
+  spocPhone     String?
+  scheduledAt   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  requirement Requirement  @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  vendor      Company      @relation("VendorAuditInvitations", fields: [vendorId], references: [id])
+  report      AuditReport?
+
+  @@unique([requirementId, vendorId])
+}
+
+model AuditReport {
+  id           String    @id @default(cuid())
+  invitationId String    @unique
+  productMatch Boolean?
+  remarks      String?
+  completedAt  DateTime?
+  vendorUserId String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  photos     AuditPhoto[]
+  invitation AuditInvitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  vendorUser User?           @relation(fields: [vendorUserId], references: [id], onDelete: SetNull)
+}
+
+model AuditPhoto {
+  id            String    @id @default(cuid())
+  s3Key         String
+  s3Bucket      String
+  fileName      String
+  mimeType      String?
+  latitude      Float?
+  longitude     Float?
+  capturedAt    DateTime?
+  auditReportId String
+  uploadedAt    DateTime  @default(now())
+
+  auditReport AuditReport @relation(fields: [auditReportId], references: [id], onDelete: Cascade)
+}
+
+model VendorAuditDoc {
+  id                  String   @id @default(cuid())
+  requirementId       String
+  vendorUserId        String
+  auditReportS3Key    String?
+  auditReportFileName String?
+  excelS3Key          String?
+  excelFileName       String?
+  imageS3Keys         String[] @default([])
+  imageFileNames      String[] @default([])
+  status              String   @default("pending")
+  adminRemarks        String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  vendor      User        @relation("VendorAuditDocs", fields: [vendorUserId], references: [id])
+
+  @@unique([requirementId, vendorUserId])
+}

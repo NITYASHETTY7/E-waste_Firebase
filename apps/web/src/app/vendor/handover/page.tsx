@@ -144,7 +144,7 @@ export default function VendorHandoverPage() {
   if (!currentUser) return null;
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6 px-4 sm:px-6 lg:px-8 py-6">
       {toast && (
         <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-bold text-white ${toast.type === "error" ? "bg-red-600" : "bg-emerald-600"}`}>
           {toast.msg}
@@ -304,6 +304,28 @@ export default function VendorHandoverPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Auction Documents (Work Order, Purchase Order, Agreement, Invoice) */}
+                {(pickup.auctionDocs ?? []).length > 0 && (
+                  <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Auction Documents</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {(pickup.auctionDocs as any[]).map((doc: any) => (
+                        doc.signedUrl && (
+                          <a key={doc.id} href={doc.signedUrl} target="_blank" rel="noreferrer"
+                            className="flex items-center gap-2 p-2.5 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 transition-colors">
+                            <span className="material-symbols-outlined text-indigo-600 text-sm">description</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 truncate">{doc.fileName}</p>
+                              <p className="text-[9px] text-indigo-500">{doc.type.replace(/_/g, " ")}</p>
+                            </div>
+                            <span className="material-symbols-outlined text-indigo-400 text-sm">download</span>
+                          </a>
+                        )
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Reconciliation info */}
                 {(status === "RECONCILIATION_DONE" || status === "INVOICE_GENERATED" || status === "COMPLETED") && (

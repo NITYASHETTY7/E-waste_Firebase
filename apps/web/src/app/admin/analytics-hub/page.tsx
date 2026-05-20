@@ -33,7 +33,7 @@ export default function AdminAnalyticsHub() {
   const maxMonth = Math.max(...monthlyData.map(([, v]) => v), 1);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div>
         <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">Analytics Hub</h2>
         <p className="text-[color:var(--color-on-surface-variant)] mt-1">Platform-wide revenue, deal velocity, and category breakdown.</p>

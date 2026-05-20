@@ -86,7 +86,7 @@ export default function VendorInvitations() {
   const declinedListings = invitationListings.filter(l => l.declinedVendorIds?.includes(myId));
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-20">
+    <div className="max-w-6xl mx-auto space-y-6 pb-20 px-4 sm:px-6 lg:px-8">
       <div>
         <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">Direct Invitations</h2>
         <p className="text-[color:var(--color-on-surface-variant)] mt-1">Exclusive auction opportunities hand-picked for you.</p>

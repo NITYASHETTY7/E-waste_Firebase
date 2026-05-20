@@ -346,34 +346,34 @@ function VendorLoginPageContent() {
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div>
                     <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-2 block">Company Name</label>
-                    <input type="text" required value={regCompany} onChange={e => setRegCompany(e.target.value)} placeholder="Recycling Corp Ltd." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:border-[#0B5ED7] outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
+                    <input type="text" required value={regCompany} onChange={e => setRegCompany(e.target.value)} placeholder="Recycling Corp Ltd." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#0B5ED7] focus:bg-white dark:focus:bg-slate-800 dark:focus:text-white outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-2 block">CPCB License No.</label>
-                    <input type="text" required value={regLicense} onChange={e => setRegLicense(e.target.value)} placeholder="CPCB/E-Waste/..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:border-[#0B5ED7] outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
+                    <input type="text" required value={regLicense} onChange={e => setRegLicense(e.target.value)} placeholder="CPCB/E-Waste/..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#0B5ED7] focus:bg-white dark:focus:bg-slate-800 dark:focus:text-white outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-2 block">Contact Person</label>
-                      <input type="text" required value={regContactName} onChange={e => setRegContactName(e.target.value)} placeholder="John Doe" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:border-[#0B5ED7] outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
+                      <input type="text" required value={regContactName} onChange={e => setRegContactName(e.target.value)} placeholder="John Doe" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#0B5ED7] focus:bg-white dark:focus:bg-slate-800 dark:focus:text-white outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
                     </div>
                     <div>
                       <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-2 block">Phone</label>
-                      <input type="tel" required value={regPhone} onChange={e => setRegPhone(e.target.value)} placeholder="+91..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:border-[#0B5ED7] outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
+                      <input type="tel" required value={regPhone} onChange={e => setRegPhone(e.target.value)} placeholder="+91..." className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#0B5ED7] focus:bg-white dark:focus:bg-slate-800 dark:focus:text-white outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
                     </div>
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-2 block">Work Email</label>
-                    <input type="email" required value={regEmail} onChange={e => setRegEmail(e.target.value)} placeholder="vendor@company.com" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:border-[#0B5ED7] outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
+                    <input type="email" required value={regEmail} onChange={e => setRegEmail(e.target.value)} placeholder="vendor@company.com" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#0B5ED7] focus:bg-white dark:focus:bg-slate-800 dark:focus:text-white outline-none transition-all dark:bg-slate-950 dark:text-white dark:border-slate-700" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-2 block">Password</label>
-                      <input type="password" required value={regPassword} onChange={e => setRegPassword(e.target.value)} placeholder="Min. 8" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:border-[#0B5ED7] outline-none transition-all font-mono dark:bg-slate-950 dark:text-white dark:border-slate-700" />
+                      <input type="password" required value={regPassword} onChange={e => setRegPassword(e.target.value)} placeholder="Min. 8" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#0B5ED7] focus:bg-white dark:focus:bg-slate-800 dark:focus:text-white outline-none transition-all font-mono dark:bg-slate-950 dark:text-white dark:border-slate-700" />
                     </div>
                     <div>
                       <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1 mb-2 block">Confirm</label>
-                      <input type="password" required value={regConfirm} onChange={e => setRegConfirm(e.target.value)} placeholder="Repeat" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:border-[#0B5ED7] outline-none transition-all font-mono dark:bg-slate-950 dark:text-white dark:border-slate-700" />
+                      <input type="password" required value={regConfirm} onChange={e => setRegConfirm(e.target.value)} placeholder="Repeat" className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-[#0B5ED7] focus:bg-white dark:focus:bg-slate-800 dark:focus:text-white outline-none transition-all font-mono dark:bg-slate-950 dark:text-white dark:border-slate-700" />
                     </div>
                   </div>
                   <button type="submit" disabled={loading} className="w-full py-5 bg-[#0B5ED7] text-white font-black text-[11px] uppercase tracking-[0.3em] rounded-2xl mt-6 hover:bg-[#084295] shadow-xl hover:shadow-[#0B5ED7]/20 transition-all active:scale-[0.98]">

@@ -155,7 +155,7 @@ export default function AdminVendors() {
     .filter(v => v.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto relative pb-20">
+    <div className="space-y-6 max-w-7xl mx-auto relative pb-20 px-4 sm:px-6 lg:px-8">
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -175,12 +175,12 @@ export default function AdminVendors() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total Vendors", value: stats.total, icon: "corporate_fare", color: "text-blue-600 bg-blue-50" },
-          { label: "Active", value: stats.active, icon: "verified", color: "text-[#1E8E3E] bg-emerald-50" },
-          { label: "Pending Review", value: stats.pending, icon: "pending_actions", color: "text-amber-600 bg-amber-50" },
-          { label: "Locked", value: stats.locked, icon: "lock", color: "text-red-600 bg-red-50" },
+          { label: "Total Vendors", value: stats.total, icon: "corporate_fare", color: "text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/20" },
+          { label: "Active", value: stats.active, icon: "verified", color: "text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-900/20" },
+          { label: "Pending Review", value: stats.pending, icon: "pending_actions", color: "text-amber-600 bg-amber-50 dark:text-amber-400 dark:bg-amber-900/20" },
+          { label: "Locked", value: stats.locked, icon: "lock", color: "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-900/20" },
         ].map(s => (
           <div key={s.label} className="card p-5 border border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-3">
@@ -201,7 +201,7 @@ export default function AdminVendors() {
         <div className="relative w-full sm:w-96">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
           <input type="text" placeholder="Search vendors..." value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#1E8E3E]/20 focus:border-[#1E8E3E] transition-all" />
+            className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#1E8E3E]/20 focus:border-[#1E8E3E] transition-all" />
         </div>
         <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800/50 rounded-xl w-full sm:w-fit">
           {(["all", "APPROVED", "PENDING", "REJECTED"] as const).map(f => (
@@ -230,7 +230,7 @@ export default function AdminVendors() {
                     {vendor.name.charAt(0)}
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase ${vendor.status === "APPROVED" ? "bg-emerald-100 text-emerald-700" : vendor.status === "REJECTED" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase ${vendor.status === "APPROVED" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : vendor.status === "REJECTED" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"}`}>
                       {vendor.status}
                     </span>
                     {vendor.isLocked && (
@@ -567,7 +567,7 @@ export default function AdminVendors() {
             <p className="text-sm text-slate-500">Locking will immediately prevent participation in auctions.</p>
             <div>
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Reason *</label>
-              <textarea className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-red-300 resize-none min-h-[100px]"
+              <textarea className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-red-300 resize-none min-h-[100px]"
                 placeholder="Detail the compliance violation or issue..."
                 value={lockReason} onChange={e => setLockReason(e.target.value)} />
             </div>
@@ -590,12 +590,12 @@ export default function AdminVendors() {
             </h3>
             <div>
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Amount (₹) *</label>
-              <input type="number" className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-orange-300"
+              <input type="number" className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-orange-300"
                 placeholder="e.g. 5000" value={penaltyAmount} onChange={e => setPenaltyAmount(e.target.value)} />
             </div>
             <div>
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Reason *</label>
-              <textarea className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 outline-none focus:ring-2 focus:ring-orange-300 resize-none min-h-[80px]"
+              <textarea className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-orange-300 resize-none min-h-[80px]"
                 placeholder="Reason for penalty..." value={penaltyReason} onChange={e => setPenaltyReason(e.target.value)} />
             </div>
             <div className="flex justify-end gap-3">

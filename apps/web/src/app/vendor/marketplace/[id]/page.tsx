@@ -54,22 +54,25 @@ export default function VendorAuctionDetail() {
     }
   };
 
-  const handlePlaceBid = () => {
+  const handlePlaceBid = async () => {
     const amount = Number(customBid);
     if (!amount || amount <= 0) {
       setAlertMsg({ type: "error", msg: "Please enter a valid bid amount." });
       return;
     }
-    
+
     if (!isSealedPhase && amount < requiredBidAmount) {
       setAlertMsg({ type: "error", msg: `Minimum bid required is ₹${requiredBidAmount.toLocaleString()}` });
       return;
     }
 
-    addBid(listing.id, amount);
-
-    setAlertMsg({ type: "success", msg: isSealedPhase ? "Sealed bid submitted successfully!" : "Bid placed successfully!" });
-    setCustomBid("");
+    try {
+      await addBid(listing.id, amount);
+      setAlertMsg({ type: "success", msg: isSealedPhase ? "Sealed bid submitted successfully!" : "Bid placed successfully!" });
+      setCustomBid("");
+    } catch (e: any) {
+      setAlertMsg({ type: "error", msg: e?.response?.data?.message || e?.message || "Failed to submit bid." });
+    }
   };
 
   const formatWithMs = (isoString: string) => {
@@ -80,7 +83,7 @@ export default function VendorAuctionDetail() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto pb-20 animate-fade-in space-y-8">
+    <div className="max-w-6xl mx-auto pb-20 animate-fade-in space-y-8 px-4 sm:px-6 lg:px-8">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm dark:bg-slate-900 dark:border-slate-800">
         <div className="flex items-center gap-4">

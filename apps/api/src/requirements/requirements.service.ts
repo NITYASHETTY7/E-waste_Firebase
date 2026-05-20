@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { NotificationService } from '../notifications/notification.service';
@@ -26,6 +26,12 @@ export class RequirementsService {
     documentFiles?: Express.Multer.File[];
     documentTypes?: string[];
   }) {
+    if (!data.clientId) {
+      throw new BadRequestException(
+        'Your account is not linked to a company. Please complete onboarding or contact support.',
+      );
+    }
+
     let rawS3Key: string | undefined;
     if (data.file) {
       const { key } = await this.s3.upload(
@@ -188,7 +194,7 @@ export class RequirementsService {
       });
     }
 
-    // Send sealed-bid invitation emails to admin-selected vendors
+    // Send sealed-bid invitation emails + in-app notifications to admin-selected vendors
     if (req.invitedVendorIds.length > 0) {
       const vendors = await this.prisma.user.findMany({
         where: { id: { in: req.invitedVendorIds } },
@@ -204,16 +210,29 @@ export class RequirementsService {
         hour12: true,
       });
 
+      const webUrl = process.env.WEB_URL || 'http://localhost:3000';
+
       await Promise.all(
-        vendors.map((v) =>
-          this.notifications.notifySealedBidInvitation(
+        vendors.map(async (v) => {
+          // Email invite (silently skipped in dev if SES not configured)
+          await this.notifications.notifySealedBidInvitation(
             v.email,
             v.name,
             req.title,
             req.id,
             sealedEndStr,
-          ),
-        ),
+          );
+          // In-app notification so vendor sees it even without email
+          await this.prisma.inAppNotification.create({
+            data: {
+              userId: v.id,
+              type: 'sealed_bid_invitation',
+              title: 'New Sealed Bid Invitation',
+              message: `You have been invited to participate in a sealed bid auction: "${req.title}". Deadline: ${sealedEndStr}.`,
+              link: `${webUrl}/vendor/invitations/${req.id}`,
+            },
+          });
+        }),
       );
     }
 
@@ -274,7 +293,7 @@ export class RequirementsService {
       });
     }
 
-    // Send invitation emails to every selected vendor (User IDs)
+    // Send invitation emails + in-app notifications to every selected vendor (User IDs)
     if (req.invitedVendorIds.length > 0) {
       const vendors = await this.prisma.user.findMany({
         where: { id: { in: req.invitedVendorIds } },
@@ -290,16 +309,27 @@ export class RequirementsService {
         hour12: true,
       });
 
+      const webUrl = process.env.WEB_URL || 'http://localhost:3000';
+
       await Promise.all(
-        vendors.map((v) =>
-          this.notifications.notifySealedBidInvitation(
+        vendors.map(async (v) => {
+          await this.notifications.notifySealedBidInvitation(
             v.email,
             v.name,
             req.title,
             req.id,
             sealedEndStr,
-          ),
-        ),
+          );
+          await this.prisma.inAppNotification.create({
+            data: {
+              userId: v.id,
+              type: 'sealed_bid_invitation',
+              title: 'New Sealed Bid Invitation',
+              message: `You have been invited to participate in a sealed bid auction: "${req.title}". Deadline: ${sealedEndStr}.`,
+              link: `${webUrl}/vendor/invitations/${req.id}`,
+            },
+          });
+        }),
       );
     }
 
@@ -726,7 +756,14 @@ export class RequirementsService {
     });
     if (!req?.auction) throw new NotFoundException('Auction not found');
 
-    const auctionUpdateData: any = { liveApprovalStatus: 'approved', status: AuctionStatus.OPEN_PHASE };
+    const now = new Date();
+    const openPhaseStart = body.startDate ? new Date(body.startDate) : req.auction.openPhaseStart;
+    const shouldGoLiveNow = openPhaseStart && openPhaseStart <= now;
+
+    const auctionUpdateData: any = {
+      liveApprovalStatus: 'approved',
+      status: shouldGoLiveNow ? AuctionStatus.OPEN_PHASE : AuctionStatus.UPCOMING,
+    };
     if (body.basePrice !== undefined) auctionUpdateData.basePrice = Number(body.basePrice);
     if (body.targetPrice !== undefined) auctionUpdateData.targetPrice = Number(body.targetPrice);
     if (body.startDate) auctionUpdateData.openPhaseStart = new Date(body.startDate);

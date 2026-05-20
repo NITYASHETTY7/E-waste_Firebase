@@ -45,7 +45,7 @@ export default function ClientSealedBids() {
   }, [currentUser?.companyId]);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-20">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 pb-20">
       <div>
         <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">Shortlisted Sealed Bids</h2>
         <p className="text-[color:var(--color-on-surface-variant)] mt-1">Review the top sealed bids shortlisted by the admin team.</p>

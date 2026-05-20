@@ -35,7 +35,7 @@ export default function VendorReports() {
   const handleDownload = (name: string) => alert(`Downloading ${name}...`);
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-20">
+    <div className="space-y-8 max-w-6xl mx-auto pb-20 px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-end">
         <div>
            <h2 className="text-3xl font-headline font-extrabold tracking-tight text-slate-900 dark:text-white">Vendor Performance Audit</h2>

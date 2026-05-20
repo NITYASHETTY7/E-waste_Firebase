@@ -476,7 +476,7 @@ export class AuctionsService {
     return this.prisma.auction.update({ where: { id }, data: { status } });
   }
 
-  async transitionPhases() {
+  async transitionPhases(): Promise<{ endedAuctionIds: string[] }> {
     const now = new Date();
 
     await this.prisma.auction.updateMany({
@@ -488,14 +488,25 @@ export class AuctionsService {
       where: {
         status: AuctionStatus.SEALED_PHASE,
         openPhaseStart: { lte: now },
+        liveApprovalStatus: 'approved',
       },
       data: { status: AuctionStatus.OPEN_PHASE },
     });
 
-    await this.prisma.auction.updateMany({
+    // Capture which live auctions are expiring before updating them
+    const endingAuctions = await this.prisma.auction.findMany({
       where: { status: AuctionStatus.OPEN_PHASE, openPhaseEnd: { lte: now } },
-      data: { status: AuctionStatus.PENDING_SELECTION },
+      select: { id: true },
     });
+
+    if (endingAuctions.length > 0) {
+      await this.prisma.auction.updateMany({
+        where: { id: { in: endingAuctions.map(a => a.id) } },
+        data: { status: AuctionStatus.PENDING_SELECTION },
+      });
+    }
+
+    return { endedAuctionIds: endingAuctions.map(a => a.id) };
   }
 
   async extendTimer(id: string) {

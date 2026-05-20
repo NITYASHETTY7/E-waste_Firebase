@@ -12,6 +12,8 @@ const ADMIN_SECTIONS = [
     links: [
       { href: "/admin/users", icon: "group", label: "Clients" },
       { href: "/admin/vendors", icon: "recycling", label: "Vendors" },
+      { href: "/admin/individual-users", icon: "person_check", label: "Individual Users" },
+      { href: "/admin/user-products", icon: "person_pin", label: "Individual Products", badge: "New" },
       { href: "/admin/listings", icon: "inventory_2", label: "Requests" },
       { href: "/admin/auctions", icon: "gavel", label: "Auctions" },
       { href: "/admin/payments", icon: "payments", label: "Payments" },
@@ -42,6 +44,7 @@ const ADMIN_SECTIONS = [
 
 const VENDOR_LINKS = [
   { href: "/vendor/marketplace", icon: "storefront", label: "Auctions" },
+  { href: "/vendor/individual-products", icon: "person_pin", label: "Individual Products" },
   { href: "/vendor/invitations", icon: "mail", label: "Invitations" },
   { href: "/vendor/audits", icon: "fact_check", label: "Site Audits" },
   { href: "/vendor/live-auction", icon: "sensors", label: "Live Auction" },
@@ -74,6 +77,14 @@ const CONSUMER_LINKS = [
   { href: "/consumer/history", icon: "history", label: "Order History" },
   { href: "/consumer/impact", icon: "eco", label: "My Impact" },
   { href: "/consumer/profile", icon: "person", label: "Profile" },
+];
+
+const USER_LINKS = [
+  { href: "/user/upload", icon: "upload_file", label: "Submit Product" },
+  { href: "/user/my-products", icon: "inventory_2", label: "My Products" },
+  { href: "/user/quotes", icon: "request_quote", label: "Vendor Quotes" },
+  { href: "/user/track", icon: "local_shipping", label: "Track Pickup" },
+  { href: "/user/profile", icon: "person", label: "Profile" },
 ];
 
 export default function Sidebar() {
@@ -182,7 +193,7 @@ export default function Sidebar() {
             ))
           ) : (
             <div className="space-y-0.5">
-              {(role === "vendor" ? VENDOR_LINKS : isConsumer ? CONSUMER_LINKS : CLIENT_LINKS).map(renderLink)}
+              {(role === "vendor" ? VENDOR_LINKS : isConsumer ? CONSUMER_LINKS : role === "user" ? USER_LINKS : CLIENT_LINKS).map(renderLink)}
             </div>
           )}
 

@@ -31,7 +31,7 @@ export default function VendorLiveAuctionPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       <div>
         <h1 className="text-2xl font-headline font-extrabold text-[color:var(--color-on-surface)]">Live Auction</h1>
         <p className="text-[color:var(--color-on-surface-variant)] text-sm mt-1">Participate in real-time bidding for verified e-waste lots.</p>

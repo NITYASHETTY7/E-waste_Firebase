@@ -258,7 +258,7 @@ export default function GetStartedPage() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder={role === 'vendor' ? 'Green Recyclers Pvt Ltd' : 'Tech Corp Ltd'}
-                      className="w-full h-14 bg-white border border-slate-100 rounded-2xl px-5 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-[#065F46] transition-all shadow-sm group-hover:border-slate-200 dark:bg-slate-900 dark:text-white dark:border-slate-800"
+                      className="w-full h-14 bg-white border border-slate-100 rounded-2xl px-5 text-sm font-bold text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#065F46] transition-all shadow-sm group-hover:border-slate-200 dark:bg-slate-900 dark:text-white dark:border-slate-800"
                       required
                     />
                     <span className="material-symbols-outlined absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 text-[20px] pointer-events-none">business</span>
@@ -273,7 +273,7 @@ export default function GetStartedPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@company.com"
-                    className="w-full h-14 bg-white border border-slate-100 rounded-2xl px-5 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-[#065F46] transition-all shadow-sm group-hover:border-slate-200 dark:bg-slate-900 dark:text-white dark:border-slate-800"
+                    className="w-full h-14 bg-white border border-slate-100 rounded-2xl px-5 text-sm font-bold text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#065F46] transition-all shadow-sm group-hover:border-slate-200 dark:bg-slate-900 dark:text-white dark:border-slate-800"
                     required
                   />
                   <span className="material-symbols-outlined absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 text-[20px] pointer-events-none">mail</span>
@@ -293,7 +293,7 @@ export default function GetStartedPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full h-14 bg-white border border-slate-100 rounded-2xl px-5 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:outline-none focus:border-[#065F46] transition-all shadow-sm group-hover:border-slate-200 dark:bg-slate-900 dark:text-white dark:border-slate-800"
+                    className="w-full h-14 bg-white border border-slate-100 rounded-2xl px-5 text-sm font-bold text-slate-900 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-[#065F46] transition-all shadow-sm group-hover:border-slate-200 dark:bg-slate-900 dark:text-white dark:border-slate-800"
                     required
                   />
                   <button
