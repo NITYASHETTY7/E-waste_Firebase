@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import { useAuction } from "@/hooks/useAuction";
 import { formatTimeMs } from "@/utils/format";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 /* ─── SVG Line Chart ─────────────────────────────────────────── */
 function BidChart({
@@ -128,6 +128,7 @@ export default function LiveAuctionScreen() {
     isActive,
     approvedWinnerId,
     announcedWinnerId,
+    bidError,
   } = useAuction(listingId, { forceConnect: true });
 
   const [customBid, setCustomBid] = useState("");
@@ -205,6 +206,20 @@ export default function LiveAuctionScreen() {
 
   return (
     <div className="min-h-screen font-sans bg-slate-50 dark:bg-slate-950">
+      <AnimatePresence>
+        {bidError && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-red-100 border border-red-300 text-red-800 px-6 py-3 rounded-xl shadow-lg"
+          >
+            <span className="material-symbols-outlined text-red-600">error</span>
+            <p className="font-bold text-sm">{bidError}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Top Header */}
       <div className="sticky top-0 z-30 shadow-sm bg-white border-b-2 border-b-[#1E8E3E] dark:bg-slate-900">
         <div className="max-w-[1400px] mx-auto px-4 py-3 flex items-center gap-3">

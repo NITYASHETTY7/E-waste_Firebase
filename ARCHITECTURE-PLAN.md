@@ -297,6 +297,72 @@ The business revolves around generating the highest value through psychological 
 3. **The Tick Logic:** If the highest bid is ₹1,00,000 and the Tick Size is ₹5,000. Vendors physically cannot submit a live bid less than ₹1,05,000. 
 4. **The 3-Minute Sniping Rule:** Just like real-life auctions ("Going once, going twice!"), if a vendor places a bid when there are only 45 seconds left on the clock, the system instantly bumps the timer back up by 3 minutes. This allows other vendors to react and pushes the price higher. It is capped at 24 extensions so it ends eventually.
 
+
+Imagine the current highest bid is ₹10,000. Vendor A and Vendor B both click "Bid ₹11,000" at the   
+  exact same millisecond.
+   1. Server Thread A reads the DB: Highest bid is ₹10,000.
+   2. Server Thread B reads the DB: Highest bid is ₹10,000.
+   3. Both threads validate that ₹11,000 is a valid next bid.
+   4. Both threads write ₹11,000 to the database.
+  Result: The database now has two identical winning bids, the timer might be extended twice
+  erroneously, and the state is corrupted.
+
+  To prevent this, we implemented a "Belt and Suspenders" 4-Layer Defense architecture. Here is       
+  exactly how it works:
+
+  Layer 1: The Bouncer (Redis Distributed Lock / Mutex)
+  This is our first line of defense. We used Redis to create a "Mutex" (Mutual Exclusion) lock.       
+   * Think of the lock like a single microphone in a room. You can only speak (process a bid) if you  
+     are holding the microphone.
+   * When a bid comes in, the code calls redis.acquireLock('lock:auction:123').
+   * If Vendor A and Vendor B bid at the exact same time, Redis (which is strictly single-threaded)   
+     guarantees that only one of them gets the lock.
+   * Vendor A gets the lock and proceeds into the database transaction.
+   * Vendor B gets a "locked" response. Instead of failing immediately, our code forces Vendor B to   
+     wait 50 milliseconds and try again (a "retry loop").
+   * By the time Vendor B gets the lock, Vendor A is finished, and Vendor B will read the new highest 
+     bid (₹11,000), realize their ₹11,000 bid is now invalid, and gracefully reject it.
+
+  Layer 2: The Vault Guard (Optimistic Database Locking)
+  What if the Redis server crashes for a split second, or two servers somehow slip past the lock? We  
+  need the Database itself to reject concurrent writes.
+   * We added a version integer column to the Auction table in the Prisma schema.
+   * When Vendor A starts their transaction, they read the auction and note: "Version is 5".
+   * When Vendor A finishes, they tell the database: “Update this auction, add my bid, and increment  
+     the version to 6—BUT ONLY IF the version is still exactly 5.”
+   * If Vendor B somehow bypassed Redis and tried to save their bid at the same time, they would also 
+     tell the DB: "Update this auction, BUT ONLY IF the version is still 5."
+   * Because Vendor A already changed the version to 6, the database strictly rejects Vendor B's      
+     update, throwing a PrismaClientKnownRequestError. We catch this and tell Vendor B to retry.      
+
+  Layer 3: The Double-Charge Protector (Idempotency)
+  Sometimes, race conditions aren't caused by two different people, but by one person whose internet  
+  connection lagged, causing their phone to send the exact same "Bid ₹11,000" request three times in a
+  row.
+   * Every time the frontend sends a bid, it generates a unique ID (idempotencyKey).
+   * Before doing anything, our server checks Redis: "Have I processed this exact ID in the last      
+     hour?"
+   * If yes, it completely skips the database logic and just returns the current auction state. This  
+     prevents accidental double-bidding from network glitches.
+
+  Layer 4: Atomic Timer Extensions
+  The final race condition risk occurs at the end of the auction. If two valid bids come in during the
+  last 30 seconds (staggered just enough to bypass the locks), they could both trigger a 3-minute     
+  extension, resulting in a 6-minute extension.
+   * Because all our logic (checking the bid, writing the bid, and calculating the time remaining)    
+     happens inside the locked database transaction, the timer calculation is frozen in time.
+   * We calculate the exact milliseconds remaining, add exactly 3 minutes, and increment the
+     extensionCount by 1, all atomically tied to the version update.
+
+  Summary of the Flow:
+   1. Vendor clicks Bid.
+   2. Idempotency Check: Is this a duplicate network request? (If yes, ignore).
+   3. Redis Lock: Grab the microphone for this specific auction. (Others wait in line).
+   4. Transaction Start: Read the absolute latest state from the database.
+   5. Validate: Check shortlist status, time remaining, and if the bid amount is high enough.
+   6. Optimistic Write: Save the bid and extend the timer, checking the version column to guarantee no
+      one else wrote to the DB while we were validating.
+   7. Redis Unlock: Drop the microphone so the next person in line can bid.
 ---
 
 ## 11. Document & Compliance Management

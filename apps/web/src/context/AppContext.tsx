@@ -617,6 +617,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const auctionEndDate = req.auction?.openPhaseEnd
       ? new Date(req.auction.openPhaseEnd).toISOString()
       : undefined;
+      
+    const liveApprovalStatus = req.auction?.liveApprovalStatus;
 
     return {
       id: req.id,
@@ -637,7 +639,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       extensionTime: req.auction?.extensionMinutes,
       requirementId: req.id,
       auctionId: req.auction?.id,
-      liveConfigured: !!(auctionStartDate),
+      liveConfigured: liveApprovalStatus === 'approved',
       requirementStatus: statusMap[req.status] ?? undefined,
       processedSheetUrl: req.processedS3Key ? undefined : undefined,
       invitedVendorIds: req.invitedVendorIds ?? [],

@@ -1,14 +1,12 @@
 generator client {
   provider   = "prisma-client-js"
-  engineType = "binary"
+  engineType = "library"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-// ─── Enums ────────────────────────────────────────────────────────────────────
 
 enum UserRole {
   ADMIN
@@ -53,6 +51,7 @@ enum AuctionStatus {
   PENDING_SELECTION
   COMPLETED
   CANCELLED
+  CLIENT_REVIEW
 }
 
 enum BidPhase {
@@ -69,14 +68,14 @@ enum PaymentStatus {
 
 enum PickupStatus {
   PENDING
+  SCHEDULED
+  DOCUMENTS_UPLOADED
+  COMPLETED
   GATE_PASS_ISSUED
   VENDOR_ACKNOWLEDGED
   IN_TRANSIT
-  SCHEDULED
-  DOCUMENTS_UPLOADED
   RECONCILIATION_DONE
   INVOICE_GENERATED
-  COMPLETED
 }
 
 enum DocumentType {

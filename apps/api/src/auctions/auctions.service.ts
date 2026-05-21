@@ -7,7 +7,8 @@ import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { NotificationService } from '../notifications/notification.service';
 import { DocumentsService } from '../documents/documents.service';
-import { AuctionStatus, BidPhase, DocumentType } from '@prisma/client';
+import { RedisService } from '../redis/redis.service';
+import { AuctionStatus, BidPhase, DocumentType, Prisma } from '@prisma/client';
 
 @Injectable()
 export class AuctionsService {
@@ -16,7 +17,186 @@ export class AuctionsService {
     private s3: S3Service,
     private notifications: NotificationService,
     private documents: DocumentsService,
+    private redis: RedisService,
   ) {}
+
+  async placeLiveBid(data: {
+    auctionId: string;
+    vendorId: string;
+    amount: number;
+    idempotencyKey?: string;
+  }) {
+    const { auctionId, vendorId, amount, idempotencyKey } = data;
+
+    // 1. Idempotency Check
+    if (idempotencyKey) {
+      const isNew = await this.redis.checkAndSetIdempotency(idempotencyKey, 1000 * 60 * 60); // 1 hour
+      if (!isNew) {
+        // Return current highest state instead of error to handle retries gracefully
+        const auction = await this.findOne(auctionId);
+        const leaderboard = await this.getLeaderboard(auctionId);
+        return { bid: auction.bids[0], auction, leaderboard };
+      }
+    }
+
+    // 2. Distributed Lock with Retry
+    const lockKey = `lock:auction:${auctionId}`;
+    const lockValue = `${vendorId}:${Date.now()}`;
+    let locked = false;
+    for (let i = 0; i < 10; i++) {
+      locked = await this.redis.acquireLock(lockKey, lockValue, 5000);
+      if (locked) break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    if (!locked) {
+      throw new BadRequestException('Bidding contention high, please try again.');
+    }
+
+    try {
+      // 3. Database Transaction (Optimistic + Double-Check)
+      return await this.prisma.$transaction(async (tx) => {
+        const auction = await tx.auction.findUnique({
+          where: { id: auctionId },
+          include: {
+            bids: {
+              where: { phase: BidPhase.OPEN },
+              orderBy: { amount: 'desc' },
+              take: 1,
+            },
+          },
+        });
+
+        if (!auction) throw new NotFoundException('Auction not found');
+
+        // Validation
+        if (auction.status !== AuctionStatus.OPEN_PHASE) {
+          throw new BadRequestException('Auction is not in open phase');
+        }
+
+        const now = new Date();
+        if (auction.openPhaseStart && now < auction.openPhaseStart) {
+          throw new BadRequestException('Auction has not started yet');
+        }
+        if (auction.openPhaseEnd && now > auction.openPhaseEnd) {
+          throw new BadRequestException('Auction has already ended');
+        }
+
+        const vendorUser = await tx.user.findUnique({
+          where: { id: vendorId },
+          include: { company: true },
+        });
+        if (vendorUser?.company?.isLocked) {
+          throw new BadRequestException('Your account is locked');
+        }
+
+        // 3b. Shortlist Check
+        const isShortlisted = await tx.bid.findFirst({
+          where: {
+            auctionId,
+            vendorId,
+            phase: BidPhase.SEALED,
+            isShortlisted: true,
+          },
+        });
+
+        if (!isShortlisted) {
+          throw new BadRequestException('You are not shortlisted for this live auction.');
+        }
+
+        const highestBid = auction.bids[0]?.amount || auction.basePrice;
+        const minRequired = highestBid + auction.tickSize;
+
+        if (amount < minRequired) {
+          throw new BadRequestException(`Minimum bid is ₹${minRequired}`);
+        }
+
+        // Create Bid
+        const bid = await tx.bid.create({
+          data: {
+            auctionId,
+            vendorId,
+            amount,
+            phase: BidPhase.OPEN,
+          },
+          include: { vendor: { select: { id: true, name: true } } },
+        });
+
+        // 4. Update Auction (Optimistic Lock)
+        let updatedAuction = await tx.auction.update({
+          where: {
+            id: auctionId,
+            version: auction.version,
+          },
+          data: {
+            version: { increment: 1 },
+          },
+        });
+
+        // 5. Timer Extension (Anti-sniping)
+        const endTime = updatedAuction.openPhaseEnd!;
+        const msToEnd = endTime.getTime() - now.getTime();
+        const extMinutes = updatedAuction.extensionMinutes ?? 3;
+        
+        if (extMinutes > 0 && msToEnd > 0 && msToEnd < extMinutes * 60 * 1000 && updatedAuction.extensionCount < updatedAuction.maxTicks) {
+          const newEnd = new Date(endTime.getTime() + extMinutes * 60 * 1000);
+          updatedAuction = await tx.auction.update({
+            where: { id: auctionId, version: updatedAuction.version },
+            data: {
+              openPhaseEnd: newEnd,
+              extensionCount: { increment: 1 },
+              version: { increment: 1 },
+            },
+          });
+        }
+
+        // 6. Update Leaderboard in Redis (Async-ish)
+        await this.redis.updateLeaderboard(auctionId, vendorId, amount);
+
+        const leaderboard = await this.getLeaderboard(auctionId);
+
+        return { bid, auction: updatedAuction, leaderboard };
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
+        throw new BadRequestException('Concurrent update detected, please retry.');
+      }
+      throw e;
+    } finally {
+      await this.redis.releaseLock(lockKey, lockValue);
+    }
+  }
+
+  async getLeaderboard(auctionId: string) {
+    const raw = await this.redis.getLeaderboard(auctionId);
+    // raw is [id1, score1, id2, score2, ...]
+    const result = [];
+    for (let i = 0; i < raw.length; i += 2) {
+      const vendorId = raw[i];
+      const amount = parseFloat(raw[i + 1]);
+      
+      // We could fetch vendor names from DB here or just return IDs
+      // For efficiency, let's just return IDs and amounts
+      result.push({ vendorId, amount, rank: (i / 2) + 1 });
+    }
+
+    if (result.length === 0) {
+      // Fallback to DB if Redis is empty
+      const bids = await this.prisma.bid.findMany({
+        where: { auctionId, phase: BidPhase.OPEN },
+        orderBy: { amount: 'desc' },
+        include: { vendor: { select: { id: true, name: true } } },
+      });
+      const seen = new Set<string>();
+      return bids.filter((b) => {
+        if (seen.has(b.vendorId)) return false;
+        seen.add(b.vendorId);
+        return true;
+      }).map((b, idx) => ({ vendorId: b.vendorId, amount: b.amount, rank: idx + 1, vendor: b.vendor }));
+    }
+
+    return result;
+  }
 
   async findAllBids(auctionId?: string) {
     return this.prisma.bid.findMany({

@@ -20,6 +20,8 @@ import { QueueModule } from './queue/queue.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { UserProductsModule } from './user-products/user-products.module';
 
+import { RedisModule } from './redis/redis.module';
+
 @Module({
   imports: [
     // Enable cron scheduler for auction phase transitions
@@ -29,6 +31,7 @@ import { UserProductsModule } from './user-products/user-products.module';
     PrismaModule,
     S3Module,
     QueueModule,
+    RedisModule,
 
     // Feature modules
     AuthModule,

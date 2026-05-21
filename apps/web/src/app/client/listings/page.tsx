@@ -284,7 +284,7 @@ export default function ClientListings() {
                         </button>
                       )}
                       {displayStatus === "invites" && (() => {
-                        const isScheduled = !!(listing.auctionStartDate || listing.liveConfigured);
+                        const isScheduled = !!listing.liveConfigured;
                         if (isScheduled && listing.auctionStartDate) {
                           const startMs = new Date(listing.auctionStartDate).getTime();
                           const isActive = Date.now() >= startMs - 5 * 60 * 1000;
@@ -316,7 +316,7 @@ export default function ClientListings() {
                         );
                       })()}
                       {displayStatus === "sealed" && (() => {
-                        const isScheduled = !!(listing.auctionStartDate || listing.liveConfigured);
+                        const isScheduled = !!listing.liveConfigured;
                         if (isScheduled && listing.auctionStartDate) {
                           const startMs = new Date(listing.auctionStartDate).getTime();
                           const nowMs = Date.now();

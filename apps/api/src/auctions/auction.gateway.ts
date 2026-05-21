@@ -14,6 +14,8 @@ import { AuctionsService } from './auctions.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuctionStatus, BidPhase } from '@prisma/client';
 
+import { RedisService } from '../redis/redis.service';
+
 @WebSocketGateway({
   cors: { origin: '*' },
   namespace: '/auction',
@@ -26,6 +28,7 @@ export class AuctionGateway
   constructor(
     private auctionsService: AuctionsService,
     private prisma: PrismaService,
+    private redis: RedisService,
   ) {}
 
   afterInit() {
@@ -56,119 +59,51 @@ export class AuctionGateway
   async handleBid(
     @ConnectedSocket() client: Socket,
     @MessageBody()
-    payload: { auctionId: string; vendorId: string; amount: number },
+    payload: { auctionId: string; vendorId: string; amount: number; idempotencyKey?: string },
   ) {
-    const vendorUser = await this.prisma.user.findUnique({
-      where: { id: payload.vendorId },
-      include: { company: true },
-    });
-
-    if (vendorUser?.company?.isLocked) {
-      client.emit('bidError', { message: 'Your account is locked. Please contact admin.' });
+    // 1. Rate Limiting
+    const rateLimitKey = `ratelimit:bid:${payload.vendorId}`;
+    const isAllowed = await this.redis.checkRateLimit(rateLimitKey, 3, 1);
+    if (!isAllowed) {
+      client.emit('bidError', { message: 'Too many bids. Please wait a second.' });
       return;
     }
 
-    const auction = await this.prisma.auction.findUnique({
-      where: { id: payload.auctionId },
-      include: { bids: { orderBy: { amount: 'desc' }, take: 1 } },
-    });
-
-    if (!auction || auction.status !== AuctionStatus.OPEN_PHASE) {
-      client.emit('bidError', { message: 'Auction is not in open phase' });
-      return;
-    }
-
-    // Reject bids placed before the scheduled start time
-    if (auction.openPhaseStart && new Date() < new Date(auction.openPhaseStart)) {
-      const startsAt = new Date(auction.openPhaseStart).toLocaleString('en-IN');
-      client.emit('bidError', { message: `Auction has not started yet. Bidding opens at ${startsAt}` });
-      return;
-    }
-
-    const highestBid = auction.bids[0]?.amount || auction.basePrice;
-    const minRequired = highestBid + auction.tickSize;
-
-    if (payload.amount < minRequired) {
-      client.emit('bidError', { message: `Minimum bid is ₹${minRequired}` });
-      return;
-    }
-
-    // Create bid
-    const bid = await this.prisma.bid.create({
-      data: {
+    try {
+      // 2. Place bid using service (which handles lock, validation, timer, etc.)
+      const result = await this.auctionsService.placeLiveBid({
         auctionId: payload.auctionId,
         vendorId: payload.vendorId,
         amount: payload.amount,
-        phase: BidPhase.OPEN,
-      },
-      include: { vendor: { select: { id: true, name: true } } },
-    });
-
-    // Recompute ranks
-    await this.recomputeRanks(payload.auctionId);
-
-    // Check if we're in last 3 minutes → extend timer
-    const now = new Date();
-    const endTime = auction.openPhaseEnd!;
-    const msToEnd = endTime.getTime() - now.getTime();
-    const extMinutes = auction.extensionMinutes ?? 3;
-    if (extMinutes > 0 && msToEnd > 0 && msToEnd < extMinutes * 60 * 1000) {
-      const updatedAuction = await this.auctionsService.extendTimer(
-        payload.auctionId,
-      );
-      this.server.to(payload.auctionId).emit('timerExtended', {
-        newEndTime: updatedAuction.openPhaseEnd,
-        extensionCount: updatedAuction.extensionCount,
+        idempotencyKey: payload.idempotencyKey,
       });
-    }
 
-    // Broadcast new bid to all in the room
-    this.server.to(payload.auctionId).emit('newBid', {
-      bid,
-      leaderboard: await this.getLeaderboard(payload.auctionId),
-    });
-  }
-
-  private async recomputeRanks(auctionId: string) {
-    const bids = await this.prisma.bid.findMany({
-      where: { auctionId, phase: BidPhase.OPEN },
-      orderBy: [{ amount: 'desc' }, { createdAt: 'asc' }],
-    });
-
-    // Group by vendor — keep highest bid per vendor; earlier bid wins on tie
-    const seen = new Set<string>();
-    let rank = 1;
-    for (const bid of bids) {
-      if (!seen.has(bid.vendorId)) {
-        seen.add(bid.vendorId);
-        await this.prisma.bid.update({ where: { id: bid.id }, data: { rank } });
-        rank++;
+      // 3. Broadcast success
+      // If timer was extended, notify everyone
+      if (result.auction.extensionCount > 0) {
+        this.server.to(payload.auctionId).emit('timerExtended', {
+          newEndTime: result.auction.openPhaseEnd,
+          extensionCount: result.auction.extensionCount,
+        });
       }
+
+      this.server.to(payload.auctionId).emit('newBid', {
+        bid: result.bid,
+        leaderboard: result.leaderboard,
+      });
+
+    } catch (e) {
+      client.emit('bidError', { message: e.message || 'Failed to place bid' });
     }
   }
 
   async broadcastAuctionEnded(auctionId: string) {
-    const leaderboard = await this.getLeaderboard(auctionId);
+    const leaderboard = await this.auctionsService.getLeaderboard(auctionId);
     const winnerId = leaderboard[0]?.vendorId ?? null;
     this.server.to(auctionId).emit('auctionEnded', { auctionId, winnerId });
   }
 
   broadcastWinnerSelected(auctionId: string, vendorId: string) {
     this.server.to(auctionId).emit('winnerSelected', { auctionId, vendorId });
-  }
-
-  async getLeaderboard(auctionId: string) {
-    // Return top bid per vendor, sorted by amount desc
-    const bids = await this.prisma.bid.findMany({
-      where: { auctionId, phase: BidPhase.OPEN },
-      orderBy: { amount: 'desc' },
-      include: { vendor: { select: { id: true, name: true } } },
-    });
-    const seen = new Set<string>();
-    return bids.filter((b) => {
-      if (seen.has(b.vendorId)) return false;
-      seen.add(b.vendorId);
-      return true;
-    });
   }
 }

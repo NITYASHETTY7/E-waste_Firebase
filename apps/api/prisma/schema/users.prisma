@@ -1,76 +1,71 @@
-// ─── Users & Companies ────────────────────────────────────────────────────────
-
 model User {
-  id            String        @id @default(cuid())
-  email         String        @unique
-  passwordHash  String
-  name          String
-  phone         String?
-  role          UserRole      @default(USER)
-  companyId     String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  emailVerified Boolean       @default(false)
-  isActive      Boolean       @default(false)
-  otpAttempts   Int           @default(0)
-  otpCode       String?
-  otpExpiresAt  DateTime?
-  otpType       String?
-  phoneVerified Boolean       @default(false)
-  // USER-role profile fields
-  dob               String?
+  id                String           @id @default(cuid())
+  email             String           @unique
+  passwordHash      String
+  name              String
+  phone             String?
+  role              UserRole         @default(USER)
+  companyId         String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  emailVerified     Boolean          @default(false)
+  isActive          Boolean          @default(false)
+  otpAttempts       Int              @default(0)
+  otpCode           String?
+  otpExpiresAt      DateTime?
+  otpType           String?
+  phoneVerified     Boolean          @default(false)
   address           String?
-  panNumber         String?
   bankAccountHolder String?
-  bankName          String?
   bankAccountNumber String?
-  bankIfscCode      String?
   bankAccountType   String?
-
-  auditReports       AuditReport[]
-  bids               Bid[]
-  auditDocs          VendorAuditDoc[]   @relation("VendorAuditDocs")
+  bankIfscCode      String?
+  bankName          String?
+  dob               String?
+  panNumber         String?
+  auditReports      AuditReport[]
+  bids              Bid[]
   inAppNotifications InAppNotification[]
-  company            Company?           @relation(fields: [companyId], references: [id])
-  userProducts       UserProduct[]
+  company           Company?         @relation(fields: [companyId], references: [id])
+  userProducts      UserProduct[]
+  auditDocs         VendorAuditDoc[] @relation("VendorAuditDocs")
 
   @@index([email])
 }
 
 model Company {
-  id                String        @id @default(cuid())
-  name              String
-  type              CompanyType
-  status            CompanyStatus @default(PENDING)
-  gstNumber         String?
-  panNumber         String?
-  address           String?
-  city              String?
-  state             String?
-  pincode           String?
-  rating            Float?        @default(0)
-  ratingCount       Int           @default(0)
-  bankAccountHolder String?
-  bankName          String?
-  bankAccountNumber String?
-  bankIfscCode      String?
-  bankAccountType   String?
-  isLocked          Boolean       @default(false)
-  lockReason        String?
-  penaltyAmount     Float?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-
-  auctions         Auction[]         @relation("ClientAuctions")
-  wonAuctions      Auction[]         @relation("WinnerAuctions")
-  auditInvitations AuditInvitation[] @relation("VendorAuditInvitations")
-  kycDocuments     KycDocument[]
-  requirements     Requirement[]     @relation("ClientRequirements")
-  users            User[]
-  ratingsGiven        Rating[]             @relation("RatingsGiven")
-  ratingsReceived     Rating[]             @relation("RatingsReceived")
-  userProductQuotes   UserProductQuote[]
-  userProductPickups  UserProductPickup[]
+  id                 String              @id @default(cuid())
+  name               String
+  type               CompanyType
+  status             CompanyStatus       @default(PENDING)
+  gstNumber          String?
+  panNumber          String?
+  address            String?
+  city               String?
+  state              String?
+  pincode            String?
+  rating             Float?              @default(0)
+  ratingCount        Int                 @default(0)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  bankAccountHolder  String?
+  bankName           String?
+  bankAccountNumber  String?
+  bankIfscCode       String?
+  bankAccountType    String?
+  isLocked           Boolean             @default(false)
+  lockReason         String?
+  penaltyAmount      Float?
+  auctions           Auction[]           @relation("ClientAuctions")
+  wonAuctions        Auction[]           @relation("WinnerAuctions")
+  auditInvitations   AuditInvitation[]   @relation("VendorAuditInvitations")
+  kycDocuments       KycDocument[]
+  ratingsGiven       Rating[]            @relation("RatingsGiven")
+  ratingsReceived    Rating[]            @relation("RatingsReceived")
+  requirements       Requirement[]       @relation("ClientRequirements")
+  users              User[]
+  userProductPickups UserProductPickup[]
+  userProductQuotes  UserProductQuote[]
 }
 
 model KycDocument {
@@ -82,6 +77,5 @@ model KycDocument {
   mimeType   String?
   companyId  String
   uploadedAt DateTime     @default(now())
-
-  company Company @relation(fields: [companyId], references: [id])
+  company    Company      @relation(fields: [companyId], references: [id])
 }
