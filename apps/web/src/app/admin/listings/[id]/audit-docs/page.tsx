@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useApp } from "@/context/AppContext";
 import api from "@/lib/api";
+import { toLocalDatetimeString } from "@/utils/format";
 
 interface AuditDoc {
   id: string;
@@ -32,6 +33,7 @@ interface ListingDetails {
   auditApprovedVendorIds: string[];
   sealedBidEventCreatedAt?: string;
   sealedBidDeadline?: string;
+  sealedBidStartDate?: string;
 }
 
 export default function AdminAuditDocsPage() {
@@ -79,6 +81,7 @@ export default function AdminAuditDocsPage() {
           auditApprovedVendorIds: data.auditApprovedVendorIds || [],
           sealedBidEventCreatedAt: data.sealedBidEventCreatedAt,
           sealedBidDeadline: data.sealedBidDeadline,
+          sealedBidStartDate: data.sealedBidStartDate,
         });
       }
     } catch (err: any) {
@@ -427,7 +430,7 @@ export default function AdminAuditDocsPage() {
                 type="datetime-local"
                 value={sbeStart}
                 onChange={e => setSbeStart(e.target.value)}
-                min={new Date().toISOString().slice(0, 16)}
+                min={toLocalDatetimeString(new Date())}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition"
               />
               <p className="text-[11px] text-slate-400">When vendors can begin submitting sealed bids.</p>
@@ -441,7 +444,7 @@ export default function AdminAuditDocsPage() {
                 type="datetime-local"
                 value={sbeDeadline}
                 onChange={e => setSbeDeadline(e.target.value)}
-                min={sbeStart || new Date().toISOString().slice(0, 16)}
+                min={sbeStart || toLocalDatetimeString(new Date())}
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition"
               />
               <p className="text-[11px] text-slate-400">Vendors must submit their sealed bid before this time.</p>

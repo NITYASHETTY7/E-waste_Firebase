@@ -48,7 +48,6 @@ const VENDOR_LINKS = [
   { href: "/vendor/invitations", icon: "mail", label: "Invitations" },
   { href: "/vendor/audits", icon: "fact_check", label: "Site Audits" },
   { href: "/vendor/live-auction", icon: "sensors", label: "Live Auction" },
-  { href: "/vendor/bids", icon: "gavel", label: "My Bids" },
   { href: "/vendor/purchase-order", icon: "description", label: "Purchase Orders" },
   { href: "/vendor/payments", icon: "payments", label: "Payments" },
   { href: "/vendor/handover", icon: "inventory", label: "Handover & Compliance" },
@@ -60,7 +59,6 @@ const VENDOR_LINKS = [
 const CLIENT_LINKS = [
   { href: "/client/post", icon: "add_circle", label: "Post E-Waste" },
   { href: "/client/listings", icon: "inventory_2", label: "My Listings" },
-  { href: "/client/bids", icon: "gavel", label: "Bids Received" },
   { href: "/client/sealed-bids", icon: "lock", label: "Sealed Bids" },
   { href: "/client/live-auction", icon: "sensors", label: "Live Auction" },
   { href: "/client/purchase-order", icon: "description", label: "Purchase Orders" },

@@ -5,6 +5,7 @@ import { useApp } from "@/context/AppContext";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api from "@/lib/api";
+import { toLocalDatetimeString } from "@/utils/format";
 
 export default function ConfigureLiveAuction() {
   const params = useParams();
@@ -42,8 +43,8 @@ export default function ConfigureLiveAuction() {
       setForm({
         basePrice: listing.basePrice?.toString() || "",
         targetPrice: listing.targetPrice?.toString() || "",
-        auctionStartDate: listing.auctionStartDate ? listing.auctionStartDate.slice(0, 16) : "",
-        auctionEndDate: listing.auctionEndDate ? listing.auctionEndDate.slice(0, 16) : "",
+        auctionStartDate: toLocalDatetimeString(listing.auctionStartDate),
+        auctionEndDate: toLocalDatetimeString(listing.auctionEndDate),
       });
     }
   }, [listing]);

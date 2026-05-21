@@ -7,7 +7,9 @@ import { useAuction } from "@/hooks/useAuction";
 import { formatTimeMs } from "@/utils/format";
 import { motion, AnimatePresence } from "framer-motion";
 
-/* ─── SVG Line Chart ─────────────────────────────────────────── */
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
+
+/* ─── Recharts Line Chart with Zoom (Brush) ─────────────────────────────────────────── */
 function BidChart({
   vendorLines,
   maxRound,
@@ -19,16 +21,18 @@ function BidChart({
   basePrice: number;
   currentHighest: number;
 }) {
-  const W = 620;
-  const H = 300;
-  const PL = 70;
-  const PR = 20;
-  const PT = 20;
-  const PB = 40;
-  const chartW = W - PL - PR;
-  const chartH = H - PT - PB;
+  // Process data for Recharts: array of objects per round
+  const data: any[] = [];
+  for (let r = 1; r <= maxRound; r++) {
+    const point: any = { round: r, name: `Round ${r}` };
+    vendorLines.forEach((v) => {
+      const match = v.displayPoints.find((p: any) => p.round === r);
+      if (match) point[v.id] = match.amount;
+    });
+    data.push(point);
+  }
 
-  // Dynamic Y-scale based on actual bid range so bids are always visible
+  // Calculate domain for Y axis
   const allAmounts = vendorLines.flatMap((v) => v.displayPoints.map((p: any) => p.amount));
   const bidMin = allAmounts.length > 0 ? Math.min(...allAmounts) : basePrice;
   const bidMax = allAmounts.length > 0 ? Math.max(...allAmounts) : basePrice;
@@ -36,80 +40,35 @@ function BidChart({
   const minPrice = bidMin - padding;
   const maxPrice = bidMax + padding;
 
-  const toX = (round: number) => {
-    if (maxRound <= 1) return PL + chartW / 2;
-    return PL + ((round - 1) / (Math.max(maxRound - 1, 1))) * chartW;
-  };
-  const toY = (amount: number) =>
-    PT + chartH - ((amount - minPrice) / (maxPrice - minPrice)) * chartH;
-
-  // Y-axis ticks
-  const yTicks = 5;
-  const yTickValues = Array.from({ length: yTicks + 1 }, (_, i) =>
-    minPrice + (i / yTicks) * (maxPrice - minPrice)
-  );
-
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full bg-slate-50 dark:bg-slate-950">
-      {/* Grid lines */}
-      {yTickValues.map((v, i) => (
-        <g key={i}>
-          <line
-            x1={PL} y1={toY(v)} x2={W - PR} y2={toY(v)}
-            stroke="#E2E8F0" strokeWidth="1" strokeDasharray="4 4"
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} />
+        <YAxis domain={[minPrice, maxPrice]} tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tickFormatter={(val) => `₹${val.toLocaleString('en-IN')}`} />
+        <Tooltip
+          formatter={(value: number, name: string) => [`₹${value.toLocaleString('en-IN')}`, vendorLines.find((v) => v.id === name)?.name || name]}
+          labelStyle={{ color: '#0f172a', fontWeight: 'bold' }}
+          contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+        />
+        {vendorLines.map((v) => (
+          <Line
+            key={v.id}
+            type="monotone"
+            dataKey={v.id}
+            stroke={v.color}
+            strokeWidth={2}
+            dot={{ r: 3, fill: v.color, strokeWidth: 0 }}
+            activeDot={{ r: 5, strokeWidth: 0 }}
+            connectNulls={true}
           />
-          <text
-            x={PL - 6} y={toY(v) + 4}
-            fontSize="9" fill="#64748B" textAnchor="end"
-          >
-            {v >= 100000
-              ? `₹${(v / 100000).toFixed(2)}L`
-              : `₹${(v / 1000).toFixed(1)}K`}
-          </text>
-        </g>
-      ))}
-
-      {/* Axes */}
-      <line x1={PL} y1={PT} x2={PL} y2={H - PB} stroke="#E2E8F0" strokeWidth="1" />
-      <line x1={PL} y1={H - PB} x2={W - PR} y2={H - PB} stroke="#E2E8F0" strokeWidth="1" />
-
-      {/* Lines + dots */}
-      {vendorLines.map((line) => {
-        if (line.displayPoints.length < 1) return null;
-        const pts = line.displayPoints
-          .map((p: any) => `${toX(p.round)},${toY(p.amount)}`)
-          .join(" ");
-
-        return (
-          <g key={line.id}>
-            {line.displayPoints.length > 1 && (
-              <polyline
-                points={pts}
-                fill="none"
-                stroke={line.color}
-                strokeWidth="2.5"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                opacity="0.9"
-              />
-            )}
-            {line.displayPoints.map((p: any, i: number) => (
-              <circle
-                key={i}
-                cx={toX(p.round)}
-                cy={toY(p.amount)}
-                r="4"
-                fill={line.color}
-                stroke="#FFFFFF"
-                strokeWidth="1.5"
-              />
-            ))}
-          </g>
-        );
-      })}
-    </svg>
+        ))}
+        <Brush dataKey="name" height={30} stroke="#cbd5e1" fill="#f8fafc" travellerWidth={10} tickFormatter={() => ''} />
+      </LineChart>
+    </ResponsiveContainer>
   );
 }
+
 
 export default function LiveAuctionScreen() {
   const params = useParams();
@@ -288,11 +247,7 @@ export default function LiveAuctionScreen() {
         </div>
       </div>
 
-      {isActive && currentHighBid && (
-        <div className={`py-2 text-center text-xs font-black uppercase tracking-widest transition-colors ${isLeading ? "bg-[#E8F5E9] text-[#1E8E3E]" : "bg-orange-100 text-orange-600"}`}>
-          {isLeading ? "YOU ARE LEADING" : `OUTBID BY ${getVendorLabel((currentHighBid as any).vendorId)}`}
-        </div>
-      )}
+
 
       <div className="max-w-[1400px] mx-auto p-4 grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
         <div className="flex flex-col gap-4">

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -8,48 +8,60 @@ import { useApp } from "@/context/AppContext";
 import { formatTime as fmtTime } from "@/utils/format";
 import api from "@/lib/api";
 
-/* â”€â”€â”€ SVG Bid Chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
+
+/* ─── Recharts Line Chart with Zoom (Brush) ─────────────────────────────────────────── */
 function BidChart({
   vendorLines, maxRound, basePrice, currentHighest,
 }: {
   vendorLines: { id: string; name: string; color: string; points: { round: number; amount: number }[] }[];
   maxRound: number; basePrice: number; currentHighest: number;
 }) {
-  const W = 600, H = 260, PL = 64, PR = 16, PT = 16, PB = 36;
-  const cW = W - PL - PR, cH = H - PT - PB;
-  const minP = basePrice * 0.95;
-  const maxP = Math.max(currentHighest * 1.1, basePrice * 1.2);
-  const toX = (r: number) => maxRound <= 1 ? PL + cW / 2 : PL + ((r - 1) / Math.max(maxRound - 1, 1)) * cW;
-  const toY = (a: number) => PT + cH - ((a - minP) / (maxP - minP)) * cH;
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map(t => minP + t * (maxP - minP));
+  // Process data for Recharts: array of objects per round
+  const data: any[] = [];
+  for (let r = 1; r <= maxRound; r++) {
+    const point: any = { round: r, name: `Round ${r}` };
+    vendorLines.forEach((v) => {
+      const match = v.points.find((p: any) => p.round === r);
+      if (match) point[v.id] = match.amount;
+    });
+    data.push(point);
+  }
+
+  // Calculate domain for Y axis
+  const allAmounts = vendorLines.flatMap((v) => v.points.map((p: any) => p.amount));
+  const bidMin = allAmounts.length > 0 ? Math.min(...allAmounts) : basePrice;
+  const bidMax = allAmounts.length > 0 ? Math.max(...allAmounts) : Math.max(currentHighest, basePrice);
+  const padding = Math.max((bidMax - bidMin) * 0.15, basePrice * 0.02, 1000);
+  const minPrice = bidMin - padding;
+  const maxPrice = bidMax + padding;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full">
-      {ticks.map((v, i) => (
-        <g key={i}>
-          <line x1={PL} y1={toY(v)} x2={W - PR} y2={toY(v)} stroke="#E2E8F0" strokeWidth="1" strokeDasharray="4 3" />
-          <text x={PL - 5} y={toY(v) + 4} fontSize="9" fill="#94A3B8" textAnchor="end">
-            {v >= 100000 ? `â‚¹${(v / 100000).toFixed(2)}L` : `â‚¹${(v / 1000).toFixed(1)}K`}
-          </text>
-        </g>
-      ))}
-      <line x1={PL} y1={PT} x2={PL} y2={H - PB} stroke="#E2E8F0" strokeWidth="1" />
-      <line x1={PL} y1={H - PB} x2={W - PR} y2={H - PB} stroke="#E2E8F0" strokeWidth="1" />
-      {vendorLines.map(line => {
-        if (line.points.length === 0) return null;
-        const pts = line.points.map(p => `${toX(p.round)},${toY(p.amount)}`).join(" ");
-        return (
-          <g key={line.id}>
-            {line.points.length > 1 && (
-              <polyline points={pts} fill="none" stroke={line.color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-            )}
-            {line.points.map((p, i) => (
-              <circle key={i} cx={toX(p.round)} cy={toY(p.amount)} r="4" fill={line.color} stroke="#fff" strokeWidth="2" />
-            ))}
-          </g>
-        );
-      })}
-    </svg>
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} />
+        <YAxis domain={[minPrice, maxPrice]} tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tickFormatter={(val) => `₹${val.toLocaleString('en-IN')}`} />
+        <Tooltip
+          formatter={(value: number, name: string) => [`₹${value.toLocaleString('en-IN')}`, vendorLines.find((v) => v.id === name)?.name || name]}
+          labelStyle={{ color: '#0f172a', fontWeight: 'bold' }}
+          contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+        />
+        {vendorLines.map((v) => (
+          <Line
+            key={v.id}
+            type="monotone"
+            dataKey={v.id}
+            stroke={v.color}
+            strokeWidth={2}
+            dot={{ r: 3, fill: v.color, strokeWidth: 0 }}
+            activeDot={{ r: 5, strokeWidth: 0 }}
+            connectNulls={true}
+          />
+        ))}
+        <Brush dataKey="name" height={30} stroke="#cbd5e1" fill="#f8fafc" travellerWidth={10} tickFormatter={() => ''} />
+      </LineChart>
+    </ResponsiveContainer>
   );
 }
 

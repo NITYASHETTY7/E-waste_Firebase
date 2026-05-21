@@ -42,8 +42,8 @@ export default function ClientBids() {
     const listing = myListings.find(l => l.id === selectedAuctionId);
     if (!listing) return null;
     
-    const listingBids = bids.filter(b => b.listingId === listing.id).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    const topBid = bids.filter(b => b.listingId === listing.id).sort((a,b) => b.amount - a.amount)[0];
+    const listingBids = bids.filter(b => (b.auctionId === listing.auctionId || b.listingId === listing.id)).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const topBid = listingBids[0];
     
     const status = getStatus(listing);
 
@@ -272,7 +272,7 @@ export default function ClientBids() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {myListings.map(listing => {
-             const listingBids = bids.filter((b) => b.listingId === listing.id);
+             const listingBids = bids.filter((b) => (b.auctionId === listing.auctionId || b.listingId === listing.id));
              const topBid = listingBids.sort((a,b) => b.amount - a.amount)[0];
              const status = getStatus(listing);
              

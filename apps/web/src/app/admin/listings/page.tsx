@@ -258,7 +258,7 @@ export default function AdminListings() {
                       )}
                       {displayStatus === "active" && listing.auctionPhase === "live" && (!listing.auctionStartDate || new Date() >= new Date(listing.auctionStartDate)) && (
                         <Link href={`/admin/auctions/${listing.id}/live`}
-                          className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-600 hover:text-white transition-colors border border-purple-200 dark:bg-purple-900/20 dark:border-purple-800 dark:text-purple-400">
+                          className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors border border-purple-700">
                           <span className="material-symbols-outlined text-sm">visibility</span>
                           Watch Live
                         </Link>
@@ -268,7 +268,7 @@ export default function AdminListings() {
                       )}
                       {displayStatus === "active" && listing.auctionPhase !== "live" && listing.auctionPhase !== "completed" && (
                         <Link href={`/admin/listings/${listing.requirementId || listing.id}/audit-docs`}
-                          className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-600 hover:text-white transition-colors border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400">
+                          className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors border border-blue-700">
                           <span className="material-symbols-outlined text-sm">fact_check</span>
                           Audit Docs
                         </Link>

@@ -7,18 +7,19 @@ import Sidebar from "@/components/shared/Sidebar";
 import TopBar from "@/components/shared/TopBar";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, isSidebarCollapsed } = useApp();
+  const { currentUser, isSidebarCollapsed, isInitialized } = useApp();
   const router = useRouter();
 
   useEffect(() => {
+    if (!isInitialized) return;
     if (!currentUser) {
       router.push("/");
     } else if (currentUser.role !== "client") {
       router.push("/");
     }
-  }, [currentUser, router]);
+  }, [currentUser, router, isInitialized]);
 
-  if (!currentUser || currentUser.role !== "client") return null;
+  if (!isInitialized || !currentUser || currentUser.role !== "client") return null;
 
   return (
     <div className="flex min-h-screen bg-[color:var(--color-dashboard-bg)]">

@@ -42,11 +42,12 @@ export default function VendorSealedBidPage() {
   }, [id]);
 
   const handleSubmit = async () => {
-    const parsed = parseFloat(amount);
-    if (!parsed || parsed <= 0) {
+    let parsed = parseFloat(amount);
+    if (isNaN(parsed) || parsed <= 0) {
       setError("Please enter a valid bid amount.");
       return;
     }
+    parsed = Math.round(parsed * 100) / 100;
     setError("");
     setSubmitting(true);
     try {

@@ -73,7 +73,7 @@ export function BusinessOverviewChart() {
 
       <div className="flex-1 min-h-[160px]">
         {mounted && (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <LineChart data={BUSINESS_DATA} margin={{ top: 5, right: 5, left: -32, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(148,163,184,0.08)" />
               <XAxis

@@ -69,6 +69,7 @@ interface AppContextType extends AppState {
   setIsSidebarCollapsed: (collapsed: boolean) => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  isInitialized: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -1543,6 +1544,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setIsSidebarCollapsed: (collapsed: boolean) => setState(prev => ({ ...prev, isSidebarCollapsed: collapsed })),
       theme: state.theme ?? 'light',
       toggleTheme,
+      isInitialized,
     }}>
       {children}
     </AppContext.Provider>

@@ -73,7 +73,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
 
         {/* Sparkline */}
         <div className="mt-4 h-12 w-full">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <AreaChart data={data}>
               <defs>
                 <linearGradient id={`grad-${variant}`} x1="0" y1="0" x2="0" y2="1">

@@ -90,18 +90,24 @@ export class AuctionsService {
           throw new BadRequestException('Your account is locked');
         }
 
+        if (!vendorUser?.companyId) {
+          throw new BadRequestException('Vendor company not found');
+        }
+
         // 3b. Shortlist Check
         const isShortlisted = await tx.bid.findFirst({
           where: {
             auctionId,
-            vendorId,
             phase: BidPhase.SEALED,
             isShortlisted: true,
+            vendor: {
+              companyId: vendorUser.companyId
+            }
           },
         });
 
         if (!isShortlisted) {
-          throw new BadRequestException('You are not shortlisted for this live auction.');
+          throw new BadRequestException('Your company is not shortlisted for the live auction');
         }
 
         const highestBid = auction.bids[0]?.amount || auction.basePrice;

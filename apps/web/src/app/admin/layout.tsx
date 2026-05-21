@@ -7,18 +7,20 @@ import Sidebar from "@/components/shared/Sidebar";
 import TopBar from "@/components/shared/TopBar";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, isSidebarCollapsed } = useApp();
+  const { currentUser, isSidebarCollapsed, isInitialized } = useApp();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
+    if (!isInitialized) return;
     if (pathname !== "/admin") {
       if (!currentUser || currentUser.role !== "admin") {
         router.push("/admin");
       }
     }
-  }, [currentUser, router, pathname]);
+  }, [currentUser, router, pathname, isInitialized]);
 
+  if (!isInitialized) return null;
   if (pathname === "/admin") return <>{children}</>;
   if (!currentUser || currentUser.role !== "admin") return null;
 

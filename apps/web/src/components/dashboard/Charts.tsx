@@ -64,7 +64,7 @@ export const InteractiveLineChart: React.FC<DashboardChartProps> = ({ title, sub
       </div>
       
       <div className="flex-1 w-full min-h-0 min-w-0 overflow-hidden">
-        <ResponsiveContainer width="99%" height="100%">
+        <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0}>
           <AreaChart data={activeData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="100%">
@@ -132,7 +132,7 @@ export const InteractiveDonutChart: React.FC<DashboardChartProps & { percentage:
       <h3 className="font-bold text-slate-900 dark:text-white w-full text-left mb-6">{title}</h3>
       
       <div className="relative w-full flex-1 flex items-center justify-center min-h-0 min-w-0 overflow-hidden">
-        <ResponsiveContainer width="99%" height="100%">
+        <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0}>
           <PieChart>
             <Pie
               data={data}
@@ -201,7 +201,7 @@ export const InteractiveBarChart: React.FC<DashboardChartProps & { data: any[] }
       </div>
 
       <div className="flex-1 w-full min-h-0 min-w-0 overflow-hidden">
-        <ResponsiveContainer width="99%" height="100%">
+        <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0}>
           <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant, #F1F5F9)" />
             <XAxis 
