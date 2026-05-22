@@ -1,402 +1,82 @@
 [
   {
-    "id": "cmpfa4b210002u8b8zsss6itf",
+    "id": "cmpgf8u790005u8kwee2dfru9",
     "name": "Bot Bidder #0"
   },
   {
-    "id": "cmpfa4bhg0006u8b83l4tcxzj",
+    "id": "cmpgf8un60009u8kweyu4kesa",
     "name": "Bot Bidder #1"
   },
   {
-    "id": "cmpfa4bp3000au8b8p8suj1mm",
+    "id": "cmpgf8uyw000du8kwepxnif4r",
     "name": "Bot Bidder #2"
   },
   {
-    "id": "cmpfa4bwo000eu8b8aobek38c",
+    "id": "cmpgf8vam000hu8kw44kb7o4f",
     "name": "Bot Bidder #3"
   },
   {
-    "id": "cmpfa4c4e000iu8b8fo6kjozd",
+    "id": "cmpgf8vma000lu8kwqt7dmji4",
     "name": "Bot Bidder #4"
   },
   {
-    "id": "cmpfa4cc4000mu8b89qf8k4i9",
+    "id": "cmpgf8vxv000pu8kw25qk3b81",
     "name": "Bot Bidder #5"
   },
   {
-    "id": "cmpfa4cju000qu8b8eg5nnue1",
+    "id": "cmpgf8w9n000tu8kwkuh9klx7",
     "name": "Bot Bidder #6"
   },
   {
-    "id": "cmpfa4crk000uu8b82ehae41m",
+    "id": "cmpgf8wlc000xu8kwwjtpt8q6",
     "name": "Bot Bidder #7"
   },
   {
-    "id": "cmpfa4cz5000yu8b8my52wplk",
+    "id": "cmpgf8wwv0011u8kw3hh23pij",
     "name": "Bot Bidder #8"
   },
   {
-    "id": "cmpfa4d6s0012u8b8afa75y6n",
+    "id": "cmpgf8x8m0015u8kw4vt59zza",
     "name": "Bot Bidder #9"
   },
   {
-    "id": "cmpfa4ded0016u8b82u87qa0y",
+    "id": "cmpgf8xk60019u8kwdicf40lw",
     "name": "Bot Bidder #10"
   },
   {
-    "id": "cmpfa4dm1001au8b8a9qbtkby",
+    "id": "cmpgf8xvv001du8kwnqmzc3kt",
     "name": "Bot Bidder #11"
   },
   {
-    "id": "cmpfa4dtn001eu8b8x6vdljq2",
+    "id": "cmpgf8y7i001hu8kw9m05z0i2",
     "name": "Bot Bidder #12"
   },
   {
-    "id": "cmpfa4e1b001iu8b8rtyu1ll5",
+    "id": "cmpgf8yje001lu8kwp278v6e8",
     "name": "Bot Bidder #13"
   },
   {
-    "id": "cmpfa4e90001mu8b8o9rtz42s",
+    "id": "cmpgf8yv4001pu8kw58fsunkq",
     "name": "Bot Bidder #14"
   },
   {
-    "id": "cmpfa4egn001qu8b89myp4ru4",
+    "id": "cmpgf8z6t001tu8kwr4p8nbud",
     "name": "Bot Bidder #15"
   },
   {
-    "id": "cmpfa4eoa001uu8b8fh4mjfef",
+    "id": "cmpgf8zip001xu8kwtg7arkf4",
     "name": "Bot Bidder #16"
   },
   {
-    "id": "cmpfa4ew2001yu8b8kaqtvv5u",
+    "id": "cmpgf8zue0021u8kwfw12von0",
     "name": "Bot Bidder #17"
   },
   {
-    "id": "cmpfa4f3o0022u8b8fgxhxfmp",
+    "id": "cmpgf90600025u8kw1c9lg09d",
     "name": "Bot Bidder #18"
   },
   {
-    "id": "cmpfa4fbe0026u8b8tsuf9fvq",
+    "id": "cmpgf90hs0029u8kwy2bl3nrs",
     "name": "Bot Bidder #19"
-  },
-  {
-    "id": "cmpfa4fj7002au8b8poup568e",
-    "name": "Bot Bidder #20"
-  },
-  {
-    "id": "cmpfa4fqt002eu8b85uyz5zhv",
-    "name": "Bot Bidder #21"
-  },
-  {
-    "id": "cmpfa4fye002iu8b8ux74g0q5",
-    "name": "Bot Bidder #22"
-  },
-  {
-    "id": "cmpfa4g60002mu8b8yre6mwbg",
-    "name": "Bot Bidder #23"
-  },
-  {
-    "id": "cmpfa4gdn002qu8b8q5lkp2j5",
-    "name": "Bot Bidder #24"
-  },
-  {
-    "id": "cmpfa4gl9002uu8b8t2qh0261",
-    "name": "Bot Bidder #25"
-  },
-  {
-    "id": "cmpfa4gsv002yu8b8tyc5fbs4",
-    "name": "Bot Bidder #26"
-  },
-  {
-    "id": "cmpfa4h0i0032u8b8twfe8ici",
-    "name": "Bot Bidder #27"
-  },
-  {
-    "id": "cmpfa4h850036u8b87ll6mjga",
-    "name": "Bot Bidder #28"
-  },
-  {
-    "id": "cmpfa4hfq003au8b8rg78k7s5",
-    "name": "Bot Bidder #29"
-  },
-  {
-    "id": "cmpfa4hne003eu8b8tvlpba20",
-    "name": "Bot Bidder #30"
-  },
-  {
-    "id": "cmpfa4hv0003iu8b8ugn2en55",
-    "name": "Bot Bidder #31"
-  },
-  {
-    "id": "cmpfa4i2l003mu8b89tvn6op9",
-    "name": "Bot Bidder #32"
-  },
-  {
-    "id": "cmpfa4ia6003qu8b8hvm58oio",
-    "name": "Bot Bidder #33"
-  },
-  {
-    "id": "cmpfa4ihs003uu8b82r2lkcf5",
-    "name": "Bot Bidder #34"
-  },
-  {
-    "id": "cmpfa4ipf003yu8b8mffqjuut",
-    "name": "Bot Bidder #35"
-  },
-  {
-    "id": "cmpfa4ix10042u8b8id05h39k",
-    "name": "Bot Bidder #36"
-  },
-  {
-    "id": "cmpfa4j4o0046u8b8ci3onnot",
-    "name": "Bot Bidder #37"
-  },
-  {
-    "id": "cmpfa4jc9004au8b8095ibq8a",
-    "name": "Bot Bidder #38"
-  },
-  {
-    "id": "cmpfa4jjv004eu8b8n3rmvp5x",
-    "name": "Bot Bidder #39"
-  },
-  {
-    "id": "cmpfa4jrh004iu8b86oosblw4",
-    "name": "Bot Bidder #40"
-  },
-  {
-    "id": "cmpfa4jz6004mu8b86alkxhhr",
-    "name": "Bot Bidder #41"
-  },
-  {
-    "id": "cmpfa4k6r004qu8b85ehe7252",
-    "name": "Bot Bidder #42"
-  },
-  {
-    "id": "cmpfa4kef004uu8b8uoviethw",
-    "name": "Bot Bidder #43"
-  },
-  {
-    "id": "cmpfa4kme004yu8b8myuiwtjg",
-    "name": "Bot Bidder #44"
-  },
-  {
-    "id": "cmpfa4ktz0052u8b8iqgbh9b8",
-    "name": "Bot Bidder #45"
-  },
-  {
-    "id": "cmpfa4l1l0056u8b8ylt2yzxm",
-    "name": "Bot Bidder #46"
-  },
-  {
-    "id": "cmpfa4l98005au8b8fc4fh236",
-    "name": "Bot Bidder #47"
-  },
-  {
-    "id": "cmpfa4lgx005eu8b8vljjilkr",
-    "name": "Bot Bidder #48"
-  },
-  {
-    "id": "cmpfa4lok005iu8b844tlvzrr",
-    "name": "Bot Bidder #49"
-  },
-  {
-    "id": "cmpfa4lw7005mu8b8a6oct8jp",
-    "name": "Bot Bidder #50"
-  },
-  {
-    "id": "cmpfa4m3t005qu8b832tej8u5",
-    "name": "Bot Bidder #51"
-  },
-  {
-    "id": "cmpfa4mfg005uu8b8poq8pg6a",
-    "name": "Bot Bidder #52"
-  },
-  {
-    "id": "cmpfa4mn3005yu8b8j133ujit",
-    "name": "Bot Bidder #53"
-  },
-  {
-    "id": "cmpfa4muq0062u8b8g5z5ht54",
-    "name": "Bot Bidder #54"
-  },
-  {
-    "id": "cmpfa4n2t0066u8b8yf7mdg95",
-    "name": "Bot Bidder #55"
-  },
-  {
-    "id": "cmpfa4nag006au8b8cdbxtugz",
-    "name": "Bot Bidder #56"
-  },
-  {
-    "id": "cmpfa4ni4006eu8b86hans8ps",
-    "name": "Bot Bidder #57"
-  },
-  {
-    "id": "cmpfa4npq006iu8b8pe7uf1x4",
-    "name": "Bot Bidder #58"
-  },
-  {
-    "id": "cmpfa4nxh006mu8b8mhks0555",
-    "name": "Bot Bidder #59"
-  },
-  {
-    "id": "cmpfa4o58006qu8b87dxqxe8w",
-    "name": "Bot Bidder #60"
-  },
-  {
-    "id": "cmpfa4opb006uu8b8rta8xyjl",
-    "name": "Bot Bidder #61"
-  },
-  {
-    "id": "cmpfa4pk3006yu8b85llmn2rg",
-    "name": "Bot Bidder #62"
-  },
-  {
-    "id": "cmpfa4prx0072u8b8d2qly6aq",
-    "name": "Bot Bidder #63"
-  },
-  {
-    "id": "cmpfa4pzl0076u8b848838u0g",
-    "name": "Bot Bidder #64"
-  },
-  {
-    "id": "cmpfa4q76007au8b8sigp49l4",
-    "name": "Bot Bidder #65"
-  },
-  {
-    "id": "cmpfa4qet007eu8b8cw4my7h2",
-    "name": "Bot Bidder #66"
-  },
-  {
-    "id": "cmpfa4qmg007iu8b8q5q7hv1l",
-    "name": "Bot Bidder #67"
-  },
-  {
-    "id": "cmpfa4qu2007mu8b830l9jjcc",
-    "name": "Bot Bidder #68"
-  },
-  {
-    "id": "cmpfa4r1o007qu8b8uwbz6a9h",
-    "name": "Bot Bidder #69"
-  },
-  {
-    "id": "cmpfa4r9a007uu8b8kvnbpnwd",
-    "name": "Bot Bidder #70"
-  },
-  {
-    "id": "cmpfa4rgw007yu8b8atrzen4d",
-    "name": "Bot Bidder #71"
-  },
-  {
-    "id": "cmpfa4roi0082u8b803qf51mm",
-    "name": "Bot Bidder #72"
-  },
-  {
-    "id": "cmpfa4rw60086u8b8fpbydguc",
-    "name": "Bot Bidder #73"
-  },
-  {
-    "id": "cmpfa4s3t008au8b8l0k449i4",
-    "name": "Bot Bidder #74"
-  },
-  {
-    "id": "cmpfa4sbe008eu8b8tu62htt7",
-    "name": "Bot Bidder #75"
-  },
-  {
-    "id": "cmpfa4sj1008iu8b8bbjliy7n",
-    "name": "Bot Bidder #76"
-  },
-  {
-    "id": "cmpfa4sqn008mu8b8opr56upo",
-    "name": "Bot Bidder #77"
-  },
-  {
-    "id": "cmpfa4syb008qu8b8f6sl8ivk",
-    "name": "Bot Bidder #78"
-  },
-  {
-    "id": "cmpfa4thj008uu8b8l63kvwd5",
-    "name": "Bot Bidder #79"
-  },
-  {
-    "id": "cmpfa4tp8008yu8b8w2vsj8tg",
-    "name": "Bot Bidder #80"
-  },
-  {
-    "id": "cmpfa4twy0092u8b8eywxfutc",
-    "name": "Bot Bidder #81"
-  },
-  {
-    "id": "cmpfa4u4l0096u8b82re9keox",
-    "name": "Bot Bidder #82"
-  },
-  {
-    "id": "cmpfa4uc6009au8b8nidsofk5",
-    "name": "Bot Bidder #83"
-  },
-  {
-    "id": "cmpfa4ujr009eu8b8yx52h1gs",
-    "name": "Bot Bidder #84"
-  },
-  {
-    "id": "cmpfa4ure009iu8b8cj73z4ar",
-    "name": "Bot Bidder #85"
-  },
-  {
-    "id": "cmpfa4uz0009mu8b8fomap2c1",
-    "name": "Bot Bidder #86"
-  },
-  {
-    "id": "cmpfa4v6n009qu8b8dtb04052",
-    "name": "Bot Bidder #87"
-  },
-  {
-    "id": "cmpfa4vea009uu8b8ot61vl7f",
-    "name": "Bot Bidder #88"
-  },
-  {
-    "id": "cmpfa4vlw009yu8b8t3q5b94m",
-    "name": "Bot Bidder #89"
-  },
-  {
-    "id": "cmpfa4vti00a2u8b8mpzjfep1",
-    "name": "Bot Bidder #90"
-  },
-  {
-    "id": "cmpfa4w1400a6u8b82zu9vu3k",
-    "name": "Bot Bidder #91"
-  },
-  {
-    "id": "cmpfa4w8s00aau8b8f2gn2pmk",
-    "name": "Bot Bidder #92"
-  },
-  {
-    "id": "cmpfa4wgi00aeu8b89s3hvfml",
-    "name": "Bot Bidder #93"
-  },
-  {
-    "id": "cmpfa4wo600aiu8b8q9miwspi",
-    "name": "Bot Bidder #94"
-  },
-  {
-    "id": "cmpfa4wvt00amu8b8ax23839r",
-    "name": "Bot Bidder #95"
-  },
-  {
-    "id": "cmpfa4x3h00aqu8b8i8g3vo8a",
-    "name": "Bot Bidder #96"
-  },
-  {
-    "id": "cmpfa4xb200auu8b808r8l7vw",
-    "name": "Bot Bidder #97"
-  },
-  {
-    "id": "cmpfa4xio00ayu8b8mrqfitjp",
-    "name": "Bot Bidder #98"
-  },
-  {
-    "id": "cmpfa4xqa00b2u8b8egs4awnx",
-    "name": "Bot Bidder #99"
   }
 ]

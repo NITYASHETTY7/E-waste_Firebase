@@ -99,9 +99,15 @@ describe('Auction Concurrency (Race Condition)', () => {
     const failures = results.filter(r => r instanceof BadRequestException);
 
     console.log(`Successes: ${successes.length}, Failures: ${failures.length}`);
+    failures.forEach((f, idx) => {
+      console.log(`Failure ${idx}: ${f.message}`);
+    });
 
     expect(successes.length).toBe(1);
     expect(failures.length).toBe(19);
+    failures.forEach(f => {
+      expect(f.message).toBe('The price is already bid. Try the next highest bid.');
+    });
 
     // Check DB
     const bidsInDb = await prisma.bid.findMany({

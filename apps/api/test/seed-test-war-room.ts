@@ -11,7 +11,7 @@ async function seed() {
     process.exit(1);
   }
 
-  console.log(`🏗️ Seeding 100 Shortlisted Vendors for Auction: ${AUCTION_ID}`);
+  console.log(`🏗️ Seeding 20 Shortlisted Vendors for Auction: ${AUCTION_ID}`);
 
   const auction = await prisma.auction.findUnique({ where: { id: AUCTION_ID } });
   if (!auction) throw new Error('Auction not found');
@@ -27,7 +27,7 @@ async function seed() {
     }
   });
 
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 20; i++) {
     const email = `bot-${i}-${uuidv4().substring(0,8)}@ecoloop-test.com`;
     
     // 2. Create User
@@ -59,7 +59,7 @@ async function seed() {
   }
 
   fs.writeFileSync('test-vendors.json', JSON.stringify(vendors, null, 2));
-  console.log('✅ Done! 100 vendors seeded. Data saved to test-vendors.json');
+  console.log('✅ Done! 20 vendors seeded. Data saved to test-vendors.json');
 }
 
 seed().catch(console.error).finally(() => prisma.$disconnect());

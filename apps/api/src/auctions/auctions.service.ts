@@ -39,14 +39,33 @@ export class AuctionsService {
       }
     }
 
+    // Pre-check helper to avoid lock contention for duplicate or lower bids
+    const checkPriceAlreadyBid = async () => {
+      const highestBid = await this.prisma.bid.findFirst({
+        where: { auctionId, phase: BidPhase.OPEN },
+        orderBy: { amount: 'desc' },
+        select: { amount: true },
+      });
+      if (highestBid && amount <= highestBid.amount) {
+        throw new BadRequestException('The price is already bid. Try the next highest bid.');
+      }
+    };
+
+    await checkPriceAlreadyBid();
+
     // 2. Distributed Lock with Retry
     const lockKey = `lock:auction:${auctionId}`;
     const lockValue = `${vendorId}:${Date.now()}`;
     let locked = false;
-    for (let i = 0; i < 10; i++) {
+    const maxRetries = 100;
+    for (let i = 0; i < maxRetries; i++) {
+      if (i > 0) {
+        await checkPriceAlreadyBid();
+      }
       locked = await this.redis.acquireLock(lockKey, lockValue, 5000);
       if (locked) break;
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      const delay = 10 + Math.floor(Math.random() * 20); // 10-30ms jitter
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
 
     if (!locked) {
@@ -55,8 +74,9 @@ export class AuctionsService {
 
     try {
       // 3. Database Transaction (Optimistic + Double-Check)
-      return await this.prisma.$transaction(async (tx) => {
-        const auction = await tx.auction.findUnique({
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const auction = await tx.auction.findUnique({
           where: { id: auctionId },
           include: {
             bids: {
@@ -113,6 +133,10 @@ export class AuctionsService {
         const highestBid = auction.bids[0]?.amount || auction.basePrice;
         const minRequired = highestBid + auction.tickSize;
 
+        if (auction.bids[0] && amount <= auction.bids[0].amount) {
+          throw new BadRequestException('The price is already bid. Try the next highest bid.');
+        }
+
         if (amount < minRequired) {
           throw new BadRequestException(`Minimum bid is ₹${minRequired}`);
         }
@@ -162,6 +186,9 @@ export class AuctionsService {
         const leaderboard = await this.getLeaderboard(auctionId);
 
         return { bid, auction: updatedAuction, leaderboard };
+      }, {
+        maxWait: 15000,
+        timeout: 15000,
       });
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {

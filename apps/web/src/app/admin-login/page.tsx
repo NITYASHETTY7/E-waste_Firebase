@@ -41,44 +41,44 @@ export default function AdminLoginPage() {
       {showForgot && (
         <ForgotPasswordModal accentColor="#0B5ED7" onClose={() => setShowForgot(false)} />
       )}
-      <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden bg-[#F5F7FA] dark:bg-slate-950">
+      <div className="min-h-screen flex items-center justify-center p-4 md:p-6 relative overflow-hidden bg-[#F5F7FA] dark:bg-slate-950">
       {/* Brand Background Elements */}
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#0B5ED7]/5 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#1E8E3E]/5 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="w-full max-w-[480px] relative z-10">
+      <div className="w-full max-w-[440px] relative z-10 px-4">
         {/* Security Badge */}
         <motion.div 
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="mb-6 flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 shadow-sm dark:bg-slate-900 dark:border-slate-700"
+          className="mb-4 flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3 shadow-sm dark:bg-slate-900 dark:border-slate-700"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center dark:bg-slate-800">
-              <span className="material-symbols-outlined text-slate-500 text-sm">shield_lock</span>
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center dark:bg-slate-800">
+              <span className="material-symbols-outlined text-slate-500 text-base">shield_lock</span>
             </div>
             <div className="flex flex-col">
-              <p className="text-[11px] font-bold text-slate-600 uppercase tracking-widest leading-none">Administrative Control</p>
-              <button onClick={quickDemo} className="text-[10px] font-black text-[#0B5ED7] uppercase tracking-widest hover:underline text-left mt-1">Quick Demo Login</button>
+              <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest leading-none">Administrative Control</p>
+              <button onClick={quickDemo} className="text-[9px] font-black text-[#0B5ED7] uppercase tracking-widest hover:underline text-left mt-0.5">Quick Demo Login</button>
             </div>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[9px] font-black text-emerald-600 uppercase tracking-[0.2em]">Live</span>
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 border border-emerald-100 rounded-full">
+            <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[8px] font-black text-emerald-600 uppercase tracking-[0.2em]">Live</span>
           </div>
         </motion.div>
 
-        <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden relative dark:bg-slate-900 dark:border-slate-700">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[#0B5ED7]/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="bg-white border border-slate-200 rounded-[2rem] p-6 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden relative dark:bg-slate-900 dark:border-slate-700">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-[#0B5ED7]/5 rounded-full blur-3xl pointer-events-none" />
           
           {/* Branding */}
-          <div className="flex justify-center mb-10 cursor-pointer" onClick={() => router.push('/')}>
-            <img src="/logo%203.png" alt="We Connect" className="h-10 object-contain" />
+          <div className="flex justify-center mb-8 cursor-pointer" onClick={() => router.push('/')}>
+            <img src="/logo%203.png" alt="We Connect" className="h-8 object-contain" />
           </div>
 
-          <div className="text-center mb-10">
-            <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight dark:text-white">Access Portal</h2>
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em]">Enterprise Login</p>
+          <div className="text-center mb-8">
+            <h2 className="text-xl font-black text-slate-900 mb-1 tracking-tight dark:text-white">Access Portal</h2>
+            <p className="text-slate-400 text-[9px] font-bold uppercase tracking-[0.2em]">Enterprise Login</p>
           </div>
 
           {error && (
