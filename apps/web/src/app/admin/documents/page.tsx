@@ -165,7 +165,7 @@ export default function AdminDocuments() {
           </button>
           <div className="relative w-64">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-            <input className="input-base pl-10 h-11 text-sm" placeholder="Search documents..." value={search} onChange={e => setSearch(e.target.value)} />
+            <input className="input-base !pl-11 h-11 text-sm" placeholder="Search documents..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
       </div>

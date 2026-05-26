@@ -73,7 +73,7 @@ export default function AdminLoginPage() {
           
           {/* Branding */}
           <div className="flex justify-center mb-8 cursor-pointer" onClick={() => router.push('/')}>
-            <img src="/logo%203.png" alt="We Connect" className="h-8 object-contain" />
+            <img src="/logo%203.png" alt="We Connect" className="h-12 object-contain" />
           </div>
 
           <div className="text-center mb-8">

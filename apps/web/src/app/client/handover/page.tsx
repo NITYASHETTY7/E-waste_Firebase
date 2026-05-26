@@ -188,10 +188,20 @@ export default function ClientHandoverPage() {
             const status = pickup.status as string;
             const stepRank = STEP_RANK[status] ?? 0;
             const hasGatePass = !!pickup.gatePassNumber;
-            const complianceDocs: any[] = (pickup.pickupDocs ?? []).filter((d: any) =>
-              ["FORM_6", "RECYCLING_CERTIFICATE", "DISPOSAL_CERTIFICATE", "EWASTE_RECYCLING_CERTIFICATE",
-               "DATA_DESTRUCTION_CERTIFICATE", "EWAY_BILL", "DELIVERY_CHALLAN"].includes(d.type)
-            );
+            // Compliance docs are only shown AFTER the vendor has uploaded them
+            // (status must be DOCUMENTS_UPLOADED or later)
+            const vendorDocsStatuses = new Set([
+              "DOCUMENTS_UPLOADED", "RECONCILIATION_DONE", "INVOICE_GENERATED", "COMPLETED"
+            ]);
+            const vendorHasUploaded = vendorDocsStatuses.has(status);
+            const complianceDocs: any[] = vendorHasUploaded
+              ? (pickup.pickupDocs ?? []).filter((d: any) =>
+                  ["FORM_6", "RECYCLING_CERTIFICATE", "DISPOSAL_CERTIFICATE", "EWASTE_RECYCLING_CERTIFICATE",
+                   "DATA_DESTRUCTION_CERTIFICATE", "EWAY_BILL", "DELIVERY_CHALLAN",
+                   "WEIGHT_SLIP_EMPTY", "WEIGHT_SLIP_LOADED", "MATERIAL_ACKNOWLEDGEMENT",
+                   "ASSET_HANDOVER_FORM"].includes(d.type)
+                )
+              : [];
 
             return (
               <div key={pickup.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -274,8 +284,8 @@ export default function ClientHandoverPage() {
                   </div>
                 ) : null}
 
-                {/* Compliance docs from vendor */}
-                {complianceDocs.length > 0 && (
+                {/* Compliance docs from vendor — only visible after vendor uploads (status DOCUMENTS_UPLOADED+) */}
+                {vendorHasUploaded ? (
                   <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-[10px] font-black text-slate-400 uppercase">Compliance Documents from Vendor</p>
@@ -295,18 +305,37 @@ export default function ClientHandoverPage() {
                         </button>
                       )}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {complianceDocs.map((doc: any, i: number) => (
-                        <a key={i} href={doc.signedUrl} target="_blank" rel="noreferrer"
-                          className="flex items-center gap-2 p-2.5 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors">
-                          <span className="material-symbols-outlined text-emerald-600 text-sm">description</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-emerald-700 truncate">{doc.fileName}</p>
-                            <p className="text-[9px] text-emerald-600">{doc.type.replace(/_/g, " ")}</p>
-                          </div>
-                          <span className="material-symbols-outlined text-emerald-500 text-sm">download</span>
-                        </a>
-                      ))}
+                    {complianceDocs.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {complianceDocs.map((doc: any, i: number) => (
+                          <a key={i} href={doc.signedUrl} target="_blank" rel="noreferrer"
+                            className="flex items-center gap-2 p-2.5 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors">
+                            <span className="material-symbols-outlined text-emerald-600 text-sm">description</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-emerald-700 truncate">{doc.fileName}</p>
+                              <p className="text-[9px] text-emerald-600">{doc.type.replace(/_/g, " ")}</p>
+                            </div>
+                            <span className="material-symbols-outlined text-emerald-500 text-sm">download</span>
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 text-xs text-amber-700">
+                        <span className="material-symbols-outlined text-sm text-amber-500">hourglass_empty</span>
+                        No compliance documents uploaded yet by the vendor.
+                      </div>
+                    )}
+                  </div>
+                ) : hasGatePass && (
+                  /* Gate pass has been issued but vendor hasn't uploaded compliance docs yet */
+                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Compliance Documents</p>
+                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700">
+                      <span className="material-symbols-outlined text-slate-400 text-base">hourglass_empty</span>
+                      <div>
+                        <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Waiting for vendor to upload compliance documents</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Documents will appear here once the vendor uploads them after pickup.</p>
+                      </div>
                     </div>
                   </div>
                 )}

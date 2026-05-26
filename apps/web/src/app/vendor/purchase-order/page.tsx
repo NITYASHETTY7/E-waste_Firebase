@@ -52,6 +52,7 @@ export default function VendorPurchaseOrderPage() {
   const [auctions, setAuctions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
@@ -114,74 +115,96 @@ export default function VendorPurchaseOrderPage() {
           <p className="text-sm">Purchase orders will appear here once you win an auction and the admin generates documents.</p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-4">
           {auctions.map(auction => {
             const winningAmount = auction.bids?.[0]?.amount ?? auction.basePrice ?? 0;
             const docs: any[] = (auction.auctionDocs ?? []).filter((d: any) =>
               ["PURCHASE_ORDER", "WORK_ORDER", "AGREEMENT", "FINAL_QUOTE", "LETTERHEAD_QUOTATION"].includes(d.type)
             );
             const payment = auction.payment;
+            const isExpanded = expandedId === auction.id;
 
             return (
-              <div key={auction.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-                  <div>
-                    <p className="font-black text-slate-900 dark:text-white">{auction.title}</p>
-                    <p className="text-xs text-slate-500">{auction.id.substring(0, 12)} · {auction.category} · Client: {auction.client?.name}</p>
+              <div key={auction.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md">
+                {/* Header (Interactive Trigger) */}
+                <div 
+                  onClick={() => setExpandedId(isExpanded ? null : auction.id)}
+                  className="flex items-center justify-between px-6 py-5 cursor-pointer select-none hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                >
+                  <div className="min-w-0 flex-1 pr-4">
+                    <p className="font-headline font-bold text-lg text-slate-900 dark:text-white truncate">{auction.title}</p>
+                    <p className="text-xs text-slate-500 mt-1 flex flex-wrap gap-2 items-center">
+                      <span>{auction.category}</span>
+                      <span className="text-slate-300 dark:text-slate-700">•</span>
+                      <span>Client: {auction.client?.name || "Unknown"}</span>
+                      <span className="text-slate-300 dark:text-slate-700">•</span>
+                      <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">ID: {auction.id.substring(0, 8)}</span>
+                    </p>
                   </div>
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-black uppercase">Won</span>
-                </div>
-
-                {/* Commercial summary */}
-                <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                      { label: "Winning Bid", value: fmtINR(winningAmount), color: "text-emerald-700 font-black" },
-                      { label: "Platform Fee (5%)", value: fmtINR(Math.round(winningAmount * 0.05)), color: "text-slate-700" },
-                      { label: "Total Payable", value: fmtINR(Math.round(winningAmount * 1.05)), color: "text-purple-700 font-black" },
-                      { label: "Payment Status", value: payment?.status ?? "—", color: payment?.status === "CONFIRMED" ? "text-emerald-700 font-black" : "text-amber-700" },
-                    ].map(s => (
-                      <div key={s.label}>
-                        <p className="text-[9px] font-black text-slate-400 uppercase">{s.label}</p>
-                        <p className={`text-sm mt-0.5 ${s.color}`}>{s.value}</p>
-                      </div>
-                    ))}
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-xs font-black uppercase">Won</span>
+                    <span className={`material-symbols-outlined text-slate-400 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
+                      expand_more
+                    </span>
                   </div>
                 </div>
 
-                {/* Documents */}
-                <div className="px-6 py-4">
-                  <p className="text-[10px] font-black text-slate-400 uppercase mb-3">Official Documents</p>
-                  {docs.length === 0 ? (
-                    <p className="text-sm text-slate-400 italic">Documents being generated — check back shortly.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {docs.map((doc, i) => (
-                        <button key={i} onClick={() => openDocUrl(doc)}
-                          className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left">
-                          <span className="material-symbols-outlined text-purple-600 text-base">description</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{doc.fileName}</p>
-                            <p className="text-[9px] text-slate-400 uppercase">{DOC_TYPE_LABELS[doc.type] ?? doc.type.replace(/_/g, " ")}</p>
+                {/* Collapsible Content */}
+                {isExpanded && (
+                  <div className="border-t border-slate-100 dark:border-slate-800 animate-fade-in">
+                    {/* Commercial summary */}
+                    <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                          { label: "Winning Bid", value: fmtINR(winningAmount), color: "text-emerald-700 font-black" },
+                          { label: "Platform Fee (5%)", value: fmtINR(Math.round(winningAmount * 0.05)), color: "text-slate-500" },
+                          { label: "Total Payable", value: fmtINR(Math.round(winningAmount * 1.05)), color: "text-purple-700 font-black" },
+                          { label: "Payment Status", value: payment?.status ?? "PENDING", color: payment?.status === "CONFIRMED" ? "text-emerald-700 font-black" : "text-amber-700 font-bold" },
+                        ].map(s => (
+                          <div key={s.label}>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">{s.label}</p>
+                            <p className={`text-sm mt-0.5 ${s.color}`}>{s.value}</p>
                           </div>
-                          <span className="material-symbols-outlined text-slate-400 text-sm">download</span>
-                        </button>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Actions */}
-                <div className="flex flex-wrap gap-3 px-6 pb-5">
-                  {docs.some(d => d.type === "PURCHASE_ORDER") && (
-                    <button onClick={() => printPO(auction, docs)}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors">
-                      <span className="material-symbols-outlined text-base">print</span>
-                      Print PO Summary
-                    </button>
-                  )}
-                </div>
+                    {/* Documents */}
+                    <div className="px-6 py-5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Official Documents</p>
+                      {docs.length === 0 ? (
+                        <div className="p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center dark:bg-slate-950 dark:border-slate-800">
+                          <p className="text-xs text-slate-400 italic">Documents are being generated by WeConnect Admin — check back shortly.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {docs.map((doc, i) => (
+                            <button key={i} onClick={() => openDocUrl(doc)}
+                              className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left group">
+                              <span className="material-symbols-outlined text-purple-600 text-base">description</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-primary transition-colors">{doc.fileName}</p>
+                                <p className="text-[9px] text-slate-400 uppercase">{DOC_TYPE_LABELS[doc.type] ?? doc.type.replace(/_/g, " ")}</p>
+                              </div>
+                              <span className="material-symbols-outlined text-slate-400 text-sm">download</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex flex-wrap gap-3 px-6 pb-5">
+                      {docs.some(d => d.type === "PURCHASE_ORDER") && (
+                        <button onClick={() => printPO(auction, docs)}
+                          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors">
+                          <span className="material-symbols-outlined text-base">print</span>
+                          Print PO Summary
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

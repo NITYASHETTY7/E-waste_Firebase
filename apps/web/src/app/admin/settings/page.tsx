@@ -101,7 +101,7 @@ export default function AdminSettings() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {roles.map((role) => (
-                  <tr key={role.name} className="hover:bg-slate-50 transition-colors">
+                  <tr key={role.name} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-3">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${role.name === "Super Admin" ? "bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)]" : "bg-slate-100 text-slate-500"}`}>

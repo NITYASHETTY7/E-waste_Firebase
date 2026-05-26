@@ -97,6 +97,7 @@ export default function VendorHandoverPage() {
   const [uploading, setUploading] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
@@ -173,179 +174,197 @@ export default function VendorHandoverPage() {
             const hasGatePass = !!pickup.gatePassNumber;
             const docs: any[] = pickup.pickupDocs ?? [];
             const uploadedTypes = new Set(docs.map((d: any) => d.type));
+            const isExpanded = expandedId === pickup.id;
 
             return (
-              <div key={pickup.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-                  <div>
-                    <p className="font-black text-slate-900 dark:text-white">{pickup.auction?.title}</p>
-                    <p className="text-xs text-slate-500">{pickup.auctionId} · {pickup.auction?.category}</p>
+              <div key={pickup.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md">
+                {/* Header (Interactive Trigger) */}
+                <div 
+                  onClick={() => setExpandedId(isExpanded ? null : pickup.id)}
+                  className="flex items-center justify-between px-6 py-5 cursor-pointer select-none hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                >
+                  <div className="min-w-0 flex-1 pr-4">
+                    <p className="font-headline font-bold text-lg text-slate-900 dark:text-white truncate">{pickup.auction?.title}</p>
+                    <p className="text-xs text-slate-500 mt-1 flex flex-wrap gap-2 items-center">
+                      <span>{pickup.auction?.category}</span>
+                      <span className="text-slate-300 dark:text-slate-700">•</span>
+                      <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-400">ID: {pickup.auctionId.substring(0, 8)}</span>
+                    </p>
                   </div>
-                  <StatusBadge status={status} />
+                  <div className="flex items-center gap-3 shrink-0">
+                    <StatusBadge status={status} />
+                    <span className={`material-symbols-outlined text-slate-400 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
+                      expand_more
+                    </span>
+                  </div>
                 </div>
 
-                {/* Gate Pass Section */}
-                {hasGatePass ? (
-                  <div className="px-6 py-4 bg-blue-50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/20">
-                    <p className="text-[10px] font-black text-blue-600 uppercase mb-3">Gate Pass Details</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {[
-                        { label: "Gate Pass No.", value: pickup.gatePassNumber },
-                        { label: "Pickup Date", value: pickup.scheduledDate ? new Date(pickup.scheduledDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—" },
-                        { label: "Vehicle (Client)", value: pickup.vehicleNumber ?? "—" },
-                        { label: "Driver (Client)", value: pickup.driverName ?? "—" },
-                      ].map(f => (
-                        <div key={f.label} className="bg-white dark:bg-slate-900 rounded-xl p-3 border border-blue-100 dark:border-blue-900/20">
-                          <p className="text-[9px] font-black text-blue-500 uppercase">{f.label}</p>
-                          <p className="font-bold text-sm text-slate-900 dark:text-white mt-0.5">{f.value}</p>
+                {/* Collapsible Content */}
+                {isExpanded && (
+                  <div className="border-t border-slate-100 dark:border-slate-800 animate-fade-in">
+                    {/* Gate Pass Section */}
+                    {hasGatePass ? (
+                      <div className="px-6 py-4 bg-blue-50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/20">
+                        <p className="text-[10px] font-black text-blue-600 uppercase mb-3">Gate Pass Details</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {[
+                            { label: "Gate Pass No.", value: pickup.gatePassNumber },
+                            { label: "Pickup Date", value: pickup.scheduledDate ? new Date(pickup.scheduledDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—" },
+                            { label: "Vehicle (Client)", value: pickup.vehicleNumber ?? "—" },
+                            { label: "Driver (Client)", value: pickup.driverName ?? "—" },
+                          ].map(f => (
+                            <div key={f.label} className="bg-white dark:bg-slate-900 rounded-xl p-3 border border-blue-100 dark:border-blue-900/20">
+                              <p className="text-[9px] font-black text-blue-500 uppercase">{f.label}</p>
+                              <p className="font-bold text-sm text-slate-900 dark:text-white mt-0.5">{f.value}</p>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                    {pickup.pickupNotes && (
-                      <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 italic">{pickup.pickupNotes}</p>
-                    )}
+                        {pickup.pickupNotes && (
+                          <p className="mt-3 text-sm text-slate-600 dark:text-slate-400 italic">{pickup.pickupNotes}</p>
+                        )}
 
-                    {/* Gate pass document from client */}
-                    <div className="mt-3">
-                      {pickup.gatePassDocS3Key ? (
-                        <GatePassDocDownload pickup={pickup} />
-                      ) : (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 rounded-xl text-xs">
-                          <span className="material-symbols-outlined text-amber-500 text-sm">hourglass_empty</span>
-                          <span className="text-amber-700 font-bold">Gate pass document not yet uploaded by client</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2 mt-3">
-                      <button onClick={() => printGatePass(pickup, currentUser.name)}
-                        className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors">
-                        <span className="material-symbols-outlined text-sm">print</span>Print Gate Pass
-                      </button>
-                      {status === "GATE_PASS_ISSUED" && !pickup.vendorAcknowledgedAt && (
-                        <button onClick={() => acknowledge(pickup.id)} disabled={busy === pickup.id + "_ack"}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-colors disabled:opacity-50">
-                          <span className="material-symbols-outlined text-sm">{busy === pickup.id + "_ack" ? "progress_activity" : "check_circle"}</span>
-                          {busy === pickup.id + "_ack" ? "…" : "Acknowledge Gate Pass"}
-                        </button>
-                      )}
-                      {pickup.vendorAcknowledgedAt && (
-                        <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1">
-                          <span className="material-symbols-outlined text-sm">verified</span>Acknowledged
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 text-sm text-slate-500 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base">hourglass_empty</span>
-                    Waiting for client to issue gate pass. You will receive an email once it's ready.
-                  </div>
-                )}
-
-                {/* Compliance Document Upload */}
-                <div className="px-6 py-5">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Compliance & Handover Documents</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {COMPLIANCE_DOC_TYPES.map(docDef => {
-                      const isUploaded = uploadedTypes.has(docDef.type);
-                      const uploadedDoc = docs.find((d: any) => d.type === docDef.type);
-                      const busyKey = pickup.id + "_" + docDef.type;
-                      return (
-                        <div key={docDef.type} className={`flex items-center gap-3 p-3 rounded-xl border ${isUploaded ? "bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-800" : "bg-slate-50 border-slate-200 dark:bg-slate-800/40 dark:border-slate-700"}`}>
-                          <span className={`material-symbols-outlined text-base ${isUploaded ? "text-green-600" : "text-slate-400"}`}>{isUploaded ? "check_circle" : docDef.icon}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-xs font-bold truncate ${isUploaded ? "text-green-700 dark:text-green-400" : "text-slate-700 dark:text-slate-300"}`}>{docDef.label}</p>
-                            {isUploaded ? (
-                              <p className="text-[10px] text-green-600 truncate">{uploadedDoc?.fileName} · <span className="font-bold">Uploaded ✓</span></p>
-                            ) : null}
-                          </div>
-                          {isUploaded ? (
-                            <a href={uploadedDoc?.signedUrl} target="_blank" rel="noreferrer"
-                              className="p-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 transition-colors" title="View uploaded file">
-                              <span className="material-symbols-outlined text-sm">visibility</span>
-                            </a>
+                        {/* Gate pass document from client */}
+                        <div className="mt-3">
+                          {pickup.gatePassDocS3Key ? (
+                            <GatePassDocDownload pickup={pickup} />
                           ) : (
-                            <>
-                              <input
-                                type="file" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
-                                ref={el => { fileRefs.current[busyKey] = el; }}
-                                className="hidden"
-                                onChange={e => {
-                                  const file = e.target.files?.[0];
-                                  if (file) uploadDoc(pickup.id, file, docDef.type);
-                                  e.target.value = "";
-                                }}
-                              />
-                              <button onClick={() => fileRefs.current[busyKey]?.click()}
-                                disabled={uploading === busyKey}
-                                className="p-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 transition-colors disabled:opacity-50">
-                                <span className="material-symbols-outlined text-sm">{uploading === busyKey ? "progress_activity" : "upload"}</span>
-                              </button>
-                            </>
+                            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 rounded-xl text-xs">
+                              <span className="material-symbols-outlined text-amber-500 text-sm">hourglass_empty</span>
+                              <span className="text-amber-700 font-bold">Gate pass document not yet uploaded by client</span>
+                            </div>
                           )}
                         </div>
-                      );
-                    })}
-                  </div>
 
-                  {docs.length > 0 && (
-                    <div className="mt-4 flex items-start gap-3 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800">
-                      <span className="material-symbols-outlined text-emerald-600 text-base mt-0.5">cloud_done</span>
-                      <div>
-                        <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">
-                          {docs.length} document{docs.length !== 1 ? "s" : ""} submitted
-                        </p>
-                        <p className="text-[10px] text-emerald-600 mt-0.5">
-                          Visible to client and admin for review. Upload remaining documents if any are still pending.
-                        </p>
+                        <div className="flex gap-2 mt-3">
+                          <button onClick={() => printGatePass(pickup, currentUser.name)}
+                            className="px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors">
+                            <span className="material-symbols-outlined text-sm">print</span>Print Gate Pass
+                          </button>
+                          {status === "GATE_PASS_ISSUED" && !pickup.vendorAcknowledgedAt && (
+                            <button onClick={() => acknowledge(pickup.id)} disabled={busy === pickup.id + "_ack"}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-colors disabled:opacity-50">
+                              <span className="material-symbols-outlined text-sm">{busy === pickup.id + "_ack" ? "progress_activity" : "check_circle"}</span>
+                              {busy === pickup.id + "_ack" ? "…" : "Acknowledge Gate Pass"}
+                            </button>
+                          )}
+                          {pickup.vendorAcknowledgedAt && (
+                            <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1">
+                              <span className="material-symbols-outlined text-sm">verified</span>Acknowledged
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 text-sm text-slate-500 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-base">hourglass_empty</span>
+                        Waiting for client to issue gate pass. You will receive an email once it's ready.
+                      </div>
+                    )}
 
-                {/* Auction Documents (Work Order, Purchase Order, Agreement, Invoice) */}
-                {(pickup.auctionDocs ?? []).length > 0 && (
-                  <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Auction Documents</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {(pickup.auctionDocs as any[]).map((doc: any) => (
-                        doc.signedUrl && (
-                          <a key={doc.id} href={doc.signedUrl} target="_blank" rel="noreferrer"
-                            className="flex items-center gap-2 p-2.5 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 transition-colors">
-                            <span className="material-symbols-outlined text-indigo-600 text-sm">description</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 truncate">{doc.fileName}</p>
-                              <p className="text-[9px] text-indigo-500">{doc.type.replace(/_/g, " ")}</p>
+                    {/* Compliance Document Upload */}
+                    <div className="px-6 py-5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Compliance & Handover Documents</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {COMPLIANCE_DOC_TYPES.map(docDef => {
+                          const isUploaded = uploadedTypes.has(docDef.type);
+                          const uploadedDoc = docs.find((d: any) => d.type === docDef.type);
+                          const busyKey = pickup.id + "_" + docDef.type;
+                          return (
+                            <div key={docDef.type} className={`flex items-center gap-3 p-3 rounded-xl border ${isUploaded ? "bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-800" : "bg-slate-50 border-slate-200 dark:bg-slate-800/40 dark:border-slate-700"}`}>
+                              <span className={`material-symbols-outlined text-base ${isUploaded ? "text-green-600" : "text-slate-400"}`}>{isUploaded ? "check_circle" : docDef.icon}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-xs font-bold truncate ${isUploaded ? "text-green-700 dark:text-green-400" : "text-slate-700 dark:text-slate-300"}`}>{docDef.label}</p>
+                                {isUploaded ? (
+                                  <p className="text-[10px] text-green-600 truncate">{uploadedDoc?.fileName} · <span className="font-bold">Uploaded ✓</span></p>
+                                ) : null}
+                              </div>
+                              {isUploaded ? (
+                                <a href={uploadedDoc?.signedUrl} target="_blank" rel="noreferrer"
+                                  className="p-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 transition-colors" title="View uploaded file">
+                                  <span className="material-symbols-outlined text-sm">visibility</span>
+                                </a>
+                              ) : (
+                                <>
+                                  <input
+                                    type="file" accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls"
+                                    ref={el => { fileRefs.current[busyKey] = el; }}
+                                    className="hidden"
+                                    onChange={e => {
+                                      const file = e.target.files?.[0];
+                                      if (file) uploadDoc(pickup.id, file, docDef.type);
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                  <button onClick={() => fileRefs.current[busyKey]?.click()}
+                                    disabled={uploading === busyKey}
+                                    className="p-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 transition-colors disabled:opacity-50">
+                                    <span className="material-symbols-outlined text-sm">{uploading === busyKey ? "progress_activity" : "upload"}</span>
+                                  </button>
+                                </>
+                              )}
                             </div>
-                            <span className="material-symbols-outlined text-indigo-400 text-sm">download</span>
-                          </a>
-                        )
-                      ))}
-                    </div>
-                  </div>
-                )}
+                          );
+                        })}
+                      </div>
 
-                {/* Reconciliation info */}
-                {(status === "RECONCILIATION_DONE" || status === "INVOICE_GENERATED" || status === "COMPLETED") && (
-                  <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-teal-50 dark:bg-teal-900/10">
-                    <p className="text-[10px] font-black text-teal-600 uppercase mb-2">Reconciliation</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div><p className="text-[9px] text-teal-500 uppercase font-bold">Final Weight</p><p className="font-bold text-sm">{pickup.finalWeight ?? "—"} kg</p></div>
-                      <div><p className="text-[9px] text-teal-500 uppercase font-bold">Final Amount</p><p className="font-bold text-sm">₹{(pickup.finalAmount ?? 0).toLocaleString("en-IN")}</p></div>
-                      <div><p className="text-[9px] text-teal-500 uppercase font-bold">Invoice No.</p><p className="font-bold text-sm">{pickup.invoiceNumber ?? "Pending"}</p></div>
+                      {docs.length > 0 && (
+                        <div className="mt-4 flex items-start gap-3 px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800">
+                          <span className="material-symbols-outlined text-emerald-600 text-base mt-0.5">cloud_done</span>
+                          <div>
+                            <p className="text-xs font-black text-emerald-700 dark:text-emerald-400">
+                              {docs.length} document{docs.length !== 1 ? "s" : ""} submitted
+                            </p>
+                            <p className="text-[10px] text-emerald-600 mt-0.5">
+                              Visible to client and admin for review. Upload remaining documents if any are still pending.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    {pickup.reconciliationNotes && <p className="mt-2 text-sm text-teal-700">{pickup.reconciliationNotes}</p>}
-                  </div>
-                )}
 
-                {status === "COMPLETED" && (
-                  <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-green-50 dark:bg-green-900/10">
-                    <div className="flex items-center gap-2 text-green-700">
-                      <span className="material-symbols-outlined">task_alt</span>
-                      <p className="text-sm font-black">Project Completed — Thank you for completing this e-waste recycling job!</p>
-                    </div>
+                    {/* Auction Documents (Work Order, Purchase Order, Agreement, Invoice) */}
+                    {(pickup.auctionDocs ?? []).length > 0 && (
+                      <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Auction Documents</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {(pickup.auctionDocs as any[]).map((doc: any) => (
+                            doc.signedUrl && (
+                              <a key={doc.id} href={doc.signedUrl} target="_blank" rel="noreferrer"
+                                className="flex items-center gap-2 p-2.5 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 transition-colors">
+                                <span className="material-symbols-outlined text-indigo-600 text-sm">description</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 truncate">{doc.fileName}</p>
+                                  <p className="text-[9px] text-indigo-500">{doc.type.replace(/_/g, " ")}</p>
+                                </div>
+                                <span className="material-symbols-outlined text-indigo-400 text-sm">download</span>
+                              </a>
+                            )
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reconciliation info */}
+                    {(status === "RECONCILIATION_DONE" || status === "INVOICE_GENERATED" || status === "COMPLETED") && (
+                      <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-teal-50 dark:bg-teal-900/10">
+                        <p className="text-[10px] font-black text-teal-600 uppercase mb-2">Reconciliation</p>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div><p className="text-[9px] text-teal-500 uppercase font-bold">Final Weight</p><p className="font-bold text-sm">{pickup.finalWeight ?? "—"} kg</p></div>
+                          <div><p className="text-[9px] text-teal-500 uppercase font-bold">Final Amount</p><p className="font-bold text-sm">₹{(pickup.finalAmount ?? 0).toLocaleString("en-IN")}</p></div>
+                          <div><p className="text-[9px] text-teal-500 uppercase font-bold">Invoice No.</p><p className="font-bold text-sm">{pickup.invoiceNumber ?? "Pending"}</p></div>
+                        </div>
+                        {pickup.reconciliationNotes && <p className="mt-2 text-sm text-teal-700">{pickup.reconciliationNotes}</p>}
+                      </div>
+                    )}
+
+                    {status === "COMPLETED" && (
+                      <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 bg-green-50 dark:bg-green-900/10">
+                        <div className="flex items-center gap-2 text-green-700">
+                          <span className="material-symbols-outlined">task_alt</span>
+                          <p className="text-sm font-black">Project Completed — Thank you for completing this e-waste recycling job!</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

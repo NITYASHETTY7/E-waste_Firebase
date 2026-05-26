@@ -28,10 +28,9 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img 
-              src="/logo%202.png" 
+              src="/logo%202.svg" 
               alt="We Connect" 
               className="h-12 md:h-16 w-auto object-contain"
-              style={{ mixBlendMode: 'multiply' }}
             />
           </div>
 

@@ -177,7 +177,7 @@ export default function AdminReports() {
                     const pct = Math.min(100, Math.round((displayAchieved / epr.target) * 100));
                     
                     return (
-                      <tr key={idx} className="hover:bg-slate-50">
+                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
                         <td className="px-6 py-4 font-bold text-slate-900 dark:text-white">{epr.name}</td>
                         <td className="px-6 py-4 text-slate-500 text-xs">{epr.category}</td>
                         <td className="px-6 py-4 text-slate-400 text-right">{epr.target}</td>
@@ -222,7 +222,7 @@ export default function AdminReports() {
                        const clientWeight = clientListings.reduce((s, l) => s + l.weight, 0);
                        const clientRevenue = bids.filter(b => b.status === "accepted" && clientListings.some(l => l.id === b.listingId)).reduce((s, b) => s + b.amount, 0);
                        return (
-                         <tr key={client.id} className="hover:bg-slate-50 transition-colors">
+                         <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                             <td className="p-4 font-bold text-slate-900 dark:text-white">{client.name}</td>
                             <td className="p-4 text-xs text-slate-500">{client.onboardingProfile?.industrySector || "IT Services"}</td>
                             <td className="p-4 text-center font-bold text-slate-700 dark:text-slate-300">{clientListings.length}</td>
@@ -264,7 +264,7 @@ export default function AdminReports() {
                        const winRate = vendorBids.length > 0 ? Math.round((vendorWon.length / vendorBids.length) * 100) : 0;
                        const totalPurchase = vendorWon.reduce((s, b) => s + b.amount, 0);
                        return (
-                         <tr key={vendor.id} className="hover:bg-slate-50 transition-colors">
+                         <tr key={vendor.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                             <td className="p-4 font-bold text-slate-900 dark:text-white">{vendor.name}</td>
                             <td className="p-4">
                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${vendor.status === "active" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}>

@@ -133,23 +133,6 @@ export default function VendorDashboard() {
               View All Marketplace
             </Link>
           </div>
-
-          <div className="dashboard-card p-6 rounded-3xl">
-            <h3 className="font-bold text-slate-900 dark:text-white mb-4">Quick Links</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { label: "My Bids", icon: "gavel", href: "/vendor/bids" },
-                { label: "Pickups", icon: "local_shipping", href: "/vendor/pickups" },
-                { label: "Reports", icon: "description", href: "/vendor/reports" },
-                { label: "Settings", icon: "settings", href: "/vendor/settings" },
-              ].map((link) => (
-                <Link key={link.label} href={link.href} className="flex flex-col items-center justify-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
-                  <span className="material-symbols-outlined text-blue-600 dark:text-blue-500 mb-2">{link.icon}</span>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">{link.label}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
         </div>
 
       </div>

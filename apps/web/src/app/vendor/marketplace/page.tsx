@@ -61,11 +61,13 @@ export default function VendorMarketplace() {
       </div>
 
       {/* Primary Tabs */}
-      <div className="flex gap-1 p-1 bg-[color:var(--color-surface-container-low)] rounded-xl w-fit mb-4">
+      <div className="flex gap-1 p-1 bg-surface-container-low rounded-xl w-fit mb-4 border border-outline-variant/10">
         {(["past", "ongoing", "future"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-8 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
-              tab === t ? "bg-white text-[color:var(--color-on-surface)] shadow-sm" : "text-[color:var(--color-on-surface-variant)]"
+            className={`px-8 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+              tab === t 
+                ? "bg-primary text-white shadow-md scale-[1.02]" 
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/50"
             }`}>
             {t}
           </button>
@@ -76,7 +78,7 @@ export default function VendorMarketplace() {
       <div className="flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
-          <input className="input-base pl-10 h-11" placeholder="Search by title, location..."
+          <input className="input-base h-11 !pl-11" placeholder="Search by title, location..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -84,8 +86,8 @@ export default function VendorMarketplace() {
              <button key={cat} onClick={() => setCategory(cat)}
                className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-all border-2 ${
                  category === cat
-                   ? "bg-[color:var(--color-primary)] text-white border-[color:var(--color-primary)]"
-                   : "bg-white text-[color:var(--color-on-surface-variant)] border-[color:var(--color-outline-variant)] hover:border-[color:var(--color-primary)]/30"
+                   ? "bg-primary text-white border-primary shadow-sm"
+                   : "bg-surface-container-low text-on-surface-variant border-outline-variant hover:border-primary/30 hover:text-on-surface"
                }`}>
                {cat}
              </button>

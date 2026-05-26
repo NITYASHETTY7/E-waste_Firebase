@@ -30,16 +30,29 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 export default function TopBar() {
-  const { currentUser, notifications, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed, logout, deleteAccount } = useApp();
+  const { 
+    currentUser, 
+    notifications, 
+    setIsSidebarOpen, 
+    isSidebarCollapsed, 
+    setIsSidebarCollapsed, 
+    logout, 
+    deleteAccount,
+    markNotificationRead,
+    markAllNotificationsRead 
+  } = useApp();
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
 
   const title = PAGE_TITLES[pathname] || "We Connect";
-  const unread = (notifications || []).filter(n => n.userId === currentUser?.id && !n.read).length;
+  const userNotifications = (notifications || []).filter(n => n.userId === currentUser?.id);
+  const unread = userNotifications.filter(n => !n.read).length;
   const role = currentUser?.role || "client";
 
   useEffect(() => {
@@ -47,6 +60,9 @@ export default function TopBar() {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
         setConfirmDelete(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
@@ -107,36 +123,98 @@ export default function TopBar() {
         </div>
 
         {/* Global Search */}
-        <div className="flex-1 max-w-md hidden md:block ml-4">
-          <div className="relative group">
-            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl group-focus-within:text-primary transition-colors">search</span>
-            <input 
-              type="text" 
-              placeholder="Search anything..." 
-              className="w-full h-11 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl pl-11 pr-12 text-sm font-medium focus:ring-2 focus:ring-primary/20 dark:text-white transition-all"
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md text-[10px] font-black text-slate-400 dark:text-slate-300">
-              ⌘ K
+        {role === 'admin' && (
+          <div className="flex-1 max-w-md hidden md:block ml-4 mt-2">
+            <div className="relative group">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl group-focus-within:text-primary transition-colors">search</span>
+              <input 
+                type="text" 
+                placeholder="Search anything..." 
+                className="w-full h-11 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl pl-11 pr-12 text-sm font-medium focus:ring-2 focus:ring-primary/20 dark:text-white transition-all"
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md text-[10px] font-black text-slate-400 dark:text-slate-300">
+                ⌘ K
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div className="flex items-center gap-2 md:gap-4">
         {/* Quick Add */}
-        <button className="hidden sm:flex w-10 h-10 rounded-2xl bg-primary text-white items-center justify-center hover:shadow-lg hover:shadow-primary/30 active:scale-95 transition-all" title="Quick Action">
-          <span className="material-symbols-outlined">add</span>
-        </button>
+        {role !== "vendor" && (
+          <button className="hidden sm:flex w-10 h-10 rounded-2xl bg-primary text-white items-center justify-center hover:shadow-lg hover:shadow-primary/30 active:scale-95 transition-all" title="Quick Action">
+            <span className="material-symbols-outlined">add</span>
+          </button>
+        )}
 
         {/* Notifications */}
-        <button className="relative w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-all group" title={unread > 0 ? `Notifications (${unread} unread)` : 'Notifications'}>
-          <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-xl group-hover:rotate-12 transition-transform">notifications</span>
-          {unread > 0 && (
-            <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 border-2 border-white dark:border-slate-800 text-white text-[8px] font-black rounded-full flex items-center justify-center">
-              {unread > 9 ? '9+' : unread}
-            </span>
+        <div ref={notifRef} className="relative">
+          <button 
+            onClick={() => setNotifOpen(o => !o)}
+            className="relative w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 transition-all group" 
+            title={unread > 0 ? `Notifications (${unread} unread)` : 'Notifications'}
+          >
+            <span className="material-symbols-outlined text-slate-600 dark:text-slate-300 text-xl group-hover:rotate-12 transition-transform">notifications</span>
+            {unread > 0 && (
+              <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 border-2 border-white dark:border-slate-800 text-white text-[8px] font-black rounded-full flex items-center justify-center">
+                {unread > 9 ? '9+' : unread}
+              </span>
+            )}
+          </button>
+
+          {notifOpen && (
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl z-50 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
+                <p className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Notifications</p>
+                {unread > 0 && (
+                  <button 
+                    onClick={markAllNotificationsRead} 
+                    className="text-[10px] font-black text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 uppercase tracking-wider transition-colors"
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+              <div className="max-h-80 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800/50 custom-scrollbar">
+                {userNotifications.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <span className="material-symbols-outlined text-3xl text-slate-300 dark:text-slate-600 block mb-1">notifications_none</span>
+                    <p className="text-xs text-slate-450 dark:text-slate-550 font-bold">No notifications</p>
+                  </div>
+                ) : (
+                  userNotifications.slice(0, 20).map(n => (
+                    <div 
+                      key={n.id} 
+                      className={`flex gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${n.read ? 'opacity-60' : ''}`}
+                      onClick={() => {
+                        markNotificationRead(n.id);
+                        if (n.link) { 
+                          router.push(n.link); 
+                        }
+                        setNotifOpen(false);
+                      }}
+                    >
+                      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.read ? 'bg-slate-300 dark:bg-slate-700' : 'bg-blue-500'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{n.title}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 leading-snug">{n.message}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                          {new Date(n.createdAt).toLocaleDateString('en-IN', { 
+                            day: '2-digit', 
+                            month: 'short', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           )}
-        </button>
+        </div>
 
         {/* User Profile */}
         <div ref={menuRef} className="relative flex items-center gap-3 pl-2 md:pl-4 border-l border-slate-200 dark:border-slate-800 h-10 ml-2">

@@ -156,7 +156,7 @@ export default function AdminPayments() {
               const auction = payment.auction;
 
               return (
-                <div key={payment.id} className="p-5 flex items-start justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                <div key={payment.id} className="p-5 flex items-start justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-xs font-black text-slate-400 uppercase tracking-widest">

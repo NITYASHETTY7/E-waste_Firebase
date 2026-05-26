@@ -81,7 +81,7 @@ export default function AdminAuctions() {
         </div>
         <div className="relative w-64">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-          <input className="input-base pl-10 h-11 text-sm" placeholder="Search auctions..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input className="input-base !pl-11 h-11 text-sm" placeholder="Search auctions..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
 
@@ -121,7 +121,7 @@ export default function AdminAuctions() {
               const listingBids = bids.filter(b => b.listingId === listing.id);
 
               return (
-                <div key={listing.id} className="p-5 flex items-start justify-between gap-4 hover:bg-slate-50/50 transition-colors">
+                <div key={listing.id} className="p-5 flex items-start justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
                       <span className="text-xs font-black text-slate-400">{listing.id}</span>

@@ -93,14 +93,16 @@ export default function ClientDocuments() {
         </div>
       </div>
 
-      <div className="flex gap-1 p-1 bg-[color:var(--color-surface-container-low)] rounded-xl w-fit">
+      <div className="flex gap-1 p-1 bg-surface-container-low rounded-xl w-fit border border-outline-variant/10">
         {([
           { key: "kyc", label: `Registration (${totalKyc})`, icon: "badge" },
           { key: "compliance", label: `Compliance (${totalCompliance})`, icon: "verified" },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
-              tab === t.key ? "bg-white shadow-sm text-[color:var(--color-on-surface)]" : "text-[color:var(--color-on-surface-variant)]"
+            className={`flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+              tab === t.key 
+                ? "bg-primary text-white shadow-md scale-[1.02]" 
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/50"
             }`}>
             <span className="material-symbols-outlined text-sm">{t.icon}</span>
             {t.label}

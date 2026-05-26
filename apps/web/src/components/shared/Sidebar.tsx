@@ -90,7 +90,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [notifOpen, setNotifOpen] = useState(false);
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const userNotifications = (notifications || []).filter(n => n.userId === currentUser?.id);
+  const unreadCount = userNotifications.filter(n => !n.read).length;
 
   if (!currentUser) return null;
   const role = currentUser.role;
@@ -156,7 +157,7 @@ export default function Sidebar() {
         {/* Logo */}
         <div className={`py-5 mb-2 border-b border-slate-100 dark:border-slate-900/50 flex items-center ${isSidebarCollapsed ? 'justify-center px-2' : 'px-6 gap-3'}`}>
           <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center p-1 shadow-md border border-slate-200 dark:border-slate-700 shrink-0 dark:bg-slate-900">
-            <img src="/logo%203.png" alt="Logo" className="w-full h-full object-contain" />
+            <img src="/logo%202.svg" alt="Logo" className="w-full h-full object-contain" />
           </div>
           {!isSidebarCollapsed && (
             <div>
@@ -224,12 +225,12 @@ export default function Sidebar() {
                 )}
               </div>
               <div className="max-h-72 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800">
-                {notifications.length === 0 ? (
+                {userNotifications.length === 0 ? (
                   <div className="py-8 text-center">
                     <span className="material-symbols-outlined text-3xl text-slate-300 block mb-1">notifications_none</span>
                     <p className="text-xs text-slate-400 font-bold">No notifications</p>
                   </div>
-                ) : notifications.slice(0, 20).map(n => (
+                ) : userNotifications.slice(0, 20).map(n => (
                   <div key={n.id} className={`flex gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${n.read ? 'opacity-60' : ''}`}
                     onClick={() => {
                       markNotificationRead(n.id);

@@ -501,7 +501,7 @@ export default function AdminLiveObserver() {
                 const color = vendorMap.get(bid.vendorId)?.color ?? "#CBD5E1";
                 const vendorName = bid.vendorName || bid.vendor?.name || "Unknown Vendor";
                 return (
-                  <div key={bid.id} className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs transition-all ${isTop ? "bg-emerald-50 border-l-4 border-emerald-500 border border-emerald-100" : "bg-white border border-slate-100 hover:bg-slate-50"}`}>
+                  <div key={bid.id} className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs transition-all ${isTop ? "bg-emerald-50 border-l-4 border-emerald-500 border border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-800" : "bg-white border border-slate-100 hover:bg-slate-50 dark:bg-slate-950 dark:border-slate-800 dark:hover:bg-slate-800/30"}`}>
                     <div className="flex items-center gap-2.5">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
                       <span className={`font-bold ${isTop ? "text-emerald-700" : "text-slate-800"}`}>{vendorName}</span>

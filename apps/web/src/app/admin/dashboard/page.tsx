@@ -110,17 +110,17 @@ export default function AdminDashboard() {
         </div>
 
         {/* Right column: Activity feed spanning both rows */}
-        <div className="col-span-12 lg:col-span-4">
+        <div className="col-span-12 lg:col-span-4 h-fit lg:sticky lg:top-[96px] z-20">
           <RealTimeActivityFeed />
         </div>
       </div>
 
       {/* ── Row 4: Quick Actions + AI Insights ── */}
       <div className="grid grid-cols-12 gap-5">
-        <div className="col-span-12 lg:col-span-7">
+        <div className="col-span-12 lg:col-span-5">
           <QuickActionsGrid />
         </div>
-        <div className="col-span-12 lg:col-span-5 min-h-[200px]">
+        <div className="col-span-12 lg:col-span-7 min-h-[200px]">
           <AiInsightsCard />
         </div>
       </div>

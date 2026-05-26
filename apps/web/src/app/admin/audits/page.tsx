@@ -280,7 +280,7 @@ export default function AdminAudits() {
                     {group.audits.map((audit: any) => {
                       const isMismatch = audit.report && audit.report.productMatch === false;
                       return (
-                        <div key={audit.id} className={`p-5 flex flex-col md:flex-row items-start justify-between gap-4 hover:bg-slate-50 dark:hover:bg-slate-900/50 ${isMismatch ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}>
+                        <div key={audit.id} className={`p-5 flex flex-col md:flex-row items-start justify-between gap-4 hover:bg-slate-50 dark:hover:bg-slate-800/30 ${isMismatch ? "bg-red-50/50 dark:bg-red-900/10" : ""}`}>
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-2">
                               <p className="font-bold text-base text-slate-900 dark:text-white">{audit.vendor?.name}</p>

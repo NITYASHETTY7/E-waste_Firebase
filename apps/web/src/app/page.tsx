@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
@@ -82,16 +82,34 @@ function DemoBox() {
 function LandingPageContent() {
   const router = useRouter();
   const [isScrolled, setIsScrolled] = useState(false);
+  const [showNavbar, setShowNavbar] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loginDropdownOpen, setLoginDropdownOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const lastScrollY = useRef(0);
 
   useEffect(() => {
     setMounted(true);
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      setIsScrolled(currentScrollY > 20);
+      
+      if (currentScrollY <= 50) {
+        setShowNavbar(true);
+      } else if (currentScrollY > lastScrollY.current) {
+        // Scrolling down -> hide navbar if menus are closed
+        if (!mobileMenuOpen && !loginDropdownOpen) {
+          setShowNavbar(false);
+        }
+      } else {
+        // Scrolling up -> show navbar
+        setShowNavbar(true);
+      }
+      lastScrollY.current = currentScrollY;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [mobileMenuOpen, loginDropdownOpen]);
 
   const scrollTo = (id: string) => {
     setMobileMenuOpen(false);
@@ -112,7 +130,9 @@ function LandingPageContent() {
   return (
     <div className="bg-[#F5F7FA] min-h-screen flex flex-col relative text-[#1A1A2E] dark:bg-slate-950">
       {/* 1. NAVBAR — floating pill */}
-      <div className={`fixed top-0 left-0 w-full z-50 flex justify-center pt-4 px-4 transition-all duration-500 ${isScrolled ? 'pt-2' : 'pt-4'}`}>
+      <div className={`fixed top-0 left-0 w-full z-50 flex justify-center pt-4 px-4 transition-all duration-500 ${isScrolled ? 'pt-2' : 'pt-4'} ${
+        showNavbar ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
+      }`}>
         <nav className={`w-full max-w-6xl flex items-center justify-between px-6 py-2.5 rounded-2xl transition-all duration-500 ${
           isScrolled 
             ? 'bg-white/85 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800/80 shadow-xl' 
@@ -123,23 +143,23 @@ function LandingPageContent() {
             <img
               src={isScrolled ? "/logo%204.png" : "/logo%203.png"}
               alt="We Connect"
-              className="h-[42px] object-contain transition-all duration-300"
+              className="h-[56px] object-contain transition-all duration-300"
             />
           </div>
 
           {/* Desktop Links */}
           <div className="hidden lg:flex items-center gap-8 relative">
-            <button suppressHydrationWarning onClick={() => window.scrollTo(0, 0)} className={`font-bold transition-colors duration-300 text-sm ${isScrolled ? 'text-[#4A5568] hover:text-[#1E8E3E]' : 'text-white/90 hover:text-emerald-400'}`}>Home</button>
-            <button suppressHydrationWarning onClick={() => scrollTo('about')} className={`font-bold transition-colors duration-300 text-sm ${isScrolled ? 'text-[#4A5568] hover:text-[#1E8E3E]' : 'text-white/90 hover:text-emerald-400'}`}>About</button>
-            <button suppressHydrationWarning onClick={() => scrollTo('how-it-works')} className={`font-bold transition-colors duration-300 text-sm ${isScrolled ? 'text-[#4A5568] hover:text-[#1E8E3E]' : 'text-white/90 hover:text-emerald-400'}`}>Process</button>
-            <button suppressHydrationWarning onClick={() => scrollTo('services')} className={`font-bold transition-colors duration-300 text-sm ${isScrolled ? 'text-[#4A5568] hover:text-[#1E8E3E]' : 'text-white/90 hover:text-emerald-400'}`}>Services</button>
+            <button suppressHydrationWarning onClick={() => window.scrollTo(0, 0)} className={`font-bold transition-colors duration-300 text-sm ${isScrolled ? 'text-[#4A5568] dark:text-slate-200 hover:text-[#1E8E3E] dark:hover:text-emerald-400' : 'text-white/90 hover:text-emerald-400'}`}>Home</button>
+            <button suppressHydrationWarning onClick={() => scrollTo('about')} className={`font-bold transition-colors duration-300 text-sm ${isScrolled ? 'text-[#4A5568] dark:text-slate-200 hover:text-[#1E8E3E] dark:hover:text-emerald-400' : 'text-white/90 hover:text-emerald-400'}`}>About</button>
+            <button suppressHydrationWarning onClick={() => scrollTo('how-it-works')} className={`font-bold transition-colors duration-300 text-sm ${isScrolled ? 'text-[#4A5568] dark:text-slate-200 hover:text-[#1E8E3E] dark:hover:text-emerald-400' : 'text-white/90 hover:text-emerald-400'}`}>Process</button>
+            <button suppressHydrationWarning onClick={() => scrollTo('services')} className={`font-bold transition-colors duration-300 text-sm ${isScrolled ? 'text-[#4A5568] dark:text-slate-200 hover:text-[#1E8E3E] dark:hover:text-emerald-400' : 'text-white/90 hover:text-emerald-400'}`}>Services</button>
 
             <div className="relative">
               <button
                 suppressHydrationWarning
                 onClick={() => setLoginDropdownOpen(!loginDropdownOpen)}
                 onBlur={() => setTimeout(() => setLoginDropdownOpen(false), 200)}
-                className={`font-bold transition-colors duration-300 flex items-center gap-1 text-sm ${isScrolled ? 'text-[#4A5568] hover:text-[#1E8E3E]' : 'text-white/90 hover:text-emerald-400'}`}
+                className={`font-bold transition-colors duration-300 flex items-center gap-1 text-sm ${isScrolled ? 'text-[#4A5568] dark:text-slate-200 hover:text-[#1E8E3E] dark:hover:text-emerald-400' : 'text-white/90 hover:text-emerald-400'}`}
               >
                 Login <span className="material-symbols-outlined text-[18px]">expand_more</span>
               </button>
@@ -165,7 +185,7 @@ function LandingPageContent() {
           </div>
 
           {/* Mobile Toggle */}
-          <button suppressHydrationWarning className={`p-2 transition-colors duration-300 lg:hidden ${isScrolled ? 'text-[#1A1A2E]' : 'text-white'}`} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <button suppressHydrationWarning className={`p-2 transition-colors duration-300 lg:hidden ${isScrolled ? 'text-[#1A1A2E] dark:text-slate-200' : 'text-white'}`} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             <span className="material-symbols-outlined text-[28px]">{mobileMenuOpen ? 'close' : 'menu'}</span>
           </button>
         </nav>
@@ -596,9 +616,9 @@ function LandingPageContent() {
               </div>
             </div>
             
-            <div className="lg:w-1/3 bg-emerald-600 p-12 lg:p-20 flex flex-col justify-center text-center">
+            <div className="lg:w-[38%] bg-emerald-600 p-12 lg:px-8 lg:py-16 flex flex-col justify-center text-center">
               <span className="material-symbols-outlined text-white text-[80px] mb-8 opacity-20">recycling</span>
-              <h4 className="text-2xl font-black text-white mb-6">"Where Waste Becomes Value"</h4>
+              <h4 className="text-2xl font-black text-white mb-6 whitespace-nowrap">"Where Waste Becomes Value"</h4>
               <p className="text-emerald-100 font-medium leading-relaxed mb-10">Join India's most advanced e-waste platform and start your journey towards responsible disposal.</p>
               <button onClick={() => router.push('/get-started')} className="w-full bg-white text-emerald-600 font-black text-xs uppercase tracking-widest py-5 rounded-2xl shadow-xl hover:bg-slate-50 transition-all">
                 Get Started Now

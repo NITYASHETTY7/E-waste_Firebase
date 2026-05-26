@@ -183,7 +183,7 @@ function ClientLoginPageContent() {
 
           {/* Branding */}
           <div className="flex justify-center mb-10 cursor-pointer" onClick={() => router.push('/')}>
-            <img src="/logo%203.png" alt="We Connect" className="h-10 object-contain" />
+            <img src="/logo%203.png" alt="We Connect" className="h-14 object-contain" />
           </div>
 
           {/* OTP Verification Step */}

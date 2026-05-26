@@ -234,7 +234,10 @@ export class AuctionsService {
   async findAllBids(auctionId?: string) {
     return this.prisma.bid.findMany({
       where: auctionId ? { auctionId } : {},
-      include: { vendor: { select: { id: true, name: true } } },
+      include: {
+        vendor: { select: { id: true, name: true, companyId: true } },
+        auction: { select: { id: true, status: true, winnerId: true, requirementId: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

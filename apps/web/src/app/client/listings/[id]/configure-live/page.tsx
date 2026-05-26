@@ -155,7 +155,7 @@ export default function ConfigureLiveAuction() {
                     value={form.basePrice}
                     onChange={e => setForm(f => ({ ...f, basePrice: e.target.value }))}
                     placeholder="e.g. 50000"
-                    className={`input-base pl-7 ${errors.basePrice ? 'border-red-400' : ''}`}
+                    className={`input-base !pl-7 ${errors.basePrice ? 'border-red-400' : ''}`}
                   />
                 </div>
                 {errors.basePrice && <p className="text-red-500 text-xs mt-1">{errors.basePrice}</p>}
@@ -173,7 +173,7 @@ export default function ConfigureLiveAuction() {
                     value={form.targetPrice}
                     onChange={e => setForm(f => ({ ...f, targetPrice: e.target.value }))}
                     placeholder="e.g. 75000"
-                    className="input-base pl-7"
+                    className="input-base !pl-7"
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1">Your internal target — not shown to vendors</p>

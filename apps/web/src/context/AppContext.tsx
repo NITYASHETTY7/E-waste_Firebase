@@ -700,7 +700,47 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ]);
 
       const backendListings = (requirementsRes.data || []).map(mapRequirementToListing);
-      const backendBids = bidsRes.data || [];
+      
+      const backendBidsRaw = bidsRes.data || [];
+      const bidsByAuction: Record<string, any[]> = {};
+      const backendBids = backendBidsRaw.map((b: any) => {
+        return {
+          ...b,
+          status: 'pending',
+          listingId: b.auction?.requirementId || b.auctionId,
+        };
+      });
+
+      backendBids.forEach((b: any) => {
+        if (!bidsByAuction[b.auctionId]) {
+          bidsByAuction[b.auctionId] = [];
+        }
+        bidsByAuction[b.auctionId].push(b);
+      });
+
+      Object.keys(bidsByAuction).forEach(auctionId => {
+        const auctionBids = bidsByAuction[auctionId];
+        // Sort bids descending by amount
+        auctionBids.sort((x, y) => y.amount - x.amount);
+        const highestBid = auctionBids[0];
+        
+        if (highestBid && highestBid.auction?.status === 'COMPLETED') {
+          const winnerId = highestBid.auction.winnerId;
+          const winnerCompanyId = highestBid.vendor?.companyId;
+          if (winnerId && winnerCompanyId === winnerId) {
+            highestBid.status = 'accepted';
+            // Mark other bids for this auction as rejected
+            auctionBids.slice(1).forEach(otherBid => {
+              otherBid.status = 'rejected';
+            });
+          } else {
+            auctionBids.forEach(bid => {
+              bid.status = 'rejected';
+            });
+          }
+        }
+      });
+
       const backendUsers = (usersRes.data || []).map(mapBackendUser);
 
       // Map backend audit invitations to frontend shape

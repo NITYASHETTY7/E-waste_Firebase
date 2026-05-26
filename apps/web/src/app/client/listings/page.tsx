@@ -124,11 +124,13 @@ export default function ClientListings() {
         </Link>
       </div>
 
-      <div className="flex gap-1 p-1 bg-[color:var(--color-surface-container-low)] rounded-xl w-fit flex-wrap">
+      <div className="flex gap-1 p-1 bg-surface-container-low rounded-xl w-fit flex-wrap border border-outline-variant/10">
         {(["all", "review", "invites", "sealed", "live", "ended"] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`relative px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${
-              filter === f ? "bg-white text-[color:var(--color-on-surface)] shadow-sm" : "text-[color:var(--color-on-surface-variant)]"
+            className={`relative px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-1.5 ${
+              filter === f 
+                ? "bg-primary text-white shadow-md scale-[1.02]" 
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/50"
             }`}>
             {f === "review" && reviewListings.length > 0 && (
               <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
@@ -406,7 +408,7 @@ export default function ClientListings() {
                   placeholder="e.g. 50000"
                   value={targetPrice}
                   onChange={e => setTargetPrice(e.target.value)}
-                  className="input-base pl-8"
+                  className="input-base !pl-8"
                   autoFocus
                 />
               </div>

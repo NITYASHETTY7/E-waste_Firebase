@@ -163,7 +163,7 @@ export function BusinessOverviewChart() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-4 gap-4 pt-4 mt-4 border-t border-slate-100 dark:border-slate-800">
         {activeSet.stats.map(stat => (
           <div key={stat.label}>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 truncate">{stat.label}</p>

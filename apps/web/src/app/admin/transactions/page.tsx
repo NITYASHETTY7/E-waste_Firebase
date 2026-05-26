@@ -89,11 +89,13 @@ export default function AdminTransactions() {
 
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
-        <div className="flex gap-1 p-1 bg-[color:var(--color-surface-container-low)] rounded-xl">
+        <div className="flex gap-1 p-1 bg-surface-container-low rounded-xl border border-outline-variant/10">
           {(["all", "pending", "accepted", "rejected"] as const).map(f => (
             <button key={f} onClick={() => setStatusFilter(f)}
-              className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
-                statusFilter === f ? "bg-white shadow-sm text-[color:var(--color-on-surface)]" : "text-[color:var(--color-on-surface-variant)]"
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${
+                statusFilter === f 
+                  ? "bg-primary text-white shadow-md scale-[1.02]" 
+                  : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/50"
               }`}>
               {f} ({f === "all" ? bids.length : bids.filter(b => b.status === f).length})
             </button>
@@ -101,7 +103,7 @@ export default function AdminTransactions() {
         </div>
         <div className="relative">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-          <input placeholder="Search vendor or listing..." className="input-base pl-10 h-10 text-sm w-72"
+          <input placeholder="Search vendor or listing..." className="input-base !pl-11 h-10 text-sm w-72"
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
@@ -120,7 +122,7 @@ export default function AdminTransactions() {
             {filtered.map(bid => {
               const listing = listings.find(l => l.id === bid.listingId);
               return (
-                <tr key={bid.id} className="hover:bg-slate-50 transition-colors">
+                <tr key={bid.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="font-mono text-xs text-[color:var(--color-primary)] font-bold">#{bid.id.slice(0, 6)}</td>
                   <td>
                     <p className="font-bold text-sm text-[color:var(--color-on-surface)] max-w-[160px] truncate">{listing?.title || "Unknown"}</p>

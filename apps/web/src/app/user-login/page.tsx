@@ -152,7 +152,7 @@ function UserLoginPageContent() {
             <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
 
             <div className="flex justify-center mb-8 cursor-pointer" onClick={() => router.push('/')}>
-              <img src="/logo%203.png" alt="WeConnect" className="h-10 object-contain" />
+              <img src="/logo%203.png" alt="WeConnect" className="h-14 object-contain" />
             </div>
 
             {/* Registration complete — pending admin approval */}

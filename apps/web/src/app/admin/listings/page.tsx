@@ -159,7 +159,7 @@ export default function AdminListings() {
         </div>
         <div className="relative w-64">
           <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-          <input placeholder="Search listings..." className="input-base pl-10 h-11 text-sm text-slate-900 dark:text-white placeholder:text-slate-400"
+          <input placeholder="Search listings..." className="input-base !pl-11 h-11 text-sm text-slate-900 dark:text-white placeholder:text-slate-400"
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       </div>
@@ -186,11 +186,13 @@ export default function AdminListings() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 p-1 bg-[color:var(--color-surface-container-low)] rounded-xl w-fit">
+      <div className="flex gap-1 p-1 bg-surface-container-low rounded-xl w-fit border border-outline-variant/10">
         {(["all", "pending", "review", "active", "rejected"] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${
-              filter === f ? "bg-white shadow-sm text-[color:var(--color-on-surface)]" : "text-[color:var(--color-on-surface-variant)]"
+            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-1.5 ${
+              filter === f 
+                ? "bg-primary text-white shadow-md scale-[1.02]" 
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/50"
             }`}>
             {f === "pending" && counts.pending > 0 && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
             {f} {f !== "all" && `(${counts[f] ?? listings.length})`}

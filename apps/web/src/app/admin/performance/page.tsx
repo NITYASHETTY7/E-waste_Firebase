@@ -101,7 +101,7 @@ export default function AdminPerformance() {
             {clients.filter(c => c.status === "active").map(client => {
               const s = getClientStats(client.id);
               return (
-                <div key={client.id} className="p-4 grid grid-cols-5 gap-4 items-center hover:bg-slate-50/50">
+                <div key={client.id} className="p-4 grid grid-cols-5 gap-4 items-center hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                   <div>
                     <p className="font-bold text-sm text-slate-900 dark:text-white">{client.name}</p>
                     <p className="text-xs text-slate-400">{client.email}</p>

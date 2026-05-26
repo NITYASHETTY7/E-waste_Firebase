@@ -243,6 +243,8 @@ export interface Bid {
   imageFileNames?: string[];
   clientStatus?: 'pending' | 'approved' | 'rejected';
   clientRemarks?: string;
+  auctionId?: string;
+  vendor?: { id: string; name: string; email?: string };
 }
 
 export interface Notification {

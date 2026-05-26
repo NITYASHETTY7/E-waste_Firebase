@@ -98,9 +98,8 @@ export default function GetStartedPage() {
           </div>
 
           <div className="relative z-10">
-            <div className="mb-20 flex items-center gap-3 cursor-pointer" onClick={() => router.push('/')}>
-              <img src="/logo%203.png" alt="We Connect" className="h-[40px] object-contain" />
-              <span className="text-xl font-black tracking-tighter uppercase">We Connect</span>
+            <div className="mb-20 flex justify-center items-center cursor-pointer" onClick={() => router.push('/')}>
+              <img src="/logo%203.png" alt="We Connect" className="h-[54px] object-contain" />
             </div>
 
             <div className="space-y-4 mb-12">
@@ -189,21 +188,21 @@ export default function GetStartedPage() {
               <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => setRole("client")}
-                  className={`p-4 rounded-2xl flex items-center justify-center gap-3 border-2 transition-all ${role === 'client' ? 'border-[#065F46] bg-emerald-50/50 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'}`}
+                  className={`p-4 rounded-2xl flex items-center justify-center gap-3 border-2 transition-all ${role === 'client' ? 'border-[#065F46] bg-emerald-50/50 dark:border-emerald-500/80 dark:bg-emerald-950/70 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'}`}
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${role === 'client' ? 'bg-[#065F46] text-white' : 'bg-slate-50 text-slate-400'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${role === 'client' ? 'bg-[#065F46] text-white dark:bg-emerald-500 dark:text-slate-950' : 'bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-600'}`}>
                     <span className="material-symbols-outlined text-[18px]">delete_sweep</span>
                   </div>
-                  <span className={`text-xs font-black uppercase tracking-widest ${role === 'client' ? 'text-[#065F46]' : 'text-slate-400'}`}>Waste Generator</span>
+                  <span className={`text-xs font-black uppercase tracking-widest ${role === 'client' ? 'text-[#065F46] dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>Waste Generator</span>
                 </button>
                 <button
                   onClick={() => setRole("vendor")}
-                  className={`p-4 rounded-2xl flex items-center justify-center gap-3 border-2 transition-all ${role === 'vendor' ? 'border-[#065F46] bg-emerald-50/50 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200'}`}
+                  className={`p-4 rounded-2xl flex items-center justify-center gap-3 border-2 transition-all ${role === 'vendor' ? 'border-[#065F46] bg-emerald-50/50 dark:border-emerald-500/80 dark:bg-emerald-950/70 shadow-sm' : 'border-slate-100 bg-white hover:border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'}`}
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${role === 'vendor' ? 'bg-[#065F46] text-white' : 'bg-slate-50 text-slate-400'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${role === 'vendor' ? 'bg-[#065F46] text-white dark:bg-emerald-500 dark:text-slate-950' : 'bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-600'}`}>
                     <span className="material-symbols-outlined text-[18px]">recycling</span>
                   </div>
-                  <span className={`text-xs font-black uppercase tracking-widest ${role === 'vendor' ? 'text-[#065F46]' : 'text-slate-400'}`}>Vendor</span>
+                  <span className={`text-xs font-black uppercase tracking-widest ${role === 'vendor' ? 'text-[#065F46] dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>Vendor</span>
                 </button>
               </div>
             </div>
@@ -226,18 +225,18 @@ export default function GetStartedPage() {
                       <button
                         type="button"
                         onClick={() => setClientType("corporate")}
-                        className={`p-4 rounded-2xl flex flex-col items-start gap-2 border-2 transition-all ${clientType === 'corporate' ? 'border-[#065F46] bg-emerald-50/30' : 'border-slate-100 bg-white hover:border-slate-200'}`}
+                        className={`p-4 rounded-2xl flex flex-col items-start gap-2 border-2 transition-all ${clientType === 'corporate' ? 'border-[#065F46] bg-emerald-50/30 dark:border-emerald-500/80 dark:bg-emerald-950/70' : 'border-slate-100 bg-white hover:border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'}`}
                       >
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${clientType === 'corporate' ? 'text-[#065F46]' : 'text-slate-400'}`}>Corporate</span>
-                        <p className="text-[9px] font-medium text-slate-400 leading-tight text-left">For companies & large industries</p>
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${clientType === 'corporate' ? 'text-[#065F46] dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>Corporate</span>
+                        <p className="text-[9px] font-medium text-slate-400 leading-tight text-left dark:text-slate-500">For companies & large industries</p>
                       </button>
                       <button
                         type="button"
                         onClick={() => setClientType("individual")}
-                        className={`p-4 rounded-2xl flex flex-col items-start gap-2 border-2 transition-all ${clientType === 'individual' ? 'border-[#065F46] bg-emerald-50/30' : 'border-slate-100 bg-white hover:border-slate-200'}`}
+                        className={`p-4 rounded-2xl flex flex-col items-start gap-2 border-2 transition-all ${clientType === 'individual' ? 'border-[#065F46] bg-emerald-50/30 dark:border-emerald-500/80 dark:bg-emerald-950/70' : 'border-slate-100 bg-white hover:border-slate-200 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700'}`}
                       >
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${clientType === 'individual' ? 'text-[#065F46]' : 'text-slate-400'}`}>Individual</span>
-                        <p className="text-[9px] font-medium text-slate-400 leading-tight text-left">For home users & households</p>
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${clientType === 'individual' ? 'text-[#065F46] dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'}`}>Individual</span>
+                        <p className="text-[9px] font-medium text-slate-400 leading-tight text-left dark:text-slate-500">For home users & households</p>
                       </button>
                     </div>
                   </div>

@@ -105,11 +105,12 @@ export function EWasteCategoryChart() {
                   ))}
                 </Pie>
                 <Tooltip 
+                  wrapperStyle={{ opacity: 1, zIndex: 9999 }}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
                       return (
-                        <div className="bg-slate-900 border border-slate-700/50 p-2.5 rounded-xl shadow-xl flex items-center gap-2">
+                        <div className="bg-slate-900 border border-slate-700/50 p-2.5 rounded-xl shadow-xl flex items-center gap-2 opacity-100 bg-opacity-100">
                           <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: data.color }} />
                           <span className="text-xs font-bold text-white">{data.name}:</span>
                           <span className="text-xs font-black text-emerald-400">{payload[0].value}%</span>

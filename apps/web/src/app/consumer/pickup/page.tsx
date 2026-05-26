@@ -77,10 +77,9 @@ export default function ConsumerPickup() {
         <div className="max-w-3xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push("/")}>
             <img 
-              src="/logo%202.png" 
+              src="/logo%202.svg" 
               alt="We Connect" 
               className="h-10 w-auto object-contain"
-              style={{ mixBlendMode: 'multiply' }}
             />
           </div>
           <button onClick={() => router.push("/")} className="text-xs font-bold text-slate-500 hover:text-slate-900">Cancel</button>

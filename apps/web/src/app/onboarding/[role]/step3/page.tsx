@@ -130,7 +130,7 @@ export default function OnboardingStep3() {
             <div className="relative">
               <input
                 type={showAccount ? "text" : "password"}
-                className={`input-base font-mono pr-12 ${errors.accountNumber ? "ring-2 ring-red-400" : ""}`}
+                className={`input-base font-mono !pr-12 ${errors.accountNumber ? "ring-2 ring-red-400" : ""}`}
                 value={form.accountNumber} onChange={e => set("accountNumber", e.target.value.replace(/\D/g, ""))}
                 placeholder="Enter account number"
               />

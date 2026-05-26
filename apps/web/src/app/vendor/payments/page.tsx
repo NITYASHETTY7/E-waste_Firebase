@@ -20,6 +20,27 @@ const WECONNECT_BANK = {
   ifsc:    "ICIC0000014",
 };
 
+const DOC_TYPE_LABELS: Record<string, string> = {
+  PURCHASE_ORDER: "Purchase Order",
+  WORK_ORDER: "Work Order",
+  AGREEMENT: "Agreement Copy",
+  FINAL_QUOTE: "Final Quote",
+  LETTERHEAD_QUOTATION: "Letterhead Quotation",
+  INVOICE: "Tax Invoice (GST)",
+  PAYMENT_PROOF: "Payment Proof Receipt",
+  FORM_6: "Form 6 / Manifest",
+  RECYCLING_CERTIFICATE: "Recycling Certificate",
+  DISPOSAL_CERTIFICATE: "DisPOSAL Certificate",
+  EWASTE_RECYCLING_CERTIFICATE: "E-Waste Recycling Certificate",
+  DATA_DESTRUCTION_CERTIFICATE: "Data Destruction Certificate",
+  EWAY_BILL: "E-Way Bill",
+  DELIVERY_CHALLAN: "Delivery Challan",
+  WEIGHT_SLIP_EMPTY: "Weight Slip (Empty)",
+  WEIGHT_SLIP_LOADED: "Weight Slip (Loaded)",
+  MATERIAL_ACKNOWLEDGEMENT: "Material Acknowledgement",
+  ASSET_HANDOVER_FORM: "Asset Handover Form",
+};
+
 export default function VendorPayments() {
   const { currentUser } = useApp();
   const [auctions, setAuctions] = useState<any[]>([]);
@@ -30,10 +51,24 @@ export default function VendorPayments() {
   const [logistics, setLogistics] = useState({ vehicleNumber: "", driverName: "", preferredDate: "" });
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const openDocUrl = async (doc: any) => {
+    if (doc.signedUrl) {
+      window.open(doc.signedUrl, "_blank");
+      return;
+    }
+    if (!doc.s3Key) return;
+    try {
+      const res = await api.get(`/companies/signed-url?s3Key=${encodeURIComponent(doc.s3Key)}&s3Bucket=${encodeURIComponent(doc.s3Bucket)}`);
+      const url = res.data?.url || res.data?.signedUrl || res.data;
+      if (typeof url === "string") window.open(url, "_blank");
+    } catch { showToast("Download failed", "error"); }
   };
 
   const fetchAuctions = useCallback(async () => {
@@ -43,13 +78,15 @@ export default function VendorPayments() {
       const won = (res.data ?? []).filter((a: any) => a.winnerId === currentUser.companyId);
       const enriched = await Promise.all(won.map(async (a: any) => {
         try {
-          const [postRes, payRes] = await Promise.allSettled([
+          const [postRes, payRes, pickupRes] = await Promise.allSettled([
             api.get(`/auctions/${a.id}/post-auction`),
             api.get(`/payments/auction/${a.id}`),
+            api.get(`/pickups/by-auction/${a.id}`),
           ]);
           return {
             ...(postRes.status === "fulfilled" ? postRes.value.data : a),
             payment: payRes.status === "fulfilled" ? payRes.value.data : a.payment,
+            pickup: pickupRes.status === "fulfilled" ? pickupRes.value.data : null,
           };
         } catch {
           return a;
@@ -122,111 +159,200 @@ export default function VendorPayments() {
         <div className="space-y-5">
           {auctions.map(auction => {
             const payment = auction.payment;
+            const pickup = auction.pickup;
             const topBid = auction.bids?.[0];
             const winningAmount = payment?.clientAmount ?? topBid?.amount ?? auction.basePrice ?? 0;
             const commission = payment?.commissionAmount ?? Math.round(winningAmount * 0.05);
             const total = winningAmount + commission;
             const status = payment?.status ?? "PENDING";
             const meta = PAYMENT_STATUS[status] ?? PAYMENT_STATUS.PENDING;
+            const isExpanded = expandedId === auction.id;
+
+            // Gather all associated documents
+            const docs: any[] = [];
+            if (auction.auctionDocs) {
+              auction.auctionDocs.forEach((d: any) => {
+                if (["PURCHASE_ORDER", "WORK_ORDER", "AGREEMENT", "FINAL_QUOTE", "LETTERHEAD_QUOTATION"].includes(d.type)) {
+                  docs.push({ ...d, source: "auction" });
+                }
+              });
+            }
+            if (pickup) {
+              if (pickup.auctionDocs) {
+                pickup.auctionDocs.forEach((d: any) => {
+                  if (!docs.some(existing => existing.s3Key === d.s3Key)) {
+                    docs.push({ ...d, source: "pickup" });
+                  }
+                });
+              }
+              if (pickup.pickupDocs) {
+                pickup.pickupDocs.forEach((d: any) => {
+                  docs.push({ ...d, source: "pickup" });
+                });
+              }
+            }
+            if (payment) {
+              if (payment.proofS3Key) {
+                docs.push({
+                  id: payment.id,
+                  fileName: `Payment_Proof_${payment.id.slice(0, 8)}.pdf`,
+                  type: "PAYMENT_PROOF",
+                  s3Key: payment.proofS3Key,
+                  s3Bucket: payment.proofS3Bucket,
+                  source: "payment"
+                });
+              } else if (payment.paymentProofUrl) {
+                docs.push({
+                  id: payment.id,
+                  fileName: `Payment_Proof_${payment.id.slice(0, 8)}.pdf`,
+                  type: "PAYMENT_PROOF",
+                  signedUrl: payment.paymentProofUrl,
+                  source: "payment"
+                });
+              }
+            }
 
             return (
-              <div key={auction.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                {/* Header */}
-                <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                  <div>
-                    <p className="font-black text-slate-900 dark:text-white">{auction.title}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{auction.id.substring(0, 12)} · {auction.category} · Client: {auction.client?.name}</p>
+              <div key={auction.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md">
+                {/* Header (Interactive Trigger) */}
+                <div 
+                  onClick={() => setExpandedId(isExpanded ? null : auction.id)}
+                  className="flex items-center justify-between px-6 py-5 cursor-pointer select-none hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors"
+                >
+                  <div className="min-w-0 flex-1 pr-4">
+                    <p className="font-headline font-bold text-lg text-slate-900 dark:text-white truncate">{auction.title}</p>
+                    <p className="text-xs text-slate-500 mt-1 flex flex-wrap gap-2 items-center">
+                      <span>{auction.category}</span>
+                      <span className="text-slate-300 dark:text-slate-700">•</span>
+                      <span>Client: {auction.client?.name || "Unknown"}</span>
+                      <span className="text-slate-300 dark:text-slate-700">•</span>
+                      <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-400">ID: {auction.id.substring(0, 8)}</span>
+                    </p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase shrink-0 ${meta.color}`}>{meta.label}</span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase shrink-0 ${meta.color}`}>{meta.label}</span>
+                    <span className={`material-symbols-outlined text-slate-400 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}>
+                      expand_more
+                    </span>
+                  </div>
                 </div>
 
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Payment breakdown */}
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Payment Breakdown</p>
-                    <div className="space-y-2">
-                      {[
-                        { label: "Amount to Client (Full Bid)", value: winningAmount, color: "text-emerald-700 font-black" },
-                        { label: "Platform Commission (5%)", value: commission, color: "text-blue-700 font-bold" },
-                        { label: "Total You Pay", value: total, color: "text-slate-900 dark:text-white font-black" },
-                      ].map(row => (
-                        <div key={row.label} className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                          <span className="text-sm text-slate-600 dark:text-slate-400">{row.label}</span>
-                          <span className={`text-sm ${row.color}`}>{row.prefix ?? ""}{fmtINR(row.value)}</span>
+                {/* Collapsible Content */}
+                {isExpanded && (
+                  <div className="border-t border-slate-100 dark:border-slate-800 animate-fade-in">
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Payment breakdown */}
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Payment Breakdown</p>
+                        <div className="space-y-2">
+                          {[
+                            { label: "Amount to Client (Full Bid)", value: winningAmount, color: "text-emerald-700 font-black" },
+                            { label: "Platform Commission (5%)", value: commission, color: "text-blue-700 font-bold" },
+                            { label: "Total You Pay", value: total, color: "text-slate-900 dark:text-white font-black" },
+                          ].map(row => (
+                            <div key={row.label} className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                              <span className="text-sm text-slate-600 dark:text-slate-400">{row.label}</span>
+                              <span className={`text-sm ${row.color}`}>{fmtINR(row.value)}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                      </div>
 
-                  {/* Bank accounts */}
-                  <div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Transfer To</p>
-                    <div className="space-y-2">
-                      {/* Client */}
-                      <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
-                        <p className="text-[9px] font-black text-emerald-700 uppercase mb-2">Client Account (Main Amount)</p>
-                        {auction.client?.bankDetails ? (
-                          <div className="space-y-0.5 text-xs text-slate-700 dark:text-slate-300">
-                            <p><span className="font-bold">Name:</span> {auction.client.bankDetails.accountHolderName}</p>
-                            <p><span className="font-bold">Bank:</span> {auction.client.bankDetails.bankName}</p>
-                            <p><span className="font-bold">A/C:</span> {auction.client.bankDetails.accountNumber}</p>
-                            <p><span className="font-bold">IFSC:</span> {auction.client.bankDetails.ifscCode}</p>
+                      {/* Bank accounts */}
+                      <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Transfer To</p>
+                        <div className="space-y-2">
+                          {/* Client */}
+                          <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
+                            <p className="text-[9px] font-black text-emerald-700 uppercase mb-2">Client Account (Main Amount)</p>
+                            {auction.client?.bankDetails ? (
+                              <div className="space-y-0.5 text-xs text-slate-700 dark:text-slate-300">
+                                <p><span className="font-bold">Name:</span> {auction.client.bankDetails.accountHolderName}</p>
+                                <p><span className="font-bold">Bank:</span> {auction.client.bankDetails.bankName}</p>
+                                <p><span className="font-bold">A/C:</span> {auction.client.bankDetails.accountNumber}</p>
+                                <p><span className="font-bold">IFSC:</span> {auction.client.bankDetails.ifscCode}</p>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-slate-400 italic">Bank details not on file — contact admin</p>
+                            )}
+                            <p className="text-xs font-black text-emerald-700 mt-2 pt-2 border-t border-emerald-100">{fmtINR(winningAmount)}</p>
                           </div>
-                        ) : (
-                          <p className="text-xs text-slate-400 italic">Bank details not on file — contact admin</p>
-                        )}
-                        <p className="text-xs font-black text-emerald-700 mt-2 pt-2 border-t border-emerald-100">{fmtINR(winningAmount)}</p>
-                      </div>
-                      {/* Platform */}
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30">
-                        <p className="text-[9px] font-black text-blue-700 uppercase mb-2">WeConnect (Commission)</p>
-                        <div className="space-y-0.5 text-xs text-slate-700 dark:text-slate-300">
-                          <p><span className="font-bold">Name:</span> {WECONNECT_BANK.name}</p>
-                          <p><span className="font-bold">Bank:</span> {WECONNECT_BANK.bank}</p>
-                          <p><span className="font-bold">A/C:</span> {WECONNECT_BANK.account}</p>
-                          <p><span className="font-bold">IFSC:</span> {WECONNECT_BANK.ifsc}</p>
+                          {/* Platform */}
+                          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30">
+                            <p className="text-[9px] font-black text-blue-700 uppercase mb-2">WeConnect (Commission)</p>
+                            <div className="space-y-0.5 text-xs text-slate-700 dark:text-slate-300">
+                              <p><span className="font-bold">Name:</span> {WECONNECT_BANK.name}</p>
+                              <p><span className="font-bold">Bank:</span> {WECONNECT_BANK.bank}</p>
+                              <p><span className="font-bold">A/C:</span> {WECONNECT_BANK.account}</p>
+                              <p><span className="font-bold">IFSC:</span> {WECONNECT_BANK.ifsc}</p>
+                            </div>
+                            <p className="text-xs font-black text-blue-700 mt-2 pt-2 border-t border-blue-100">{fmtINR(commission)}</p>
+                          </div>
                         </div>
-                        <p className="text-xs font-black text-blue-700 mt-2 pt-2 border-t border-blue-100">{fmtINR(commission)}</p>
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Proof submitted info */}
-                {payment?.utrNumber && (
-                  <div className="px-6 pb-4">
-                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30 flex items-center gap-3">
-                      <span className="material-symbols-outlined text-blue-600">receipt_long</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-blue-700 dark:text-blue-400">Proof Submitted</p>
-                        <p className="text-xs text-slate-500">UTR: {payment.utrNumber}</p>
-                      </div>
-                      {status === "CONFIRMED" && (
-                        <span className="material-symbols-outlined text-emerald-600 text-xl">verified</span>
+                    {/* Associated Documents */}
+                    <div className="px-6 py-5 border-t border-slate-100 dark:border-slate-800">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Associated Documents</p>
+                      {docs.length === 0 ? (
+                        <div className="p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
+                          <p className="text-xs text-slate-400 italic">No documents available yet for this transaction.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {docs.map((doc, idx) => (
+                            <button key={idx} onClick={() => openDocUrl(doc)}
+                              className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-left group">
+                              <span className="material-symbols-outlined text-purple-600 text-base">description</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-primary transition-colors">{doc.fileName}</p>
+                                <p className="text-[9px] text-slate-400 uppercase">{DOC_TYPE_LABELS[doc.type] ?? doc.type.replace(/_/g, " ")}</p>
+                              </div>
+                              <span className="material-symbols-outlined text-slate-400 text-sm">download</span>
+                            </button>
+                          ))}
+                        </div>
                       )}
                     </div>
+
+                    {/* Proof submitted info */}
+                    {payment?.utrNumber && (
+                      <div className="px-6 pb-4">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800/30 flex items-center gap-3">
+                          <span className="material-symbols-outlined text-blue-600">receipt_long</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-blue-700 dark:text-blue-400">Proof Submitted</p>
+                            <p className="text-xs text-slate-500">UTR: {payment.utrNumber}</p>
+                          </div>
+                          {status === "CONFIRMED" && (
+                            <span className="material-symbols-outlined text-emerald-600 text-xl">verified</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action */}
+                    {status === "PENDING" || status === "REJECTED" ? (
+                      <div className="px-6 pb-5">
+                        {status === "REJECTED" && (
+                          <p className="text-xs text-red-600 mb-2 font-bold">Payment proof was rejected. Please re-upload with the correct details.</p>
+                        )}
+                        <button
+                          onClick={() => setModal({ auctionId: auction.id, pickupId: auction.pickup?.id ?? null, title: auction.title })}
+                          className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-black flex items-center gap-2"
+                        >
+                          <span className="material-symbols-outlined text-base">upload_file</span>
+                          Upload Payment Proof
+                        </button>
+                      </div>
+                    ) : status === "SUBMITTED" ? (
+                      <div className="px-6 pb-5">
+                        <span className="text-xs text-blue-700 font-bold bg-blue-50 px-4 py-2 rounded-xl inline-block">Under Review by Admin</span>
+                      </div>
+                    ) : null}
                   </div>
                 )}
-
-                {/* Action */}
-                {status === "PENDING" || status === "REJECTED" ? (
-                  <div className="px-6 pb-5">
-                    {status === "REJECTED" && (
-                      <p className="text-xs text-red-600 mb-2 font-bold">Payment proof was rejected. Please re-upload with the correct details.</p>
-                    )}
-                    <button
-                      onClick={() => setModal({ auctionId: auction.id, pickupId: auction.pickup?.id ?? null, title: auction.title })}
-                      className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-black flex items-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-base">upload_file</span>
-                      Upload Payment Proof
-                    </button>
-                  </div>
-                ) : status === "SUBMITTED" ? (
-                  <div className="px-6 pb-5">
-                    <span className="text-xs text-blue-700 font-bold bg-blue-50 px-4 py-2 rounded-xl inline-block">Under Review by Admin</span>
-                  </div>
-                ) : null}
               </div>
             );
           })}
