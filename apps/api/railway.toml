@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm install && npx prisma generate --schema=apps/api/prisma/schema && npm run build --workspace=api"
+buildCommand = "npm install && npx prisma generate --schema=apps/api/prisma/schema && npm run build -w api"
 [deploy]
 startCommand = "npx prisma migrate deploy --schema=apps/api/prisma/schema && node apps/api/dist/main"
 restartPolicyType = "ON_FAILURE"
