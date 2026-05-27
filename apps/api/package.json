@@ -5,10 +5,13 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "workspaces": [
+    "."
+  ],
   "scripts": {
     "build": "prisma generate && node ./node_modules/@nestjs/cli/bin/nest.js build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "node ./node_modules/@nestjs/cli/bin/nest.js start",
+    "start": "npx prisma migrate deploy && node dist/main",
     "start:dev": "node --max-old-space-size=4096 ./node_modules/@nestjs/cli/bin/nest.js start --watch",
     "start:dev:monorepo": "set PRISMA_CLIENT_ENGINE_TYPE=library && node --max-old-space-size=4096 ./node_modules/@nestjs/cli/bin/nest.js start --watch",
     "start:debug": "set PRISMA_CLIENT_ENGINE_TYPE=library && node --max-old-space-size=4096 ./node_modules/@nestjs/cli/bin/nest.js start --debug --watch",
