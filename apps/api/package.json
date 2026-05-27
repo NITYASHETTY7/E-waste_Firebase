@@ -104,6 +104,9 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "prisma": {
     "schema": "prisma/schema",
     "seed": "ts-node -r tsconfig-paths/register prisma/seed.ts"
