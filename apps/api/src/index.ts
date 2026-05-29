@@ -13,8 +13,12 @@ export const createNextServer = async (expressInstance: express.Express) => {
   );
 
   app.setGlobalPrefix('api');
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : true;
+
   app.enableCors({
-    origin: true,
+    origin: allowedOrigins,
     credentials: true,
   });
 

@@ -11,9 +11,13 @@ async function bootstrap() {
   // Prefix all routes with /api
   app.setGlobalPrefix('api');
 
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : true; // Fallback to allowing all origins if not specified
+
   // Enable CORS for frontend applications
   app.enableCors({
-    origin: true,
+    origin: allowedOrigins,
     credentials: true,
   });
 
