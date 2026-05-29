@@ -22,5 +22,5 @@ RUN npx prisma generate && node ./node_modules/@nestjs/cli/bin/nest.js build
 # Expose API port
 EXPOSE 4000
 
-# Run DB migrations then start
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+# Run node directly to bypass Prisma migrate deploy hang
+CMD ["sh", "-c", "node dist/main"]
