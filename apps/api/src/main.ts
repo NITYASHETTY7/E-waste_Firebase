@@ -11,7 +11,7 @@ async function bootstrap() {
   // Prefix all routes with /api
   app.setGlobalPrefix('api');
 
-  // Enable CORS for Next.js frontend
+  // Enable CORS for frontend applications
   app.enableCors({
     origin: true,
     credentials: true,
