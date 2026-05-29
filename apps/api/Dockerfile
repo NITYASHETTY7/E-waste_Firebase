@@ -23,4 +23,4 @@ RUN npx prisma generate && node ./node_modules/@nestjs/cli/bin/nest.js build
 EXPOSE 4000
 
 # Run node directly to bypass Prisma migrate deploy hang
-CMD ["sh", "-c", "node dist/main"]
+CMD ["sh", "-c", "node dist/src/main"]
