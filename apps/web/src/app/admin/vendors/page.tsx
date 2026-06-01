@@ -223,14 +223,14 @@ export default function AdminVendors() {
             <div className="text-center py-16 text-slate-400 italic">No vendors found.</div>
           )}
           {filtered.map(vendor => (
-            <div key={vendor.id} className="card p-0 overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row">
-              <div className="p-6 md:w-1/3 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30">
+            <div key={vendor.id} className="card p-0 overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row hover:bg-emerald-950/30 transition-all group">
+              <div className="p-6 md:w-1/3 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30 group-hover:bg-transparent">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-headline font-black text-xl shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-headline font-black text-xl shrink-0 group-hover:bg-white group-hover:text-emerald-700">
                     {vendor.name.charAt(0)}
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase ${vendor.status === "APPROVED" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : vendor.status === "REJECTED" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"}`}>
+                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase ${vendor.status === "APPROVED" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : vendor.status === "REJECTED" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"} group-hover:bg-white/20 group-hover:text-white`}>
                       {vendor.status}
                     </span>
                     {vendor.isLocked && (
@@ -241,41 +241,41 @@ export default function AdminVendors() {
                   </div>
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-slate-900 dark:text-white leading-tight mb-1">{vendor.name}</h3>
-                  <p className="text-xs text-slate-500 mb-3">ID: {vendor.id.substring(0, 8)}</p>
+                  <h3 className="font-bold text-lg text-slate-900 dark:text-white leading-tight mb-1 group-hover:text-emerald-50">{vendor.name}</h3>
+                  <p className="text-xs text-slate-500 mb-3 group-hover:text-emerald-400/60">ID: {vendor.id.substring(0, 8)}</p>
                   <div className="space-y-1.5 mt-4">
-                    <p className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-sm text-slate-400">mail</span>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2 group-hover:text-slate-300">
+                      <span className="material-symbols-outlined text-sm text-slate-400 group-hover:text-emerald-400">mail</span>
                       {vendor.users?.[0]?.email || "No email"}
                     </p>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-sm text-slate-400">location_on</span>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-2 group-hover:text-slate-300">
+                      <span className="material-symbols-outlined text-sm text-slate-400 group-hover:text-emerald-400">location_on</span>
                       {vendor.city || "No city"}, {vendor.state || "No state"}
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6 flex-1 flex flex-col justify-between">
+              <div className="p-6 flex-1 flex flex-col justify-between group-hover:bg-transparent">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Rating</p>
                     <div className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-sm text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                      <span className="font-bold text-slate-900 dark:text-white">{vendor.rating?.toFixed(1) || "New"}</span>
+                      <span className="font-bold text-slate-900 dark:text-white group-hover:text-emerald-50">{vendor.rating?.toFixed(1) || "New"}</span>
                     </div>
                   </div>
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">GST No.</p>
-                    <p className="font-bold text-sm text-slate-900 dark:text-white font-mono">{vendor.gstNumber || "—"}</p>
+                    <p className="font-bold text-sm text-slate-900 dark:text-white font-mono group-hover:text-emerald-50">{vendor.gstNumber || "—"}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">PAN No.</p>
-                    <p className="font-bold text-sm text-slate-900 dark:text-white font-mono">{vendor.panNumber || "—"}</p>
+                    <p className="font-bold text-sm text-slate-900 dark:text-white font-mono group-hover:text-emerald-50">{vendor.panNumber || "—"}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Penalties</p>
-                    <p className="font-bold text-sm text-red-600">₹{(vendor.penaltyAmount || 0).toLocaleString()}</p>
+                    <p className="font-bold text-sm text-red-600 group-hover:text-red-400">₹{(vendor.penaltyAmount || 0).toLocaleString()}</p>
                   </div>
                 </div>
 

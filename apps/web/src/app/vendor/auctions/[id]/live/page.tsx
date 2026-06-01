@@ -44,8 +44,8 @@ function BidChart({
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} />
-        <YAxis domain={[minPrice, maxPrice]} tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tickFormatter={(val) => `₹${val.toLocaleString('en-IN')}`} />
+        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+        <YAxis domain={[minPrice, maxPrice]} tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} tickFormatter={(val) => `₹${val.toLocaleString('en-IN')}`} />
         <Tooltip
           formatter={(value: number, name: string) => [`₹${value.toLocaleString('en-IN')}`, vendorLines.find((v) => v.id === name)?.name || name]}
           labelStyle={{ color: '#0f172a', fontWeight: 'bold' }}
@@ -142,17 +142,23 @@ export default function LiveAuctionScreen() {
   const vendorLines = Array.from(vendorBidsMap.values());
   const maxRound = auctionBids.length;
 
-  const handleQuickBid = (amount: number) => {
-    const result = placeBid(amount);
+  const handleQuickBid = async (amount: number) => {
+    const result = await placeBid(amount);
     if (!result.success) alert(result.message);
   };
 
-  const handleCustomBid = () => {
+  const handleCustomBid = async () => {
     const amount = parseInt(customBid);
-    if (isNaN(amount)) return;
-    const result = placeBid(amount);
-    if (result.success) setCustomBid("");
-    else alert(result.message);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid bid amount");
+      return;
+    }
+    const result = await placeBid(amount);
+    if (result.success) {
+      setCustomBid("");
+    } else {
+      alert(result.message);
+    }
   };
 
   const isLeading = currentHighBid?.vendorId === currentUser?.id;
@@ -188,7 +194,7 @@ export default function LiveAuctionScreen() {
               {isActive ? "Live" : "Ended"}
             </span>
           </div>
-          <span className="text-[#1A1A2E] font-bold text-sm truncate max-w-[200px] mr-4">
+          <span className="text-slate-900 dark:text-white font-bold text-sm truncate max-w-[200px] mr-4">
             {listing.title}
           </span>
 
@@ -283,20 +289,21 @@ export default function LiveAuctionScreen() {
                 const isLeadingBid = leaderboard.findIndex((l: any) => l.vendorId === e.vendorId) === 0;
                 const isMe = e.vendorId === currentUser?.id;
                 return (
-                  <div key={e.id} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all ${isMe ? "bg-[#E8F5E9] border-l-4 border-l-[#1E8E3E]" : isLeadingBid ? "bg-blue-50 border border-blue-200" : "bg-white border border-slate-100"}`}>
+                  <div key={e.id} className={`flex items-center justify-between py-2 px-3 rounded-lg text-xs transition-all group cursor-default ${isMe ? "bg-[#E8F5E9] border-l-4 border-l-[#1E8E3E] dark:bg-emerald-950/20" : isLeadingBid ? "bg-blue-50 border border-blue-200 dark:bg-blue-900/20 dark:border-blue-800" : "bg-white border border-slate-100 hover:bg-emerald-950/30 dark:bg-slate-950 dark:border-slate-800"}`}>
                     <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: vendorBidsMap.get(e.vendorId)?.color || "#CBD5E1" }} />
-                      <span className={`font-bold ${isMe ? "text-[#1E8E3E]" : "text-slate-900 dark:text-slate-200"}`}>{getVendorLabel(e.vendorId)}</span>
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0 group-hover:bg-emerald-400" style={{ background: vendorBidsMap.get(e.vendorId)?.color || "#CBD5E1" }} />
+                      <span className={`font-bold transition-colors ${isMe ? "text-[#1E8E3E] dark:text-emerald-400" : "text-slate-900 dark:text-slate-200 group-hover:text-emerald-50"}`}>{getVendorLabel(e.vendorId)}</span>
                       {getRankLabel(e.vendorId) !== '—' && (
-                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                        <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider group-hover:bg-white/20 group-hover:text-white ${
                           getRankLabel(e.vendorId) === 'L1' ? 'bg-emerald-600 text-white' :
                           getRankLabel(e.vendorId) === 'L2' ? 'bg-blue-500 text-white' :
-                          getRankLabel(e.vendorId) === 'L3' ? 'bg-amber-500 text-white' : 'bg-slate-300 text-slate-700'
+                          getRankLabel(e.vendorId) === 'L3' ? 'bg-amber-500 text-white' : 
+                          'bg-slate-300 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                         }`}>{getRankLabel(e.vendorId)}</span>
                       )}
-                      <span className="text-[10px] text-slate-400">{formatTimeMs(e.createdAt)}</span>
+                      <span className="text-[10px] text-slate-400 group-hover:text-slate-500">{formatTimeMs(e.createdAt)}</span>
                     </div>
-                    <span className={`font-mono font-bold ${isMe ? "text-[#1E8E3E]" : "text-slate-600"}`}>{fmtINR(e.amount)}</span>
+                    <span className={`font-mono font-bold transition-colors ${isMe ? "text-[#1E8E3E] dark:text-emerald-400" : "text-slate-600 dark:text-slate-400 group-hover:text-emerald-50"}`}>{fmtINR(e.amount)}</span>
                   </div>
                 );
               })}
@@ -363,7 +370,7 @@ export default function LiveAuctionScreen() {
 function StatPill({ label, value, color, pulse }: { label: string; value: string; color: string; pulse?: boolean }) {
   return (
     <div className="flex flex-col items-center px-3 py-1.5 rounded-lg bg-white border border-slate-200 min-w-[90px] shadow-sm dark:bg-slate-900 dark:border-slate-700">
-      <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">{label}</span>
+      <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{label}</span>
       <span className={`font-mono font-black text-sm tabular-nums ${pulse ? "animate-pulse" : ""}`} style={{ color }}>{value}</span>
     </div>
   );

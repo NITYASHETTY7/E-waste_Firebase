@@ -536,6 +536,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // Only clear token on explicit 401 (invalid/expired) — not on network errors
         if (e?.response?.status === 401) {
           localStorage.removeItem('ecoloop_token');
+          setState(prev => ({ ...prev, currentUser: null }));
         }
         console.error('Backend unavailable or token expired, using local state', e);
         // Load mock data only if backend is completely unreachable and no data exists
@@ -565,17 +566,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isInitialized) {
       try {
-        const uiPrefs = {
+        const savedState = {
           theme: state.theme,
           isSidebarOpen: state.isSidebarOpen,
           isSidebarCollapsed: state.isSidebarCollapsed,
+          currentUser: state.currentUser,
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(uiPrefs));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedState));
       } catch (e) {
         // Silently handle quota errors
       }
     }
-  }, [state.theme, state.isSidebarOpen, state.isSidebarCollapsed, isInitialized]);
+  }, [state.theme, state.isSidebarOpen, state.isSidebarCollapsed, state.currentUser, isInitialized]);
 
   // Poll backend for changes every 30 seconds when logged in
   useEffect(() => {
@@ -774,9 +776,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setState(prev => {
         const hasBackendListings = backendListings.length > 0;
         const hasBackendUsers = backendUsers.length > 0;
+
+        // Preserve local state for fields not yet fully implemented in the backend (e.g. closingDocuments, images)
+        const mergedListings = hasBackendListings ? backendListings.map(bl => {
+          const existing = prev.listings.find(pl => pl.id === bl.id);
+          if (existing) {
+            return {
+              ...bl,
+              closingDocuments: (bl.closingDocuments?.length) ? bl.closingDocuments : existing.closingDocuments,
+              images: (bl.images?.length) ? bl.images : existing.images,
+              urgency: bl.urgency || existing.urgency,
+              bidCount: bl.bidCount !== undefined ? bl.bidCount : existing.bidCount,
+              viewCount: bl.viewCount !== undefined ? bl.viewCount : existing.viewCount,
+            };
+          }
+          return bl;
+        }) : prev.listings;
+
         return {
           ...prev,
-          listings: hasBackendListings ? backendListings : prev.listings,
+          listings: mergedListings,
           bids: backendBids.length > 0 ? backendBids : prev.bids,
           users: hasBackendUsers ? backendUsers : prev.users,
           auditInvitations: backendAudits.length > 0 ? backendAudits : prev.auditInvitations,
@@ -1092,13 +1111,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addBid = async (listingId: string, amount: number, remarks?: string) => {
+    console.log(`[App] Adding bid: ₹${amount} for listing ${listingId}`);
     const listing = state.listings.find(l => l.id === listingId);
     const auctionId = listing?.auctionId;
     if (!auctionId) {
+      console.error('[App] No auctionId found for listing', listingId);
       throw new Error('No auction found for this listing');
     }
-    await api.post(`/auctions/${auctionId}/sealed-bid`, { amount, remarks });
-    await fetchAllData();
+    console.log(`[App] Using auctionId: ${auctionId}`);
+    try {
+      await api.post(`/auctions/${auctionId}/sealed-bid`, { amount, remarks });
+      console.log('[App] Bid successfully submitted via REST');
+      await fetchAllData();
+    } catch (err: any) {
+      console.error('[App] Failed to submit bid via REST:', err?.response?.data || err.message);
+      throw err;
+    }
   };
 
   const acceptBid = async (bidId: string) => {

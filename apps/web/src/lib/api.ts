@@ -1,7 +1,16 @@
 import axios from 'axios';
 
+const getBaseURL = () => {
+  let url = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
+  // Ensure it ends with /api but not with a trailing slash after it
+  if (!url.endsWith('/api') && !url.endsWith('/api/')) {
+    url = url.replace(/\/+$/, '') + '/api';
+  }
+  return url.replace(/\/+$/, ''); // Remove any trailing slashes
+};
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api',
+  baseURL: getBaseURL(),
 });
 
 // Interceptor to attach JWT token to all requests

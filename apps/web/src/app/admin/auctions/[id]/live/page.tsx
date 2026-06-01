@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuction } from "@/hooks/useAuction";
 import { useApp } from "@/context/AppContext";
-import { formatTime as fmtTime } from "@/utils/format";
+import { formatTime as fmtTime, formatCurrency } from "@/utils/format";
 import api from "@/lib/api";
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush } from 'recharts';
@@ -40,10 +40,10 @@ function BidChart({
     <ResponsiveContainer width="100%" height="100%">
       <LineChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} />
-        <YAxis domain={[minPrice, maxPrice]} tick={{ fontSize: 10, fill: '#64748b' }} tickLine={false} axisLine={{ stroke: '#cbd5e1' }} tickFormatter={(val) => `₹${val.toLocaleString('en-IN')}`} />
+        <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
+        <YAxis domain={[minPrice, maxPrice]} tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} tickFormatter={(val) => formatCurrency(val)} />
         <Tooltip
-          formatter={(value: number, name: string) => [`₹${value.toLocaleString('en-IN')}`, vendorLines.find((v) => v.id === name)?.name || name]}
+          formatter={(value: number, name: string) => [formatCurrency(value), vendorLines.find((v) => v.id === name)?.name || name]}
           labelStyle={{ color: '#0f172a', fontWeight: 'bold' }}
           contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
         />
@@ -67,7 +67,7 @@ function BidChart({
 
 const COLORS = ["#1E8E3E", "#0B5ED7", "#FFC107", "#DC3545", "#6F42C1", "#0EA5E9", "#F97316"];
 
-/* â”€â”€â”€ Disqualification Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ─── Disqualification Modal ─────────────────────────────────────────── */
 function DisqualifyModal({
   currentWinner,
   leaderboard,
@@ -153,7 +153,7 @@ function DisqualifyModal({
             </div>
           ) : (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <p className="text-sm font-bold text-amber-800">âš ï¸ No other eligible bidder found. Disqualification will leave the auction without a winner.</p>
+              <p className="text-sm font-bold text-amber-800">⚠️ No other eligible bidder found. Disqualification will leave the auction without a winner.</p>
             </div>
           )}
 
@@ -211,10 +211,10 @@ function DisqualifyModal({
           {/* Fine amount */}
           <div>
             <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 block mb-1.5">
-              Fine / Penalty Amount (â‚¹) <span className="text-slate-400 font-normal normal-case tracking-normal text-[10px]">(optional â€” 0 if no fine)</span>
+              Fine / Penalty Amount (₹) <span className="text-slate-400 font-normal normal-case tracking-normal text-[10px]">(optional - 0 if no fine)</span>
             </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">â‚¹</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">₹</span>
               <input
                 type="number"
                 min="0"
@@ -226,7 +226,7 @@ function DisqualifyModal({
             </div>
             {fineAmount && parseFloat(fineAmount) > 0 && (
               <p className="text-xs text-orange-700 mt-1 font-semibold">
-                âš ï¸ A fine of â‚¹{parseFloat(fineAmount).toLocaleString("en-IN")} will be included in the disqualification email.
+                âš ï¸ A fine of ₹{parseFloat(fineAmount).toLocaleString("en-IN")} will be included in the disqualification email.
               </p>
             )}
           </div>
@@ -297,11 +297,11 @@ export default function AdminLiveObserver() {
 
   const basePrice = listing.basePrice || 0;
   const tickSize = listing.bidIncrement || 0;
-  const fmtINR = (n: number) => `â‚¹${n.toLocaleString("en-IN")}`;
+  const fmtINR = (n: number) => formatCurrency(n);
 
   const handleDownloadBidHistory = () => {
     const rows = [
-      ["Round", "Vendor", "Amount (â‚¹)", "Timestamp"],
+      ["Round", "Vendor", "Amount (₹)", "Timestamp"],
       ...[...auctionBids].sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((bid: any, i: number) => {
         const vendorName = bid.vendorName || bid.vendor?.name || bid.vendorId;
         return [i + 1, vendorName, bid.amount, new Date(bid.createdAt).toLocaleString("en-IN")];
@@ -317,7 +317,7 @@ export default function AdminLiveObserver() {
     URL.revokeObjectURL(url);
   };
 
-  // Build per-vendor chart lines â€” auctionBids is chronological (oldest first)
+  // Build per-vendor chart lines - auctionBids is chronological (oldest first)
   const vendorMap = new Map<string, { id: string; name: string; color: string; points: { round: number; amount: number }[] }>();
   auctionBids.forEach((bid: any, i) => {
     if (!vendorMap.has(bid.vendorId)) {
@@ -334,7 +334,7 @@ export default function AdminLiveObserver() {
 
   // Unique participants
   const participants = vendorLines.length;
-  const highVendor = currentHighBid ? (vendorMap.get(currentHighBid.vendorId)?.name ?? "â€”") : "â€”";
+  const highVendor = currentHighBid ? (vendorMap.get(currentHighBid.vendorId)?.name ?? "-") : "-";
 
   // Sort leaderboard by highest bid per vendor (unique vendors)
   const uniqueLeaderboard: any[] = [];
@@ -387,7 +387,7 @@ export default function AdminLiveObserver() {
         />
       )}
 
-      {/* â”€â”€ Sticky Header â”€â”€ */}
+      {/* ── Sticky Header ── */}
       <div className="sticky top-0 z-30 bg-white border-b-2 border-purple-500 shadow-sm dark:bg-slate-900">
         <div className="max-w-[1400px] mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
           {/* Admin badge */}
@@ -403,16 +403,16 @@ export default function AdminLiveObserver() {
           </div>
 
           {/* Title */}
-          <span className="text-slate-800 font-bold text-sm truncate max-w-[220px] shrink-0 dark:text-slate-200">{listing.title}</span>
+          <span className="text-slate-900 font-bold text-sm truncate max-w-[220px] shrink-0 dark:text-white">{listing.title}</span>
 
           {/* Stat pills */}
           <div className="flex items-center gap-2 flex-wrap flex-1">
             {[
-              { label: "Base", value: fmtINR(basePrice), color: "text-slate-700" },
-              { label: "Current High", value: fmtINR(currentHighAmount), color: "text-emerald-700" },
-              { label: "Tick", value: fmtINR(tickSize), color: "text-blue-700" },
-              { label: "Bids", value: String(auctionBids.length), color: "text-slate-700" },
-              { label: "Participants", value: String(participants), color: "text-purple-700" },
+              { label: "Base", value: fmtINR(basePrice), color: "text-slate-700 dark:text-slate-300" },
+              { label: "Current High", value: fmtINR(currentHighAmount), color: "text-emerald-700 dark:text-emerald-400" },
+              { label: "Tick", value: fmtINR(tickSize), color: "text-blue-700 dark:text-blue-400" },
+              { label: "Bids", value: String(auctionBids.length), color: "text-slate-700 dark:text-slate-300" },
+              { label: "Participants", value: String(participants), color: "text-purple-700 dark:text-purple-400" },
             ].map(p => (
               <div key={p.label} className="flex flex-col items-center px-3 py-1 rounded-lg bg-slate-50 border border-slate-200 min-w-[80px] dark:bg-slate-950 dark:border-slate-700">
                 <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">{p.label}</span>
@@ -440,13 +440,13 @@ export default function AdminLiveObserver() {
           <p className="text-[10px] font-black uppercase tracking-widest text-white flex items-center justify-center gap-1.5">
             <span className="material-symbols-outlined text-sm">{isActive ? "visibility" : "gavel"}</span>
             {isActive
-              ? "Read-only observation mode â€” bidding controls are disabled for admin"
-              : "Auction ended â€” scroll down to approve the winner"}
+              ? "Read-only observation mode - bidding controls are disabled for admin"
+              : "Auction ended - scroll down to approve the winner"}
           </p>
         </div>
       </div>
 
-      {/* â”€â”€ Main Grid â”€â”€ */}
+      {/* ── Main Grid ── */}
       <div className="max-w-[1400px] mx-auto p-5 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
 
         {/* LEFT: Chart + Ledger */}
@@ -457,12 +457,12 @@ export default function AdminLiveObserver() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/60 dark:border-slate-800">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Real-Time Bid Progression</p>
-                <p className="text-slate-800 font-bold text-sm mt-0.5 dark:text-slate-200">{auctionBids.length} bids Â· {participants} participant{participants !== 1 ? "s" : ""}</p>
+                <p className="text-slate-800 font-bold text-sm mt-0.5 dark:text-slate-200">{auctionBids.length} bids · {participants} participant{participants !== 1 ? "s" : ""}</p>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {vendorLines.slice(0, 6).map(v => {
                   const rank = leaderboard.findIndex((l: any) => l.vendorId === v.id);
-                  const rankLabel = rank >= 0 ? `L${rank + 1}` : 'â€”';
+                  const rankLabel = rank >= 0 ? `L${rank + 1}` : '-';
                   return (
                     <div key={v.id} className="flex items-center gap-1.5 bg-white border border-slate-200 px-2 py-1 rounded-md dark:bg-slate-900 dark:border-slate-700">
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: v.color }} />
@@ -478,17 +478,17 @@ export default function AdminLiveObserver() {
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-2">
                   <span className="material-symbols-outlined text-5xl">bar_chart</span>
-                  <p className="text-sm font-bold">Waiting for first bidâ€¦</p>
+                  <p className="text-sm font-bold">Waiting for first bid…</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Bid Ledger â€” full vendor names visible to admin */}
+          {/* Bid Ledger - full vendor names visible to admin */}
           <div className="bg-white rounded-2xl border border-slate-200 border-t-4 border-t-blue-500 shadow-sm overflow-hidden dark:bg-slate-900 dark:border-slate-700">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 bg-slate-50/60 dark:border-slate-800">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Bid Ledger</p>
-              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">{auctionBids.length} events</span>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50 dark:bg-slate-950 dark:border-slate-800">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">Full Bid Ledger</p>
+              <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">{auctionBids.length} events</span>
             </div>
             <div ref={ledgerRef} className="overflow-y-auto p-4 space-y-1.5" style={{ maxHeight: 280 }}>
               {auctionBids.length === 0 ? (
@@ -501,14 +501,14 @@ export default function AdminLiveObserver() {
                 const color = vendorMap.get(bid.vendorId)?.color ?? "#CBD5E1";
                 const vendorName = bid.vendorName || bid.vendor?.name || "Unknown Vendor";
                 return (
-                  <div key={bid.id} className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs transition-all ${isTop ? "bg-emerald-50 border-l-4 border-emerald-500 border border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-800" : "bg-white border border-slate-100 hover:bg-slate-50 dark:bg-slate-950 dark:border-slate-800 dark:hover:bg-slate-800/30"}`}>
+                  <div key={bid.id} className={`flex items-center justify-between px-3 py-2.5 rounded-lg text-xs transition-all group ${isTop ? "bg-emerald-50 border-l-4 border-emerald-600 dark:bg-emerald-950/20" : "bg-white border border-slate-100 hover:bg-emerald-950/30 dark:bg-slate-950 dark:border-slate-800"}`}>
                     <div className="flex items-center gap-2.5">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
-                      <span className={`font-bold ${isTop ? "text-emerald-700" : "text-slate-800"}`}>{vendorName}</span>
-                      {isTop && <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-black uppercase tracking-wider">Leader</span>}
-                      <span className="text-[10px] text-slate-400 font-mono">{fmtTime(bid.createdAt)}</span>
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0 group-hover:bg-emerald-400" style={{ background: color }} />
+                      <span className={`font-bold transition-colors ${isTop ? "text-emerald-700 dark:text-emerald-400" : "text-slate-800 dark:text-slate-200 group-hover:text-emerald-50"}`}>{vendorName}</span>
+                      {isTop && <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-black uppercase tracking-wider group-hover:bg-emerald-500/20 group-hover:text-emerald-400">Leader</span>}
+                      <span className="text-[10px] text-slate-400 font-mono group-hover:text-slate-500">{fmtTime(bid.createdAt)}</span>
                     </div>
-                    <span className={`font-mono font-bold text-sm ${isTop ? "text-emerald-700" : "text-slate-600"}`}>{fmtINR(bid.amount)}</span>
+                    <span className={`font-mono font-bold text-sm transition-colors ${isTop ? "text-emerald-700 dark:text-emerald-400" : "text-slate-600 dark:text-slate-400 group-hover:text-emerald-50"}`}>{fmtINR(bid.amount)}</span>
                   </div>
                 );
               })}
@@ -529,7 +529,7 @@ export default function AdminLiveObserver() {
                 { icon: "scale", label: "Weight", value: `${listing.weight} KG` },
                 { icon: "location_on", label: "Location", value: listing.location },
                 { icon: "payments", label: "EMD Amount", value: fmtINR(listing.highestEmdAmount ?? 0) },
-                { icon: "person", label: "Listed By", value: listing.userName ?? "â€”" },
+                { icon: "person", label: "Listed By", value: listing.userName ?? "-" },
               ].map(({ icon, label, value }) => (
                 <div key={label} className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-slate-400 text-base w-5 shrink-0">{icon}</span>
@@ -555,7 +555,7 @@ export default function AdminLiveObserver() {
                 { label: "Current High", value: fmtINR(currentHighAmount), color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200" },
                 { label: "Base Price", value: fmtINR(basePrice), color: "text-blue-700", bg: "bg-blue-50 border-blue-200" },
                 { label: "Tick Size", value: fmtINR(tickSize), color: "text-slate-700", bg: "bg-slate-50 border-slate-200" },
-                { label: "Premium", value: basePrice > 0 ? `+${(((currentHighAmount - basePrice) / basePrice) * 100).toFixed(1)}%` : "â€”", color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
+                { label: "Premium", value: basePrice > 0 ? `+${(((currentHighAmount - basePrice) / basePrice) * 100).toFixed(1)}%` : "-", color: "text-amber-700", bg: "bg-amber-50 border-amber-200" },
               ].map(s => (
                 <div key={s.label} className={`p-3 rounded-xl border ${s.bg}`}>
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{s.label}</p>
@@ -573,10 +573,10 @@ export default function AdminLiveObserver() {
               </div>
             )}
 
-            {/* â”€â”€ Winner Action Section (shown when auction ends) â”€â”€ */}
+            {/* ── Winner Action Section (shown when auction ends) ── */}
             {!isActive && currentHighBid && (
               <div className="mt-4 p-4 bg-amber-50 border border-amber-300 rounded-xl space-y-3">
-                <p className="text-[9px] font-black uppercase tracking-widest text-amber-700">Auction Ended â€” Winner Action</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-amber-700">Auction Ended - Winner Action</p>
 
                 {/* Winner info */}
                 {!winnerApproved && !disqualified && (
@@ -689,26 +689,31 @@ export default function AdminLiveObserver() {
               <div className="space-y-2">
                 {vendorLines.map((v, idx) => {
                   const rank = leaderboard.findIndex((l: any) => l.vendorId === v.id);
-                  const rankLabel = rank >= 0 ? `L${rank + 1}` : 'â€”';
+                  const rankLabel = rank >= 0 ? `L${rank + 1}` : '-';
                   const isLeader = rank === 0;
                   const topBid = v.points.length > 0 ? Math.max(...v.points.map(p => p.amount)) : 0;
                   return (
-                    <div key={v.id} className={`flex items-center gap-3 p-2.5 rounded-xl border ${isLeader ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-100"}`}>
-                      <span className="w-3 h-3 rounded-full shrink-0" style={{ background: v.color }} />
+                    <div key={v.id} className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all group cursor-default ${
+                      isLeader 
+                        ? "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800" 
+                        : "bg-slate-50 border-slate-100 dark:bg-slate-900/50 dark:border-slate-800"
+                    } hover:bg-emerald-950/30`}>
+                      <span className="w-3 h-3 rounded-full shrink-0 group-hover:bg-white" style={{ background: v.color }} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider group-hover:bg-white/20 group-hover:text-white ${
                             rank === 0 ? 'bg-emerald-600 text-white' :
                             rank === 1 ? 'bg-blue-500 text-white' :
-                            rank === 2 ? 'bg-amber-500 text-white' : 'bg-slate-300 text-slate-700'
+                            rank === 2 ? 'bg-amber-500 text-white' :
+                            'bg-slate-300 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                           }`}>{rankLabel}</span>
-                          <p className="text-xs font-bold text-slate-800 truncate dark:text-slate-200">{v.name}</p>
+                          <p className="text-xs font-bold text-slate-800 truncate dark:text-slate-200 group-hover:text-white">{v.name}</p>
                         </div>
-                        <p className="text-[10px] text-slate-400">{v.points.length} bid{v.points.length !== 1 ? "s" : ""}</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 group-hover:text-emerald-50">{v.points.length} bid{v.points.length !== 1 ? "s" : ""}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className={`text-xs font-mono font-bold ${isLeader ? "text-emerald-700" : "text-slate-600"}`}>{fmtINR(topBid)}</p>
-                        {isLeader && <p className="text-[9px] text-emerald-600 font-black uppercase">Leader</p>}
+                        <p className={`text-xs font-mono font-bold ${isLeader ? "text-emerald-700 dark:text-emerald-400" : "text-slate-600 dark:text-slate-400"} group-hover:text-white`}>{fmtINR(topBid)}</p>
+                        {isLeader && <p className="text-[9px] text-emerald-600 dark:text-emerald-400 font-black uppercase group-hover:text-white">Leader</p>}
                       </div>
                     </div>
                   );

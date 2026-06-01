@@ -193,27 +193,27 @@ export default function AdminUsers() {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filtered.map(client => (
-                <tr key={client.id} className="hover:bg-blue-50/30 dark:hover:bg-slate-800/30 transition-colors cursor-pointer" onClick={() => openDetail(client)}>
+                <tr key={client.id} className="hover:bg-emerald-950/30 transition-all group cursor-pointer" onClick={() => openDetail(client)}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center font-black text-sm text-blue-700 dark:text-blue-400 shrink-0">
+                      <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center font-black text-sm text-blue-700 dark:text-blue-400 shrink-0 group-hover:bg-white group-hover:text-blue-700">
                         {client.name.charAt(0)}
                       </div>
                       <div>
-                        <p className="font-bold text-slate-900 dark:text-white">{client.name}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">#{client.id.substring(0, 8)}</p>
+                        <p className="font-bold text-slate-900 dark:text-white group-hover:text-emerald-50">{client.name}</p>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider group-hover:text-emerald-400/60">#{client.id.substring(0, 8)}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-sm text-slate-700 dark:text-slate-300">{client.users?.[0]?.email || "—"}</p>
-                    <p className="text-xs text-slate-400">{client.users?.[0]?.phone || "No phone"}</p>
+                    <p className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-200">{client.users?.[0]?.email || "—"}</p>
+                    <p className="text-xs text-slate-400 group-hover:text-slate-500">{client.users?.[0]?.phone || "No phone"}</p>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">
-                    <p className="text-slate-700 dark:text-slate-300">{client.gstNumber || "—"}</p>
-                    <p className="text-slate-400">{client.panNumber || "—"}</p>
+                    <p className="text-slate-700 dark:text-slate-300 group-hover:text-emerald-50">{client.gstNumber || "—"}</p>
+                    <p className="text-slate-400 group-hover:text-slate-500">{client.panNumber || "—"}</p>
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
+                  <td className="px-4 py-3 text-xs text-slate-500 group-hover:text-slate-400">
                     {client.city ? `${client.city}, ${client.state || ""}` : "—"}
                   </td>
                   <td className="px-4 py-3">
@@ -222,7 +222,7 @@ export default function AdminUsers() {
                       client.status === "REJECTED" ? "bg-red-100 text-red-700" :
                       client.status === "BLOCKED" ? "bg-orange-100 text-orange-700" :
                       "bg-amber-100 text-amber-700"
-                    }`}>
+                    } group-hover:bg-white/20 group-hover:text-white`}>
                       {client.status === "BLOCKED" ? "ON HOLD" : client.status}
                     </span>
                   </td>

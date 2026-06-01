@@ -42,25 +42,35 @@ export function useAuctionSocket({ auctionId, enabled = true }: UseAuctionSocket
   useEffect(() => {
     if (!enabled || !auctionId) return;
 
+    console.log(`[Socket] Connecting to ${API_URL}/auction for room ${auctionId}`);
     const socket = io(`${API_URL}/auction`, {
       transports: ['websocket', 'polling'],
       autoConnect: true,
+      reconnectionAttempts: 5,
     });
 
     socketRef.current = socket;
 
     socket.on('connect', () => {
+      console.log(`[Socket] Connected: ${socket.id}`);
       setConnected(true);
       // Join the auction room
       socket.emit('joinAuction', { auctionId });
     });
 
-    socket.on('disconnect', () => {
+    socket.on('connect_error', (err) => {
+      console.error('[Socket] Connection error:', err);
+      setBidError(`Connection error: ${err.message}`);
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log(`[Socket] Disconnected: ${reason}`);
       setConnected(false);
     });
 
     // Receive full auction state on join
     socket.on('auctionState', (auction: any) => {
+      console.log('[Socket] Received auction state:', auction.id);
       setAuctionState(auction);
       if (auction.openPhaseEnd) {
         setEndTime(new Date(auction.openPhaseEnd));
@@ -96,6 +106,7 @@ export function useAuctionSocket({ auctionId, enabled = true }: UseAuctionSocket
 
     // Receive new bid + updated leaderboard
     socket.on('newBid', (data: { bid: AuctionBid; leaderboard: LeaderboardEntry[] }) => {
+      console.log('[Socket] New bid received:', data.bid.amount);
       setLatestBid(data.bid);
       setLeaderboard(data.leaderboard);
       // Append new bid chronologically
@@ -105,13 +116,17 @@ export function useAuctionSocket({ auctionId, enabled = true }: UseAuctionSocket
 
     // Timer extended
     socket.on('timerExtended', (data: { newEndTime: string; extensionCount: number }) => {
+      console.log('[Socket] Timer extended to:', data.newEndTime);
       setEndTime(new Date(data.newEndTime));
       setExtensionCount(data.extensionCount);
     });
 
     // Bid error
     socket.on('bidError', (data: { message: string }) => {
+      console.error('[Socket] Bid error:', data.message);
       setBidError(data.message);
+      // Clear error after 5 seconds
+      setTimeout(() => setBidError(null), 5000);
     });
 
     // Auction ended by client/admin

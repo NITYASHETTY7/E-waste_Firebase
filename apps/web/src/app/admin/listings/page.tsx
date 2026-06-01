@@ -136,6 +136,14 @@ export default function AdminListings() {
     }
   };
 
+  const toggleAllVendors = () => {
+    if (selectedVendors.length === activeVendors.length && activeVendors.length > 0) {
+      setSelectedVendors([]);
+    } else {
+      setSelectedVendors(activeVendors.map(v => v.id));
+    }
+  };
+
   const toggleVendor = (id: string) =>
     setSelectedVendors(prev =>
       prev.includes(id) ? prev.filter(v => v !== id) : [...prev, id]
@@ -227,23 +235,23 @@ export default function AdminListings() {
               const topBid = listingBids.sort((a, b) => b.amount - a.amount)[0];
 
               return (
-                <tr key={listing.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                <tr key={listing.id} className="hover:bg-emerald-950/30 transition-all group cursor-default">
                   <td>
-                    <p className="font-bold text-sm text-[color:var(--color-on-surface)] max-w-[220px] truncate">{listing.title}</p>
-                    <p className="text-xs text-[color:var(--color-on-surface-variant)]">{listing.location}</p>
+                    <p className="font-bold text-sm text-[color:var(--color-on-surface)] group-hover:text-emerald-50 max-w-[220px] truncate">{listing.title}</p>
+                    <p className="text-xs text-[color:var(--color-on-surface-variant)] group-hover:text-slate-400">{listing.location}</p>
                   </td>
-                  <td className="text-sm text-[color:var(--color-on-surface-variant)]">{listing.userName || "—"}</td>
+                  <td className="text-sm text-[color:var(--color-on-surface-variant)] group-hover:text-slate-300">{listing.userName || "—"}</td>
                   <td>
-                    <span className="text-[10px] font-bold px-2.5 py-0.5 bg-[color:var(--color-secondary-container)] text-[color:var(--color-primary)] rounded-full">
+                    <span className="text-[10px] font-bold px-2.5 py-0.5 bg-[color:var(--color-secondary-container)] text-[color:var(--color-primary)] rounded-full group-hover:bg-emerald-500/20 group-hover:text-emerald-400">
                       {listing.category}
                     </span>
                   </td>
-                  <td className="font-mono text-sm">{listing.weight} KG</td>
-                  <td className="text-xs text-[color:var(--color-on-surface-variant)]">
+                  <td className="font-mono text-sm group-hover:text-emerald-50">{listing.weight} KG</td>
+                  <td className="text-xs text-[color:var(--color-on-surface-variant)] group-hover:text-slate-400">
                     {listing.createdAt ? new Date(listing.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                   </td>
                   <td>
-                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${sc.className}`}>
+                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${sc.className} group-hover:bg-emerald-500/20 group-hover:text-emerald-400`}>
                       {sc.label}
                     </span>
                   </td>
@@ -252,7 +260,7 @@ export default function AdminListings() {
                       {displayStatus === "pending" && (
                         <button
                           onClick={() => openReview(listing.id)}
-                          className="flex items-center gap-1.5 text-xs font-extrabold px-4 py-2 bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 transition-all shadow-sm"
+                          className="flex items-center gap-1.5 text-xs font-extrabold px-4 py-2 bg-emerald-700 text-white rounded-lg hover:bg-emerald-800 transition-all shadow-sm group-hover:bg-white group-hover:text-emerald-700"
                         >
                           <span className="material-symbols-outlined text-sm font-extrabold">fact_check</span>
                           Review
@@ -260,26 +268,26 @@ export default function AdminListings() {
                       )}
                       {displayStatus === "active" && listing.auctionPhase === "live" && (!listing.auctionStartDate || new Date() >= new Date(listing.auctionStartDate)) && (
                         <Link href={`/admin/auctions/${listing.id}/live`}
-                          className="flex items-center gap-1 text-xs font-extrabold px-3 py-1.5 bg-purple-700 text-white rounded-lg hover:bg-purple-800 transition-colors border border-purple-800">
+                          className="flex items-center gap-1 text-xs font-extrabold px-3 py-1.5 bg-purple-700 text-white rounded-lg hover:bg-purple-800 transition-colors border border-purple-800 group-hover:bg-white group-hover:text-purple-700 group-hover:border-white">
                           <span className="material-symbols-outlined text-sm font-extrabold">visibility</span>
                           Watch Live
                         </Link>
                       )}
                       {displayStatus === "active" && listing.auctionPhase === "live" && listing.auctionStartDate && new Date() < new Date(listing.auctionStartDate) && (
-                        <span className="text-xs text-slate-400 italic">Live starts {new Date(listing.auctionStartDate).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="text-xs text-slate-400 italic group-hover:text-slate-500">Live starts {new Date(listing.auctionStartDate).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                       )}
                       {displayStatus === "active" && listing.auctionPhase !== "live" && listing.auctionPhase !== "completed" && (
                         <Link href={`/admin/listings/${listing.requirementId || listing.id}/audit-docs`}
-                          className="flex items-center gap-1 text-xs font-extrabold px-3 py-1.5 bg-blue-800 text-white rounded-lg hover:bg-blue-900 transition-colors border border-blue-900">
+                          className="flex items-center gap-1 text-xs font-extrabold px-3 py-1.5 bg-blue-800 text-white rounded-lg hover:bg-blue-900 transition-colors border border-blue-900 group-hover:bg-white group-hover:text-blue-800 group-hover:border-white">
                           <span className="material-symbols-outlined text-sm font-extrabold">fact_check</span>
                           Audit Docs
                         </Link>
                       )}
                       {displayStatus === "review" && (
-                        <span className="text-xs text-[color:var(--color-on-surface-variant)] italic">Waiting for client...</span>
+                        <span className="text-xs text-[color:var(--color-on-surface-variant)] italic group-hover:text-slate-500">Waiting for client...</span>
                       )}
                       {topBid && (
-                        <span className="text-xs font-bold text-[color:var(--color-primary)]">Top: ₹{topBid.amount.toLocaleString()}</span>
+                        <span className="text-xs font-bold text-[color:var(--color-primary)] group-hover:text-emerald-400">Top: ₹{topBid.amount.toLocaleString()}</span>
                       )}
                     </div>
                   </td>
@@ -438,38 +446,58 @@ export default function AdminListings() {
                   </div>
 
                   {/* Vendor selection */}
-                  <div>
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
-                      Select Vendors to Invite <span className="text-red-400">*</span>
-                      {selectedVendors.length > 0 && (
-                        <span className="ml-2 text-[color:var(--color-primary)] normal-case font-bold">{selectedVendors.length} selected</span>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                        Select Vendors to Invite <span className="text-red-400">*</span>
+                      </p>
+                      {activeVendors.length > 0 && (
+                        <button 
+                          onClick={toggleAllVendors}
+                          className="text-[10px] font-black text-emerald-600 hover:text-emerald-700 uppercase tracking-widest flex items-center gap-1 transition-colors"
+                        >
+                          {selectedVendors.length === activeVendors.length ? 'Deselect All' : 'Select All'}
+                          <span className="material-symbols-outlined text-sm">
+                            {selectedVendors.length === activeVendors.length ? 'check_box_outline_blank' : 'library_add_check'}
+                          </span>
+                        </button>
                       )}
-                    </p>
+                    </div>
+                    
                     {activeVendors.length === 0 ? (
                       <p className="text-sm text-slate-400 text-center py-4 border border-dashed border-slate-200 rounded-xl">No active vendors on the platform yet.</p>
                     ) : (
                       <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                        {activeVendors.map(vendor => (
-                          <label key={vendor.id}
-                            className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                              selectedVendors.includes(vendor.id)
-                                ? "border-[color:var(--color-primary)] bg-[color:var(--color-secondary-container)]"
-                                : "border-slate-200 hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-500"
-                            }`}>
-                            <input
-                              type="checkbox"
-                              className="w-4 h-4 accent-[color:var(--color-primary)] shrink-0"
-                              checked={selectedVendors.includes(vendor.id)}
-                              onChange={() => toggleVendor(vendor.id)}
-                            />
-                            <div className="min-w-0">
-                              <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{vendor.name}</p>
-                              <p className="text-[10px] text-slate-400 uppercase tracking-wider truncate">
-                                {vendor.onboardingProfile?.companyName || "Registered Vendor"}
-                              </p>
-                            </div>
-                          </label>
-                        ))}
+                        {activeVendors.map(vendor => {
+                          const isSelected = selectedVendors.includes(vendor.id);
+                          return (
+                            <label key={vendor.id}
+                              className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                isSelected
+                                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/40"
+                                  : "border-slate-100 hover:border-slate-200 dark:border-slate-800 dark:hover:border-slate-700"
+                              }`}>
+                              <input
+                                type="checkbox"
+                                className="w-4 h-4 accent-emerald-600 shrink-0"
+                                checked={isSelected}
+                                onChange={() => toggleVendor(vendor.id)}
+                              />
+                              <div className="min-w-0">
+                                <p className={`text-sm font-bold truncate transition-colors ${
+                                  isSelected ? "text-emerald-900 dark:text-emerald-50" : "text-slate-900 dark:text-white"
+                                }`}>
+                                  {vendor.name}
+                                </p>
+                                <p className={`text-[10px] uppercase tracking-wider truncate transition-colors ${
+                                  isSelected ? "text-emerald-600 dark:text-emerald-300" : "text-slate-400"
+                                }`}>
+                                  {vendor.onboardingProfile?.companyName || "Registered Vendor"}
+                                </p>
+                              </div>
+                            </label>
+                          );
+                        })}
                       </div>
                     )}
                   </div>

@@ -82,18 +82,18 @@ export function EWasteCategoryChart() {
         </div>
       </div>
 
-      <div className="flex gap-4 flex-1 items-center">
+      <div className="flex flex-col sm:flex-row gap-5 flex-1 items-center justify-center sm:justify-start">
         {/* Donut Chart */}
-        <div className="relative shrink-0" style={{ width: 160, height: 160 }}>
+        <div className="relative shrink-0" style={{ width: 120, height: 120 }}>
           {mounted ? (
-            <ResponsiveContainer width={160} height={160}>
+            <ResponsiveContainer width={120} height={120}>
               <PieChart>
                 <Pie
                   data={activeSet.data}
                   cx="50%"
                   cy="50%"
-                  innerRadius={52}
-                  outerRadius={72}
+                  innerRadius={40}
+                  outerRadius={58}
                   paddingAngle={2}
                   dataKey="value"
                   startAngle={90}
@@ -122,20 +122,20 @@ export function EWasteCategoryChart() {
                 />
               </PieChart>
             </ResponsiveContainer>
-          ) : <div style={{ width: 160, height: 160 }} />}
+          ) : <div style={{ width: 120, height: 120 }} />}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-xl font-black text-slate-900 dark:text-white leading-none">{activeSet.total}</span>
-            <span className="text-[10px] font-bold text-slate-400 mt-0.5">Total (Kg)</span>
+            <span className="text-base font-black text-slate-900 dark:text-white leading-none">{activeSet.total}</span>
+            <span className="text-[8px] font-bold text-slate-400 mt-0.5">Total (Kg)</span>
           </div>
         </div>
 
         {/* Legend */}
-        <div className="flex flex-col gap-2.5 flex-1 min-w-0">
+        <div className="flex flex-col gap-2 flex-1 min-w-0 w-full sm:w-auto pr-2">
           {activeSet.data.map(item => (
             <div key={item.name} className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-              <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300 flex-1 truncate">{item.name}</span>
-              <span className="text-[11px] font-black text-slate-900 dark:text-white">{item.value}%</span>
+              <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+              <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 flex-1 truncate">{item.name}</span>
+              <span className="text-[10px] font-black text-slate-900 dark:text-white whitespace-nowrap tabular-nums">{item.value}%</span>
             </div>
           ))}
         </div>

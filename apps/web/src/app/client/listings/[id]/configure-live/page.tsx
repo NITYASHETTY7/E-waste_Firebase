@@ -38,16 +38,19 @@ export default function ConfigureLiveAuction() {
   const [requestingSending, setRequestingSending] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
 
+  const [isInitialized, setIsInitialized] = useState(false);
+
   useEffect(() => {
-    if (listing) {
+    if (listing && !isInitialized) {
       setForm({
         basePrice: listing.basePrice?.toString() || "",
         targetPrice: listing.targetPrice?.toString() || "",
         auctionStartDate: toLocalDatetimeString(listing.auctionStartDate),
         auctionEndDate: toLocalDatetimeString(listing.auctionEndDate),
       });
+      setIsInitialized(true);
     }
-  }, [listing]);
+  }, [listing, isInitialized]);
 
   const handleRequestChanges = async () => {
     setRequestingSending(true);

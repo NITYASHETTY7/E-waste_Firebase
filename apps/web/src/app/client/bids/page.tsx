@@ -104,21 +104,21 @@ export default function ClientBids() {
                            ].map(docType => {
                               const existing = listing.closingDocuments?.find(d => d.name === docType);
                               return (
-                                 <div key={docType} className="flex items-center justify-between p-3 border border-slate-100 rounded-xl hover:bg-slate-50 transition-colors dark:border-slate-800">
-                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{docType}</span>
+                                 <div key={docType} className="flex items-center justify-between p-3 border border-slate-100 rounded-xl hover:bg-emerald-950/30 transition-all group dark:border-slate-800">
+                                    <span className="text-xs font-bold text-slate-700 dark:text-slate-300 group-hover:text-white">{docType}</span>
                                     {existing ? (
                                        <div className="flex items-center gap-2">
-                                          <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Uploaded</span>
-                                          <span className="material-symbols-outlined text-emerald-500 text-sm">check_circle</span>
+                                          <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest group-hover:text-emerald-50">Uploaded</span>
+                                          <span className="material-symbols-outlined text-emerald-500 text-sm group-hover:text-white">check_circle</span>
                                        </div>
                                     ) : (
-                                       <label className="cursor-pointer group">
+                                       <label className="cursor-pointer group/upload">
                                           <input type="file" className="hidden" onChange={(e) => {
                                              if(e.target.files?.length) {
                                                 handleFileUpload(listing.id, docType);
                                              }
                                           }} />
-                                          <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-[color:var(--color-primary)] opacity-60 group-hover:opacity-100 transition-opacity">
+                                          <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-[color:var(--color-primary)] opacity-60 group-hover/upload:opacity-100 group-hover:text-white group-hover:opacity-100 transition-all">
                                              <span>Upload</span>
                                              <span className="material-symbols-outlined text-sm">upload</span>
                                           </div>
@@ -201,7 +201,7 @@ export default function ClientBids() {
            <div className="card p-0 overflow-hidden">
              <div className="overflow-x-auto">
                <table className="w-full text-left text-sm whitespace-nowrap">
-                  <thead className="bg-[color:var(--color-surface-container-low)] text-[color:var(--color-on-surface-variant)] text-xs uppercase font-black tracking-wider">
+                  <thead className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs uppercase font-black tracking-wider border-b border-slate-200 dark:border-slate-700">
                      <tr>
                         <th className="px-6 py-4">Status</th>
                         <th className="px-6 py-4">Vendor Details</th>
@@ -210,38 +210,38 @@ export default function ClientBids() {
                         <th className="px-6 py-4 text-center">Action</th>
                      </tr>
                   </thead>
-                  <tbody className="divide-y divide-[color:var(--color-outline-variant)]/20">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                      {listingBids.map((bid) => {
                         const vendor = users.find(u => u.id === bid.vendorId);
                         const isHighest = topBid?.id === bid.id;
                         const isWinner = status === "ended" && isHighest;
                         
                         return (
-                          <tr key={bid.id} className={`hover:bg-slate-50 transition-colors ${isWinner ? 'bg-emerald-50/50' : ''}`}>
+                          <tr key={bid.id} className={`hover:bg-emerald-950/30 transition-all group cursor-default ${isWinner ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : ''}`}>
                               <td className="px-6 py-4">
                                 {isWinner ? (
-                                   <span className="pill pill-success text-[10px]">WINNER</span>
+                                   <span className="pill pill-success text-[10px] group-hover:bg-white/20 group-hover:text-white">WINNER</span>
                                 ) : (
-                                   <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Recorded</span>
+                                   <span className="text-[10px] uppercase tracking-widest text-slate-400 font-bold group-hover:text-emerald-50">Recorded</span>
                                 )}                             
                              </td>
                              <td className="px-6 py-4">
-                                <p className="font-bold text-[color:var(--color-on-surface)]">{bid.vendorName}</p>
-                                <p className="text-xs text-[color:var(--color-on-surface-variant)]">{vendor?.email || "N/A"}</p>
+                                <p className="font-bold text-slate-900 dark:text-white group-hover:text-white">{bid.vendorName}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 group-hover:text-emerald-50">{vendor?.email || "N/A"}</p>
                              </td>
-                             <td className="px-6 py-4 text-right font-headline text-lg font-bold">
+                             <td className="px-6 py-4 text-right font-headline text-lg font-bold group-hover:text-white">
                                 ₹{bid.amount.toLocaleString()}
                              </td>
-                             <td className="px-6 py-4 text-right font-mono text-xs text-slate-500">
+                             <td className="px-6 py-4 text-right font-mono text-xs text-slate-500 group-hover:text-emerald-50">
                                 {formatWithMs(bid.createdAt)}
                              </td>
                              <td className="px-6 py-4 text-center">
                                {isWinner ? (
-                                 <span className="material-symbols-outlined text-emerald-500">emoji_events</span>
+                                 <span className="material-symbols-outlined text-emerald-500 group-hover:text-white">emoji_events</span>
                                ) : status === "ended" ? (
-                                 <span className="text-slate-300">Outbid</span>
+                                 <span className="text-slate-300 group-hover:text-emerald-200">Outbid</span>
                                ) : (
-                                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Awaiting Close</span>
+                                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest group-hover:text-emerald-50">Awaiting Close</span>
                                )}
                              </td>
                           </tr>

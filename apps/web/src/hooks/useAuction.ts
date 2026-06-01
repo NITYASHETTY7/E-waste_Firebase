@@ -54,7 +54,7 @@ export function useAuction(listingId: string, options: { forceConnect?: boolean 
 
   const timeLeft = localTimeLeft;
 
-  const placeBid = useCallback((amount: number) => {
+  const placeBid = useCallback(async (amount: number) => {
     if (!listing || !currentUser) return { success: false, message: 'Not logged in' };
 
     if (isLive && socket.connected) {
@@ -69,8 +69,12 @@ export function useAuction(listingId: string, options: { forceConnect?: boolean 
       return { success: false, message: `Minimum bid is ₹${minNextBid.toLocaleString()}` };
     }
 
-    addBid(listing.id, amount);
-    return { success: true };
+    try {
+      await addBid(listing.id, amount);
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, message: e?.response?.data?.message || e?.message || 'Failed to place bid' };
+    }
   }, [listing, currentUser, currentHighAmount, addBid, isLive, socket]);
 
   const formatTimeStr = (seconds: number) => {
@@ -81,12 +85,13 @@ export function useAuction(listingId: string, options: { forceConnect?: boolean 
   };
 
   // All bids in chronological order for graph + ledger
-  const effectiveAllBids = isLive && socket.connected && socket.allBids.length > 0
+  // Prefer socket data ONLY if it's connected and has data; otherwise fallback to context
+  const effectiveAllBids = (isLive && socket.connected && socket.allBids.length > 0)
     ? socket.allBids
     : [...auctionBids].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   // Top bid per vendor for leaderboard / current high
-  const effectiveLeaderboard = isLive && socket.connected && socket.leaderboard.length > 0
+  const effectiveLeaderboard = (isLive && socket.connected && socket.leaderboard.length > 0)
     ? socket.leaderboard
     : auctionBids;
 

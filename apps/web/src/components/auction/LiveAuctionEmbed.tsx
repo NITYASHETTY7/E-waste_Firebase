@@ -5,6 +5,93 @@ import { useAuction } from "@/hooks/useAuction";
 import { useApp } from "@/context/AppContext";
 import { Listing } from "@/types";
 import { formatTimeMs } from "@/utils/format";
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer 
+} from 'recharts';
+
+/* ─── Recharts Bid Progression Chart ─────────────────────────────────────────── */
+function BidChart({
+  competitors,
+  maxRound,
+  basePrice,
+}: {
+  competitors: any[];
+  maxRound: number;
+  basePrice: number;
+}) {
+  // Process data for Recharts: array of objects per round
+  const data: any[] = [];
+  for (let r = 1; r <= maxRound; r++) {
+    const point: any = { round: r, name: `Round ${r}` };
+    competitors.forEach((v) => {
+      const match = v.bids.find((b: any) => b.globalIndex === r);
+      if (match) point[v.id] = match.amount;
+    });
+    data.push(point);
+  }
+
+  // Calculate domain for Y axis
+  const allAmounts = competitors.flatMap((v) => v.bids.map((p: any) => p.amount));
+  const bidMin = allAmounts.length > 0 ? Math.min(...allAmounts) : basePrice;
+  const bidMax = allAmounts.length > 0 ? Math.max(...allAmounts) : basePrice;
+  const padding = Math.max((bidMax - bidMin) * 0.15, basePrice * 0.05, 1000);
+  const minPrice = Math.max(0, bidMin - padding);
+  const maxPrice = bidMax + padding;
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+        <XAxis 
+          dataKey="name" 
+          tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }} 
+          tickLine={false} 
+          axisLine={{ stroke: '#e2e8f0' }} 
+          hide={maxRound > 20} // Hide labels if too many rounds to avoid overlap
+        />
+        <YAxis 
+          domain={[minPrice, maxPrice]} 
+          tick={{ fontSize: 9, fill: '#94a3b8', fontWeight: 'bold' }} 
+          tickLine={false} 
+          axisLine={{ stroke: '#e2e8f0' }} 
+          tickFormatter={(val) => val >= 100000 ? `₹${(val/100000).toFixed(1)}L` : `₹${Math.round(val/1000)}k`} 
+        />
+        <Tooltip
+          formatter={(value: number, name: string) => [
+            `₹${value.toLocaleString('en-IN')}`, 
+            competitors.find((v) => v.id === name)?.name || 'Vendor'
+          ]}
+          labelStyle={{ color: '#0f172a', fontWeight: 'bold', fontSize: '11px' }}
+          contentStyle={{ 
+            borderRadius: '12px', 
+            border: '1px solid #e2e8f0', 
+            boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)',
+            padding: '8px 12px'
+          }}
+        />
+        {competitors.map((v) => (
+          <Line
+            key={v.id}
+            type="monotone"
+            dataKey={v.id}
+            stroke={v.color}
+            strokeWidth={3}
+            dot={{ r: 4, fill: v.color, stroke: '#fff', strokeWidth: 2 }}
+            activeDot={{ r: 6, stroke: '#fff', strokeWidth: 2 }}
+            connectNulls={true}
+            animationDuration={500}
+          />
+        ))}
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
 
 export default function LiveAuctionEmbed({ listing: initialListing, userRole = "client" }: { listing?: Listing, userRole?: "client" | "vendor" | "admin" }) {
   const {
@@ -118,24 +205,24 @@ export default function LiveAuctionEmbed({ listing: initialListing, userRole = "
   return (
     <div className="bg-slate-50 min-h-screen font-sans dark:bg-slate-950">
       {/* Mini Navbar */}
-      <div className="flex flex-wrap items-center justify-start gap-3 p-4 border-b-2 border-[#1E8E3E] bg-white sticky top-0 z-30 shadow-sm dark:bg-slate-900">
-        <div className="bg-slate-100 text-[#1A1A2E] px-3 py-1.5 rounded-md flex items-center gap-2 text-xs font-bold border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+      <div className="flex flex-wrap items-center justify-start gap-3 p-4 border-b-2 border-[#1E8E3E] bg-white sticky top-0 z-30 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+        <div className="bg-slate-100 text-slate-900 dark:text-white px-3 py-1.5 rounded-md flex items-center gap-2 text-xs font-bold border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-white">
           <span className={`w-2.5 h-2.5 rounded-full ${isActive ? "bg-red-500 animate-pulse" : "bg-slate-400"}`} />
           {isActive ? "LIVE" : "AUCTION ENDED"}: {title}
         </div>
-        <div className="bg-slate-100 text-[#1A1A2E] px-3 py-1.5 rounded-md text-xs font-bold border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
-          <span className="text-slate-500 text-[10px] uppercase tracking-widest mr-2">BASE PRICE</span>
+        <div className="bg-slate-100 text-slate-900 dark:text-white px-3 py-1.5 rounded-md text-xs font-bold border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-white">
+          <span className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest mr-2">BASE PRICE</span>
           ₹{basePrice.toLocaleString()}
         </div>
-        <div className="bg-emerald-50 text-[#1A1A2E] px-3 py-1.5 rounded-md text-xs font-bold border border-emerald-200">
-          <span className="text-emerald-600 text-[10px] uppercase tracking-widest mr-2">CURRENT HIGH</span>
+        <div className="bg-emerald-50 text-slate-900 dark:text-white px-3 py-1.5 rounded-md text-xs font-bold border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800">
+          <span className="text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest mr-2">CURRENT HIGH</span>
           ₹{currentHigh.toLocaleString()}
         </div>
-        <div className="bg-slate-100 text-[#1A1A2E] px-3 py-1.5 rounded-md text-xs font-bold border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
-          <span className="text-slate-500 text-[10px] uppercase tracking-widest mr-2">TICK SIZE</span>
+        <div className="bg-slate-100 text-slate-900 dark:text-white px-3 py-1.5 rounded-md text-xs font-bold border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-white">
+          <span className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest mr-2">TICK SIZE</span>
           ₹{tickSize.toLocaleString()}
         </div>
-        <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1 border border-blue-200 ml-auto">
+        <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1 border border-blue-200 ml-auto dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800">
           <span className="material-symbols-outlined text-[16px]">timer</span>
           {isActive ? auctionTimer : "00:00:00"}
         </div>
@@ -152,7 +239,7 @@ export default function LiveAuctionEmbed({ listing: initialListing, userRole = "
             <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 dark:border-slate-800">
               <div>
                 <p className="text-[#64748B] text-[10px] font-black uppercase tracking-widest">Real-Time Bid Progression</p>
-                <p className="text-[#1A1A2E] text-xs font-bold mt-0.5">{auctionBids.length} bids placed</p>
+                <p className="text-slate-900 dark:text-white text-xs font-bold mt-0.5">{auctionBids.length} bids placed</p>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
                 {competitors.slice(0,5).map(c => {
@@ -160,44 +247,15 @@ export default function LiveAuctionEmbed({ listing: initialListing, userRole = "
                   return (
                     <div key={c.id} className="flex items-center gap-1.5 px-2 py-1 border border-slate-200 rounded-md bg-white shadow-sm dark:bg-slate-900 dark:border-slate-700">
                       <span className="w-2.5 h-2.5 rounded-full" style={{background: c.color}}></span>
-                      <span className="text-[9px] text-[#1A1A2E] font-bold">{rankLabel}</span>
+                      <span className="text-[9px] text-slate-900 dark:text-white font-bold">{rankLabel}</span>
                     </div>
                   );
                 })}
               </div>
             </div>
-            <div className="p-5 h-[240px] w-full">
+            <div className="p-5" style={{ height: 320 }}>
               {auctionBids.length > 0 ? (
-                <svg viewBox="0 0 500 200" className="w-full h-full bg-white dark:bg-slate-900">
-                  {/* Y Axis Grid Lines */}
-                  {yAxisLabels.map(({ y, val }) => (
-                    <g key={y}>
-                      <line x1="50" y1={y} x2="480" y2={y} stroke="#E2E8F0" strokeWidth="1" strokeDasharray="4 4" />
-                      <text x="48" y={y + 3} fontSize="9" fill="#64748B" textAnchor="end">
-                        {val >= 100000 ? `₹${(val/100000).toFixed(2)}L` : `₹${Math.round(val/1000)}k`}
-                      </text>
-                    </g>
-                  ))}
-                  <line x1="50" y1="20" x2="50" y2="180" stroke="#CBD5E1" strokeWidth="1" />
-                  <line x1="50" y1="180" x2="480" y2="180" stroke="#CBD5E1" strokeWidth="1" />
-
-                  {/* Lines + dots for each competitor */}
-                  {competitors.map(comp => {
-                    const pts = comp.displayBids
-                      .map((b: any) => `${getChartX(b.r)},${getChartY(b.a)}`)
-                      .join(" ");
-                    return (
-                      <g key={comp.id}>
-                        {comp.displayBids.length > 1 && (
-                          <polyline points={pts} fill="none" stroke={comp.color} strokeWidth="2.5" strokeLinejoin="round" />
-                        )}
-                        {comp.displayBids.map((b: any, i: number) => (
-                          <circle key={i} cx={getChartX(b.r)} cy={getChartY(b.a)} r="4" fill={comp.color} stroke="#FFF" strokeWidth="1.5" />
-                        ))}
-                      </g>
-                    );
-                  })}
-                </svg>
+                <BidChart competitors={competitors} maxRound={maxRound} basePrice={basePrice} />
               ) : (
                 <div className="h-full flex items-center justify-center text-slate-400 text-sm italic">
                   Waiting for first bid...
@@ -222,26 +280,26 @@ export default function LiveAuctionEmbed({ listing: initialListing, userRole = "
                   ? "Anonymous Vendor"
                   : ((bid as any).vendorName || (bid as any).vendor?.name || "Unknown Vendor");
                 return (
-                  <div key={bid.id} className={`flex items-center justify-between p-3 rounded-lg text-xs transition-colors ${isLeader ? "bg-[#E8F5E9] border-l-4 border-[#1E8E3E]" : "bg-white border border-slate-100 hover:bg-slate-50 dark:bg-slate-950 dark:border-slate-800"}`}>
+                  <div key={bid.id} className={`flex items-center justify-between p-3 rounded-lg text-xs transition-all group ${isLeader ? "bg-emerald-50 border-l-4 border-emerald-600 dark:bg-emerald-950/20" : "bg-white border border-slate-100 hover:bg-emerald-950/30 dark:bg-slate-950 dark:border-slate-800"}`}>
                     <div className="flex items-center gap-3">
-                      <span className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{background: competitors.find(c => c.id === bid.vendorId)?.color || "#CBD5E1"}}></span>
+                      <span className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0 group-hover:bg-white" style={{background: competitors.find(c => c.id === bid.vendorId)?.color || "#CBD5E1"}}></span>
                       <div>
-                        <span className={`font-bold ${isLeader ? "text-[#1E8E3E]" : "text-[#1A1A2E] dark:text-slate-200"}`}>
+                        <span className={`font-bold transition-colors ${isLeader ? "text-emerald-700 dark:text-emerald-400" : "text-slate-900 dark:text-white group-hover:text-white"}`}>
                           {vendorName}
                         </span>
                         {getRankLabel(bid.vendorId) !== '—' && (
-                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ml-1.5 ${
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ml-1.5 group-hover:bg-white/20 group-hover:text-white ${
                             getRankLabel(bid.vendorId) === 'L1' ? 'bg-emerald-600 text-white' :
                             getRankLabel(bid.vendorId) === 'L2' ? 'bg-blue-500 text-white' :
-                            getRankLabel(bid.vendorId) === 'L3' ? 'bg-amber-500 text-white' : 'bg-slate-300 text-slate-700'
+                            getRankLabel(bid.vendorId) === 'L3' ? 'bg-amber-500 text-white' : 'bg-slate-300 text-slate-700 dark:bg-slate-700 dark:text-slate-300'
                           }`}>{getRankLabel(bid.vendorId)}</span>
                         )}
-                        <span className="font-mono text-[10px] text-slate-400 ml-2 tracking-tight">
+                        <span className="font-mono text-[10px] text-slate-400 ml-2 tracking-tight group-hover:text-emerald-100">
                           {formatTimeMs(bid.createdAt)}
                         </span>
                       </div>
                     </div>
-                    <span className={`font-mono font-bold text-sm ${isLeader ? "text-[#1E8E3E]" : "text-slate-600 dark:text-slate-300"}`}>
+                    <span className={`font-mono font-bold text-sm transition-colors ${isLeader ? "text-emerald-700 dark:text-emerald-400" : "text-slate-600 dark:text-slate-300 group-hover:text-white"}`}>
                       ₹{bid.amount.toLocaleString()}
                     </span>
                   </div>
@@ -259,34 +317,34 @@ export default function LiveAuctionEmbed({ listing: initialListing, userRole = "
         <div className="flex flex-col gap-6">
           
           {/* Lot Details Card */}
-          <div className="bg-white border border-slate-200 rounded-xl border-t-4 border-t-[#0B5ED7] shadow-sm p-5 dark:bg-slate-900 dark:border-slate-700">
+          <div className="bg-white border border-slate-200 rounded-xl border-t-4 border-t-[#0B5ED7] shadow-sm p-5 dark:bg-slate-900 dark:border-slate-800">
             <div className="grid grid-cols-2 gap-y-5 gap-x-4">
               <div>
-                <p className="text-[#94A3B8] text-[9px] font-black uppercase tracking-widest mb-1">CATEGORY</p>
+                <p className="text-[#94A3B8] dark:text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">CATEGORY</p>
                 <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[#0B5ED7] text-[16px]">devices</span>
-                  <p className="text-[#1A1A2E] text-xs font-bold truncate">{category}</p>
+                  <span className="material-symbols-outlined text-[#0B5ED7] dark:text-blue-400 text-[16px]">devices</span>
+                  <p className="text-slate-900 dark:text-white text-xs font-bold truncate">{category}</p>
                 </div>
               </div>
               <div>
-                <p className="text-[#94A3B8] text-[9px] font-black uppercase tracking-widest mb-1">WEIGHT</p>
+                <p className="text-[#94A3B8] dark:text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">WEIGHT</p>
                 <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[#1E8E3E] text-[16px]">scale</span>
-                  <p className="text-[#1A1A2E] text-xs font-bold truncate">{weight} KG</p>
+                  <span className="material-symbols-outlined text-[#1E8E3E] dark:text-emerald-400 text-[16px]">scale</span>
+                  <p className="text-slate-900 dark:text-white text-xs font-bold truncate">{weight} KG</p>
                 </div>
               </div>
               <div>
-                <p className="text-[#94A3B8] text-[9px] font-black uppercase tracking-widest mb-1">EMD AMOUNT</p>
+                <p className="text-[#94A3B8] dark:text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">EMD AMOUNT</p>
                 <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[#DC3545] text-[16px]">payments</span>
-                  <p className="text-[#DC3545] text-xs font-bold truncate">₹{emd.toLocaleString()}</p>
+                  <span className="material-symbols-outlined text-[#DC3545] dark:text-red-400 text-[16px]">payments</span>
+                  <p className="text-[#DC3545] dark:text-red-400 text-xs font-bold truncate">₹{emd.toLocaleString()}</p>
                 </div>
               </div>
               <div>
-                <p className="text-[#94A3B8] text-[9px] font-black uppercase tracking-widest mb-1">LOCATION</p>
+                <p className="text-[#94A3B8] dark:text-slate-400 text-[9px] font-black uppercase tracking-widest mb-1">LOCATION</p>
                 <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[#FFC107] text-[16px]">location_on</span>
-                  <p className="text-[#1A1A2E] text-xs font-bold truncate" title={location}>{location}</p>
+                  <span className="material-symbols-outlined text-[#FFC107] dark:text-amber-400 text-[16px]">location_on</span>
+                  <p className="text-slate-900 dark:text-white text-xs font-bold truncate" title={location}>{location}</p>
                 </div>
               </div>
             </div>
@@ -294,37 +352,37 @@ export default function LiveAuctionEmbed({ listing: initialListing, userRole = "
 
           {/* Role-Specific Control Panel */}
           {userRole === "admin" ? (
-            <div className="bg-white border border-slate-200 rounded-xl border-t-4 border-t-purple-500 shadow-sm p-5 flex-1 dark:bg-slate-900 dark:border-slate-700">
+            <div className="bg-white border border-slate-200 rounded-xl border-t-4 border-t-purple-500 shadow-sm p-5 flex-1 dark:bg-slate-900 dark:border-slate-800">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-[#1A1A2E] font-bold text-sm flex items-center gap-2">
-                  <span className="material-symbols-outlined text-purple-600">visibility</span>
+                <p className="text-slate-900 dark:text-white font-bold text-sm flex items-center gap-2">
+                  <span className="material-symbols-outlined text-purple-600 dark:text-purple-400">visibility</span>
                   Observation Mode
                 </p>
-                <span className="bg-purple-50 text-purple-600 text-[10px] font-bold px-2 py-1 rounded border border-purple-100 uppercase tracking-widest">Read-Only</span>
+                <span className="bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 text-[10px] font-bold px-2 py-1 rounded border border-purple-100 dark:border-purple-800 uppercase tracking-widest">Read-Only</span>
               </div>
-              <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 flex items-start gap-2 mb-4">
-                <span className="material-symbols-outlined text-purple-500 text-base shrink-0 mt-0.5">info</span>
-                <p className="text-purple-800 text-xs leading-relaxed">Admin view only. Bidding and auction controls are disabled.</p>
+              <div className="p-3 bg-purple-50 dark:bg-purple-900/10 rounded-xl border border-purple-200 dark:border-purple-800 flex items-start gap-2 mb-4">
+                <span className="material-symbols-outlined text-purple-500 dark:text-purple-400 text-base shrink-0 mt-0.5">info</span>
+                <p className="text-purple-800 dark:text-purple-200 text-xs leading-relaxed">Admin view only. Bidding and auction controls are disabled.</p>
               </div>
               <div className="grid grid-cols-2 gap-3 text-center">
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 dark:bg-slate-950 dark:border-slate-800">
                   <p className="text-[10px] uppercase font-black text-slate-400 tracking-widest">Total Bids</p>
                   <p className="text-xl font-headline font-bold text-slate-900 dark:text-white">{auctionBids.length}</p>
                 </div>
-                <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
-                  <p className="text-[10px] uppercase font-black text-emerald-600 tracking-widest">Current High</p>
-                  <p className="text-sm font-headline font-bold text-emerald-700">₹{currentHigh.toLocaleString()}</p>
+                <div className="bg-emerald-50 dark:bg-emerald-950/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-800">
+                  <p className="text-[10px] uppercase font-black text-emerald-600 dark:text-emerald-400 tracking-widest">Current High</p>
+                  <p className="text-sm font-headline font-bold text-emerald-700 dark:text-emerald-300">₹{currentHigh.toLocaleString()}</p>
                 </div>
               </div>
             </div>
           ) : userRole === "client" ? (
-            <div className="bg-white border border-slate-200 rounded-xl border-t-4 border-t-[#DC3545] shadow-sm p-5 flex-1 dark:bg-slate-900 dark:border-slate-700">
+            <div className="bg-white border border-slate-200 rounded-xl border-t-4 border-t-[#DC3545] shadow-sm p-5 flex-1 dark:bg-slate-900 dark:border-slate-800">
               <div className="flex items-center justify-between mb-5">
-                <p className="text-[#1A1A2E] font-bold text-sm flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[#DC3545]">settings</span>
+                <p className="text-slate-900 dark:text-white font-bold text-sm flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#DC3545] dark:text-red-400">settings</span>
                   Auction Controls
                 </p>
-                <span className="bg-red-50 text-red-600 text-[10px] font-bold px-2 py-1 rounded border border-red-100 uppercase tracking-widest">Client</span>
+                <span className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-300 text-[10px] font-bold px-2 py-1 rounded border border-red-100 dark:border-red-800 uppercase tracking-widest">Client</span>
               </div>
               
               <div className="space-y-3">
@@ -349,7 +407,7 @@ export default function LiveAuctionEmbed({ listing: initialListing, userRole = "
           ) : (
             <div className="bg-white border border-slate-200 rounded-xl border-t-4 border-t-[#1E8E3E] shadow-sm p-5 flex-1 flex flex-col dark:bg-slate-900 dark:border-slate-700">
               <div className="flex items-center justify-between mb-5">
-                <p className="text-[#1A1A2E] font-bold text-sm flex items-center gap-2">
+                <p className="text-slate-900 dark:text-white font-bold text-sm flex items-center gap-2">
                   <span className="material-symbols-outlined text-[#1E8E3E]">gavel</span>
                   Place Your Bid
                 </p>

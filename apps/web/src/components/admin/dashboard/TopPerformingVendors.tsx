@@ -56,28 +56,30 @@ export function TopPerformingVendors() {
         </button>
       </div>
 
-      <div className="flex-1 space-y-2">
+      <div className="flex-1 space-y-1.5">
         {VENDORS.map((vendor, idx) => (
           <motion.div
             key={vendor.rank}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 + idx * 0.07 }}
-            className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-default"
+            className="flex items-center gap-2.5 p-2 rounded-2xl hover:bg-emerald-950/30 transition-all group cursor-default"
           >
-            <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${
+            <div className={`w-5 h-5 rounded flex items-center justify-center text-[9px] font-black shrink-0 ${
               idx < 3 ? RANK_BADGE[idx] : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
-            }`}>
+            } group-hover:bg-white/20 group-hover:text-white`}>
               {vendor.rank}
             </div>
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center font-black text-emerald-600 dark:text-emerald-400 text-sm shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center font-black text-emerald-600 dark:text-emerald-400 text-xs shrink-0 group-hover:bg-white group-hover:text-emerald-600">
               {vendor.initial}
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{vendor.name}</p>
-              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500">{vendor.revenue}</p>
+            <div className="flex-1 min-w-0 pr-1">
+              <p className="text-[11px] font-bold text-slate-900 dark:text-white truncate leading-tight group-hover:text-white" title={vendor.name}>{vendor.name}</p>
+              <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 mt-0.5 group-hover:text-emerald-50">{vendor.revenue}</p>
             </div>
-            <ScoreRing score={vendor.score} />
+            <div className="shrink-0 scale-[0.85] origin-right group-hover:invert group-hover:brightness-200">
+              <ScoreRing score={vendor.score} />
+            </div>
           </motion.div>
         ))}
       </div>

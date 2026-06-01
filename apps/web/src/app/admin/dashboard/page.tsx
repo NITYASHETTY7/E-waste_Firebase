@@ -85,32 +85,32 @@ export default function AdminDashboard() {
       {/* ── Rows 2 & 3: Main content ── */}
       <div className="grid grid-cols-12 gap-5">
 
-        {/* Left+Centre column (8 cols) */}
-        <div className="col-span-12 lg:col-span-8 space-y-5">
+        {/* Left+Centre column (9 cols) */}
+        <div className="col-span-12 lg:col-span-9 space-y-5">
 
           {/* Row 2: Overview chart + E-Waste donut */}
-          <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
-            <div className="xl:col-span-3 min-h-[320px]">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <div className="xl:col-span-7 min-h-[320px]">
               <BusinessOverviewChart />
             </div>
-            <div className="xl:col-span-2 min-h-[320px]">
+            <div className="xl:col-span-5 min-h-[320px]">
               <EWasteCategoryChart />
             </div>
           </div>
 
           {/* Row 3: Auction table + Top vendors */}
-          <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
-            <div className="xl:col-span-3">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            <div className="xl:col-span-8">
               <AuctionStatusTable />
             </div>
-            <div className="xl:col-span-2">
+            <div className="xl:col-span-4">
               <TopPerformingVendors />
             </div>
           </div>
         </div>
 
-        {/* Right column: Activity feed spanning both rows */}
-        <div className="col-span-12 lg:col-span-4 h-fit lg:sticky lg:top-[96px] z-20">
+        {/* Right column: Activity feed (3 cols) */}
+        <div className="col-span-12 lg:col-span-3 h-fit lg:sticky lg:top-[96px] z-20">
           <RealTimeActivityFeed />
         </div>
       </div>

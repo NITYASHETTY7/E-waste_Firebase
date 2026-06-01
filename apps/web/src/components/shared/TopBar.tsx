@@ -121,29 +121,15 @@ export default function TopBar() {
             {role === 'admin' ? "Here's what's happening with your e-waste marketplace today." : "Manage your e-waste cycle effectively."}
           </p>
         </div>
-
-        {/* Global Search */}
-        {role === 'admin' && (
-          <div className="flex-1 max-w-md hidden md:block ml-4 mt-2">
-            <div className="relative group">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl group-focus-within:text-primary transition-colors">search</span>
-              <input 
-                type="text" 
-                placeholder="Search anything..." 
-                className="w-full h-11 bg-slate-100 dark:bg-slate-800 border-none rounded-2xl pl-11 pr-12 text-sm font-medium focus:ring-2 focus:ring-primary/20 dark:text-white transition-all"
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md text-[10px] font-black text-slate-400 dark:text-slate-300">
-                ⌘ K
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
+        </div>
       <div className="flex items-center gap-2 md:gap-4">
-        {/* Quick Add */}
-        {role !== "vendor" && (
-          <button className="hidden sm:flex w-10 h-10 rounded-2xl bg-primary text-white items-center justify-center hover:shadow-lg hover:shadow-primary/30 active:scale-95 transition-all" title="Quick Action">
+        {/* Quick Add - Only for Clients */}
+        {role === "client" && role !== "admin" && (
+          <button 
+            onClick={() => router.push('/client/post')}
+            className="hidden sm:flex w-10 h-10 rounded-2xl bg-primary text-white items-center justify-center hover:shadow-lg hover:shadow-primary/30 active:scale-95 transition-all" 
+            title="Post E-Waste"
+          >
             <span className="material-symbols-outlined">add</span>
           </button>
         )}
@@ -186,7 +172,7 @@ export default function TopBar() {
                   userNotifications.slice(0, 20).map(n => (
                     <div 
                       key={n.id} 
-                      className={`flex gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors ${n.read ? 'opacity-60' : ''}`}
+                      className={`flex gap-3 px-4 py-3 cursor-pointer hover:bg-emerald-950/30 transition-all group ${n.read ? 'opacity-60 hover:opacity-100' : ''}`}
                       onClick={() => {
                         markNotificationRead(n.id);
                         if (n.link) { 
@@ -195,11 +181,11 @@ export default function TopBar() {
                         setNotifOpen(false);
                       }}
                     >
-                      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.read ? 'bg-slate-300 dark:bg-slate-700' : 'bg-blue-500'}`} />
+                      <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.read ? 'bg-slate-300 dark:bg-slate-700' : 'bg-blue-500'} group-hover:bg-white`} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{n.title}</p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 leading-snug">{n.message}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight group-hover:text-white">{n.title}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 leading-snug group-hover:text-emerald-50">{n.message}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 group-hover:text-emerald-100">
                           {new Date(n.createdAt).toLocaleDateString('en-IN', { 
                             day: '2-digit', 
                             month: 'short', 
@@ -246,16 +232,16 @@ export default function TopBar() {
                 <Link
                   href={profileHref}
                   onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-emerald-950/30 hover:text-white transition-all group"
                 >
-                  <span className="material-symbols-outlined text-base text-slate-500">manage_accounts</span>
+                  <span className="material-symbols-outlined text-base text-slate-500 group-hover:text-white">manage_accounts</span>
                   My Profile
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-emerald-950/30 hover:text-white transition-all group"
                 >
-                  <span className="material-symbols-outlined text-base text-slate-500">logout</span>
+                  <span className="material-symbols-outlined text-base text-slate-500 group-hover:text-white">logout</span>
                   Sign Out
                 </button>
                 <div className="my-1 border-t border-slate-100 dark:border-slate-800" />

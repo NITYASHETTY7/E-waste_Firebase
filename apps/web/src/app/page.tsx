@@ -176,8 +176,8 @@ function LandingPageContent() {
                     <span className="material-symbols-outlined text-[18px] text-[#FFC107]">person</span> User Login
                   </button>
                   <div className="border-t border-[#E2E8F0] dark:border-slate-800 my-1"></div>
-                  <button suppressHydrationWarning onMouseDown={() => router.push('/admin-login')} className="text-left px-5 py-3 text-sm font-bold text-[#4A5568] hover:bg-gray-100 hover:text-gray-900 transition-colors flex items-center gap-3 dark:text-slate-200 dark:hover:bg-slate-800/40">
-                    <span className="material-symbols-outlined text-[18px] text-gray-700 dark:text-gray-300">admin_panel_settings</span> Admin Login
+                  <button suppressHydrationWarning onMouseDown={() => router.push('/admin-login')} className="text-left px-5 py-3 text-sm font-bold text-[#4A5568] hover:bg-purple-50 hover:text-purple-600 transition-colors flex items-center gap-3 dark:text-slate-200 dark:hover:bg-purple-950/40 dark:hover:text-purple-400 group">
+                    <span className="material-symbols-outlined text-[18px] text-slate-500 dark:text-slate-400 group-hover:text-purple-600 dark:group-hover:text-purple-400">admin_panel_settings</span> Admin Login
                   </button>
                 </div>
               )}
@@ -201,7 +201,7 @@ function LandingPageContent() {
               <button suppressHydrationWarning onClick={() => router.push('/client-login')} className="w-full text-left py-3 text-base font-bold text-[#1E8E3E] border-b border-[#E2E8F0] dark:border-slate-800">Client Login</button>
               <button suppressHydrationWarning onClick={() => router.push('/vendor-login')} className="w-full text-left py-3 text-base font-bold text-[#0B5ED7] border-b border-[#E2E8F0] dark:border-slate-800">Vendor Login</button>
               <button suppressHydrationWarning onClick={() => router.push('/user-login')} className="w-full text-left py-3 text-base font-bold text-[#FFC107] border-b border-[#E2E8F0] dark:border-slate-800">User Login</button>
-              <button suppressHydrationWarning onClick={() => router.push('/admin-login')} className="w-full text-left py-3 text-base font-bold text-gray-700 dark:text-slate-300">Admin Login</button>
+              <button suppressHydrationWarning onClick={() => router.push('/admin-login')} className="w-full text-left py-3 text-base font-bold text-slate-700 hover:text-purple-600 dark:text-slate-300 dark:hover:text-purple-400 transition-colors">Admin Login</button>
             </div>
           </div>
         )}

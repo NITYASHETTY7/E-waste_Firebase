@@ -163,7 +163,7 @@ export default function AdminTransactions() {
                       )}
                       {bid.status === "pending" && bid.emdPaid && (
                         <button onClick={() => setDecisionModal({ isOpen: true, bidId: bid.id })}
-                          className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-600 hover:text-white transition-all" title="Review Bid">
+                          className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center hover:bg-emerald-950/30 hover:text-white transition-all" title="Review Bid">
                           <span className="material-symbols-outlined text-sm">fact_check</span>
                         </button>
                       )}

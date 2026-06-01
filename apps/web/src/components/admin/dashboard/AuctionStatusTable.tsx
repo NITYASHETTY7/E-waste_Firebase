@@ -52,21 +52,21 @@ export function AuctionStatusTable() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.1 + idx * 0.05 }}
-                className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors"
+                className="border-b border-slate-50 dark:border-slate-800/50 hover:bg-emerald-950/30 transition-all group cursor-default"
               >
-                <td className="py-3.5 px-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">{auction.id}</td>
-                <td className="py-3.5 px-1 text-[11px] font-bold text-slate-900 dark:text-white">{auction.title}</td>
+                <td className="py-3.5 px-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap group-hover:text-emerald-50">{auction.id}</td>
+                <td className="py-3.5 px-1 text-[11px] font-bold text-slate-900 dark:text-white group-hover:text-white">{auction.title}</td>
                 <td className="py-3.5 px-1">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black ${STATUS_STYLES[auction.status]}`}>
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black ${STATUS_STYLES[auction.status]} group-hover:bg-white/20 group-hover:text-white`}>
                     {auction.status === 'Live' && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse group-hover:bg-white" />
                     )}
                     {auction.status}
                   </span>
                 </td>
-                <td className="py-3.5 px-1 text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap">{auction.endDate}</td>
-                <td className="py-3.5 px-1 text-[11px] font-bold text-slate-900 dark:text-white text-right">{auction.topBid}</td>
-                <td className="py-3.5 px-1 text-[11px] text-slate-500 dark:text-slate-400 text-right">{auction.participants || '-'}</td>
+                <td className="py-3.5 px-1 text-[11px] text-slate-500 dark:text-slate-400 whitespace-nowrap group-hover:text-emerald-50">{auction.endDate}</td>
+                <td className="py-3.5 px-1 text-[11px] font-bold text-slate-900 dark:text-white text-right group-hover:text-white">{auction.topBid}</td>
+                <td className="py-3.5 px-1 text-[11px] text-slate-500 dark:text-slate-400 text-right group-hover:text-emerald-50">{auction.participants || '-'}</td>
               </motion.tr>
             ))}
           </tbody>

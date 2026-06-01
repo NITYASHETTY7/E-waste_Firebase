@@ -36,11 +36,7 @@ export const formatTimeMs = (date: string | Date) => {
 };
 
 export const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return '₹' + Math.round(amount).toLocaleString('en-IN');
 };
 
 export const toLocalDatetimeString = (date?: string | Date | null) => {
