@@ -203,33 +203,35 @@ export default function LiveAuctionEmbed({ listing: initialListing, userRole = "
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen font-sans dark:bg-slate-950">
-      {/* Mini Navbar */}
-      <div className="flex flex-wrap items-center justify-start gap-3 p-4 border-b-2 border-[#1E8E3E] bg-white sticky top-0 z-30 shadow-sm dark:bg-slate-900 dark:border-slate-800">
-        <div className="bg-slate-100 text-slate-900 dark:text-white px-3 py-1.5 rounded-md flex items-center gap-2 text-xs font-bold border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-white">
-          <span className={`w-2.5 h-2.5 rounded-full ${isActive ? "bg-red-500 animate-pulse" : "bg-slate-400"}`} />
-          {isActive ? "LIVE" : "AUCTION ENDED"}: {title}
-        </div>
-        <div className="bg-slate-100 text-slate-900 dark:text-white px-3 py-1.5 rounded-md text-xs font-bold border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-white">
-          <span className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest mr-2">BASE PRICE</span>
-          ₹{basePrice.toLocaleString()}
-        </div>
-        <div className="bg-emerald-50 text-slate-900 dark:text-white px-3 py-1.5 rounded-md text-xs font-bold border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800">
-          <span className="text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest mr-2">CURRENT HIGH</span>
-          ₹{currentHigh.toLocaleString()}
-        </div>
-        <div className="bg-slate-100 text-slate-900 dark:text-white px-3 py-1.5 rounded-md text-xs font-bold border border-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-white">
-          <span className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest mr-2">TICK SIZE</span>
-          ₹{tickSize.toLocaleString()}
-        </div>
-        <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1 border border-blue-200 ml-auto dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800">
-          <span className="material-symbols-outlined text-[16px]">timer</span>
-          {isActive ? auctionTimer : "00:00:00"}
+    <div className="font-sans min-h-screen bg-slate-50 dark:bg-slate-950">
+      {/* Top Header - Standardized with Admin/Vendor */}
+      <div className="sticky top-0 z-30 shadow-sm bg-white border-b-2 border-b-[#1E8E3E] dark:bg-slate-900">
+        <div className="max-w-[1400px] mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
+          <div className="bg-slate-100 text-slate-900 dark:text-white px-3 py-1.5 rounded-md flex items-center gap-2 text-xs font-bold border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+            <span className={`w-2.5 h-2.5 rounded-full ${isActive ? "bg-red-500 animate-pulse" : "bg-slate-400"}`} />
+            {isActive ? "LIVE" : "AUCTION ENDED"}: {title}
+          </div>
+          <div className="bg-slate-100 text-slate-900 dark:text-white px-3 py-1.5 rounded-md text-xs font-bold border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+            <span className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest mr-2">BASE PRICE</span>
+            ₹{basePrice.toLocaleString()}
+          </div>
+          <div className="bg-emerald-50 text-slate-900 dark:text-white px-3 py-1.5 rounded-md text-xs font-bold border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800">
+            <span className="text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest mr-2">CURRENT HIGH</span>
+            ₹{currentHigh.toLocaleString()}
+          </div>
+          <div className="bg-slate-100 text-slate-900 dark:text-white px-3 py-1.5 rounded-md text-xs font-bold border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
+            <span className="text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest mr-2">TICK SIZE</span>
+            ₹{tickSize.toLocaleString()}
+          </div>
+          <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1 border border-blue-200 ml-auto dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800">
+            <span className="material-symbols-outlined text-[16px]">timer</span>
+            {isActive ? auctionTimer : "00:00:00"}
+          </div>
         </div>
       </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[60%_40%] gap-6 p-6 bg-[#F8FAFC]">
+      {/* Two Column Layout Content */}
+      <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-[60%_40%] gap-6 p-6">
         
         {/* LEFT COLUMN */}
         <div className="flex flex-col gap-6">
