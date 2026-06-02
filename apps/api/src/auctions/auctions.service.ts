@@ -457,6 +457,14 @@ export class AuctionsService {
       ),
     );
 
+    await this.notifications.createInAppNotification({
+      userId: vendorId,
+      type: 'sealed_bid_submitted',
+      title: 'Sealed Bid Submitted',
+      message: `Your sealed bid of ₹${amount.toLocaleString('en-IN')} for "${auction.title}" has been successfully submitted.`,
+      link: `/vendor/marketplace/${auction.requirementId || auctionId}`,
+    }).catch(() => {});
+
     return bid;
   }
 

@@ -10,7 +10,11 @@
   "scripts": {
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:api": "npm run start:dev --workspace=apps/api",
-    "dev": "npx concurrently \"npm run dev:web\" \"npm run dev:api\""
+    "dev": "npx concurrently \"npm run dev:web\" \"npm run dev:api\"",
+    "build:web": "npm run build --workspace=apps/web",
+    "build:api": "npm run build --workspace=apps/api",
+    "build": "npx concurrently \"npm run build:web\" \"npm run build:api\"",
+    "lint": "npm run lint --workspaces"
   },
   "devDependencies": {
     "@prisma/client": "^7.8.0",

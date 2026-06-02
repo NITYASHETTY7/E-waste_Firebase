@@ -33,6 +33,7 @@ export default function TopBar() {
   const { 
     currentUser, 
     notifications, 
+    listings,
     setIsSidebarOpen, 
     isSidebarCollapsed, 
     setIsSidebarCollapsed, 
@@ -175,8 +176,62 @@ export default function TopBar() {
                       className={`flex gap-3 px-4 py-3 cursor-pointer hover:bg-emerald-950/30 transition-all group ${n.read ? 'opacity-60 hover:opacity-100' : ''}`}
                       onClick={() => {
                         markNotificationRead(n.id);
-                        if (n.link) { 
-                          router.push(n.link); 
+                        
+                        // Check if redirect is allowed based on auction status
+                        let allowRedirect = true;
+                        if (n.link) {
+                          // Match ID from either relative or absolute URL
+                          const listingIdMatch = n.link.match(/\/(?:listings|auctions|invitations|marketplace)\/([a-zA-Z0-9_-]+)/);
+                          if (listingIdMatch) {
+                            const targetId = listingIdMatch[1];
+                            const listing = (listings || []).find(l => l.id === targetId || l.auctionId === targetId);
+                            
+                            // Check for completed/exhausted status
+                            const isAuctionActive = listing && (
+                              listing.auctionPhase === 'live' ||
+                              listing.auctionPhase === 'sealed_bid' ||
+                              listing.auctionPhase === 'invitation_window'
+                            );
+                            const isAuctionDone = listing && (
+                              listing.auctionPhase === 'completed' || 
+                              listing.status === 'completed' ||
+                              listing.status === 'closed'
+                            );
+
+                            if (n.link.includes('configure-live')) {
+                              // If it's already live or done, block re-configuration
+                              if (listing.auctionPhase === 'live' || isAuctionDone) {
+                                allowRedirect = false;
+                                alert("already completed /exhausted");
+                              }
+                            } else if (n.link.includes('invitations')) {
+                              // If bidding is already done, block invitation access
+                              if (isAuctionDone) {
+                                allowRedirect = false;
+                                alert("already completed /exhausted");
+                              }
+                            } else if (n.link.includes('marketplace')) {
+                              // For vendors, block if auction finished
+                              if (isAuctionDone) {
+                                allowRedirect = false;
+                                alert("already completed /exhausted");
+                              }
+                            }
+                          }
+                        }
+
+                        if (n.link && allowRedirect) { 
+                          // If it's an absolute URL for our site, make it relative for router
+                          let targetPath = n.link;
+                          try {
+                            const url = new URL(n.link);
+                            if (url.origin === window.location.origin) {
+                              targetPath = url.pathname + url.search + url.hash;
+                            }
+                          } catch (e) {
+                            // Link is already relative or invalid URL
+                          }
+                          router.push(targetPath); 
                         }
                         setNotifOpen(false);
                       }}
@@ -184,7 +239,7 @@ export default function TopBar() {
                       <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.read ? 'bg-slate-300 dark:bg-slate-700' : 'bg-blue-500'} group-hover:bg-white`} />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight group-hover:text-white">{n.title}</p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 leading-snug group-hover:text-emerald-50">{n.message}</p>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug group-hover:text-emerald-50 break-words">{n.message}</p>
                         <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 group-hover:text-emerald-100">
                           {new Date(n.createdAt).toLocaleDateString('en-IN', { 
                             day: '2-digit', 

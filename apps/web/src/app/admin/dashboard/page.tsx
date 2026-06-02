@@ -43,6 +43,7 @@ export default function AdminDashboard() {
           variant="violet"
           chartData={[{ v: 38 }, { v: 55 }, { v: 42 }, { v: 68 }, { v: 60 }, { v: 82 }, { v: 95 }]}
           delay={1}
+          href="/admin/transactions"
         />
         <KpiCard
           title="Total Requests"
@@ -52,6 +53,7 @@ export default function AdminDashboard() {
           variant="blue"
           chartData={[{ v: 30 }, { v: 45 }, { v: 35 }, { v: 58 }, { v: 50 }, { v: 70 }, { v: 80 }]}
           delay={2}
+          href="/admin/listings"
         />
         <KpiCard
           title="Active Auctions"
@@ -61,6 +63,7 @@ export default function AdminDashboard() {
           variant="emerald"
           chartData={[{ v: 4 }, { v: 7 }, { v: 5 }, { v: 10 }, { v: 8 }, { v: 14 }, { v: 18 }]}
           delay={3}
+          href="/admin/auctions"
         />
         <KpiCard
           title="Completed Pickups"
@@ -70,6 +73,7 @@ export default function AdminDashboard() {
           variant="amber"
           chartData={[{ v: 18 }, { v: 32 }, { v: 25 }, { v: 48 }, { v: 55 }, { v: 72 }, { v: 89 }]}
           delay={4}
+          href="/admin/reconciliation"
         />
         <KpiCard
           title="Total Vendors"
@@ -79,6 +83,7 @@ export default function AdminDashboard() {
           variant="teal"
           chartData={[{ v: 35 }, { v: 50 }, { v: 58 }, { v: 68 }, { v: 80 }, { v: 100 }, { v: 120 }]}
           delay={5}
+          href="/admin/vendors"
         />
       </div>
 

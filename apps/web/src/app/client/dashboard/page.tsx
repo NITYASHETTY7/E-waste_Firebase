@@ -19,8 +19,19 @@ export default function ClientDashboard() {
   const isDemo = currentUser?.email === 'client@weconnect.com';
 
   const myListings = listings.filter(l => l.userId === currentUser?.id);
-  const activeListings = myListings.filter(l => l.status === "active" || l.auctionPhase === "live");
-  const completedListings = myListings.filter(l => l.status === "completed");
+  const activeListings = myListings.filter(l => 
+    l.status === "active" || 
+    l.auctionPhase === "live" || 
+    l.auctionPhase === "completed" ||
+    l.requirementStatus === "client_review"
+  ).sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
+
+  const completedListings = myListings.filter(l => l.status === "completed" || l.auctionPhase === "completed");
+
+  const getListingLink = (l: Listing) => {
+    if (l.auctionPhase === "completed") return `/client/handover`;
+    return `/client/listings/${l.id}`;
+  };
 
   const myBids = bids.filter(b => myListings.some(l => l.id === b.listingId));
   const acceptedBids = myBids.filter(b => b.status === "accepted");
@@ -97,10 +108,10 @@ export default function ClientDashboard() {
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <KpiCard title="Total Lots Posted" value={myListings.length} icon="inventory_2" delay={0.1} />
-        <KpiCard title="Revenue Realized" value={`₹${(revenueGenerated / 1000).toFixed(1)}k`} icon="payments" delay={0.2} trend={{ value: 24, isPositive: true }} />
-        <KpiCard title="Active Auctions" value={activeListings.length} icon="gavel" delay={0.3} />
-        <KpiCard title="Success Rate" value={`${myListings.length > 0 ? Math.round((completedListings.length / myListings.length) * 100) : 0}%`} icon="verified" delay={0.4} />
+        <KpiCard title="Total Lots Posted" value={myListings.length} icon="inventory_2" delay={0.1} href="/client/listings" />
+        <KpiCard title="Revenue Realized" value={`₹${(revenueGenerated / 1000).toFixed(1)}k`} icon="payments" delay={0.2} trend={{ value: 24, isPositive: true }} href="/client/bids" />
+        <KpiCard title="Active Auctions" value={activeListings.length} icon="gavel" delay={0.3} href="/client/live-auction" />
+        <KpiCard title="Success Rate" value={`${myListings.length > 0 ? Math.round((completedListings.length / myListings.length) * 100) : 0}%`} icon="verified" delay={0.4} href="/client/reports" />
       </div>
 
       {/* Main Content Grid */}
@@ -144,18 +155,18 @@ export default function ClientDashboard() {
             <h3 className="font-bold text-slate-900 dark:text-white mb-4">Active Lot Status</h3>
             <div className="space-y-4">
               {activeListings.slice(0, 3).map(listing => (
-                <div key={listing.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800/50 transition-colors">
-                  <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center shadow-sm">
-                    <span className="material-symbols-outlined text-slate-400 dark:text-slate-500">inventory</span>
+                <Link key={listing.id} href={getListingLink(listing)} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800/50 transition-all hover:bg-emerald-50 dark:hover:bg-emerald-950/20 group">
+                  <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-slate-400 dark:text-slate-500 group-hover:text-emerald-500">inventory</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{listing.title}</p>
                     <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black">{listing.auctionPhase?.replace('_', ' ')}</p>
                   </div>
-                  <Link href={`/client/listings/${listing.id}`} className="text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400">
+                  <div className="text-emerald-600 dark:text-emerald-500 group-hover:translate-x-1 transition-transform">
                     <span className="material-symbols-outlined">arrow_forward_ios</span>
-                  </Link>
-                </div>
+                  </div>
+                </Link>
               ))}
               {activeListings.length === 0 && (
                 <div className="text-center py-6 text-slate-400 dark:text-slate-500 text-sm italic">No active lots</div>

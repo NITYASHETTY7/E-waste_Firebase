@@ -480,6 +480,14 @@ export class RequirementsService {
       ),
     );
 
+    await this.notifications.createInAppNotification({
+      userId: vendorUserId,
+      type: 'audit_docs_submitted',
+      title: 'Audit Documents Submitted',
+      message: `Your audit documents for "${req.title}" have been successfully submitted and are awaiting review.`,
+      link: `/vendor/marketplace/${req.id}`,
+    }).catch(() => {});
+
     return doc;
   }
 
@@ -734,6 +742,25 @@ export class RequirementsService {
           <br/><p>— WeConnect Platform</p>
         `,
       });
+    }
+
+    // Notify shortlisted vendors
+    if (bidIds.length > 0) {
+      const shortlistedBids = await this.prisma.bid.findMany({
+        where: { id: { in: bidIds } },
+        select: { vendorId: true },
+      });
+      const uniqueVendorIds = [...new Set(shortlistedBids.map(b => b.vendorId))];
+      
+      await Promise.all(uniqueVendorIds.map(vId => 
+        this.notifications.createInAppNotification({
+          userId: vId,
+          type: 'bid_shortlisted',
+          title: 'You are Shortlisted!',
+          message: `Your sealed bid for "${req.title}" has been shortlisted and shared with the client for review.`,
+          link: `/vendor/marketplace/${req.id}`,
+        }).catch(() => {})
+      ));
     }
 
     return { success: true, shortlistedCount: bidIds.length };

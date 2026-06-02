@@ -323,11 +323,14 @@ export default function VendorHandoverPage() {
                     </div>
 
                     {/* Auction Documents (Work Order, Purchase Order, Agreement, Invoice) */}
-                    {(pickup.auctionDocs ?? []).length > 0 && (
+                    {((pickup.auctionDocs ?? []).length > 0 || (pickup.pickupDocs ?? []).some((d: any) => d.type === "INVOICE")) && (
                       <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Auction Documents</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          {(pickup.auctionDocs as any[]).map((doc: any) => (
+                          {[
+                            ...(pickup.auctionDocs ?? []),
+                            ...(pickup.pickupDocs ?? []).filter((d: any) => d.type === "INVOICE" && !(pickup.auctionDocs ?? []).some((ad: any) => ad.id === d.id))
+                          ].map((doc: any) => (
                             doc.signedUrl && (
                               <a key={doc.id} href={doc.signedUrl} target="_blank" rel="noreferrer"
                                 className="flex items-center gap-2 p-2.5 bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 transition-colors">

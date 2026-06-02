@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useApp } from "@/context/AppContext";
 import { AiAssistantCard } from "./AiAssistantCard";
@@ -86,22 +86,12 @@ const USER_LINKS = [
 ];
 
 export default function Sidebar() {
-  const { currentUser, logout, notifications, markNotificationRead, markAllNotificationsRead, isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed } = useApp();
+  const { currentUser, isSidebarOpen, setIsSidebarOpen, isSidebarCollapsed, setIsSidebarCollapsed } = useApp();
   const pathname = usePathname();
-  const router = useRouter();
-  const [notifOpen, setNotifOpen] = useState(false);
-  const userNotifications = (notifications || []).filter(n => n.userId === currentUser?.id);
-  const unreadCount = userNotifications.filter(n => !n.read).length;
 
   if (!currentUser) return null;
   const role = currentUser.role;
   const isConsumer = role === "consumer" || role === "guest";
-
-  const handleLogout = () => {
-    logout();
-    setIsSidebarOpen(false);
-    router.push("/");
-  };
 
   const renderLink = (link: any) => {
     const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
@@ -213,41 +203,6 @@ export default function Sidebar() {
             {!isSidebarCollapsed && <span>Collapse</span>}
           </button>
 
-          {/* Notification panel (slides up inside sidebar) */}
-          {notifOpen && !isSidebarCollapsed && (
-            <div className="mx-3 mb-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-                <p className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Notifications</p>
-                {unreadCount > 0 && (
-                  <button onClick={markAllNotificationsRead} className="text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-wider">
-                    Mark all read
-                  </button>
-                )}
-              </div>
-              <div className="max-h-72 overflow-y-auto divide-y divide-slate-50 dark:divide-slate-800">
-                {userNotifications.length === 0 ? (
-                  <div className="py-8 text-center">
-                    <span className="material-symbols-outlined text-3xl text-slate-300 block mb-1">notifications_none</span>
-                    <p className="text-xs text-slate-400 font-bold">No notifications</p>
-                  </div>
-                ) : userNotifications.slice(0, 20).map(n => (
-                  <div key={n.id} className={`flex gap-3 px-4 py-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${n.read ? 'opacity-60' : ''}`}
-                    onClick={() => {
-                      markNotificationRead(n.id);
-                      if (n.link) { router.push(n.link); setNotifOpen(false); setIsSidebarOpen(false); }
-                    }}>
-                    <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.read ? 'bg-slate-300' : 'bg-blue-500'}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-slate-900 dark:text-white leading-tight">{n.title}</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2 leading-snug">{n.message}</p>
-                      <p className="text-[10px] text-slate-400 mt-1">{new Date(n.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* User profile */}
           <div className="p-3">
             <div className={`flex items-center gap-3 p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 ${isSidebarCollapsed ? 'justify-center' : ''}`}>
@@ -255,23 +210,10 @@ export default function Sidebar() {
                 {currentUser.name[0]}
               </div>
               {!isSidebarCollapsed && (
-                <>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{currentUser.name}</p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase truncate">{role}</p>
-                  </div>
-                  <button onClick={() => setNotifOpen(o => !o)} className="relative w-8 h-8 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-400 hover:text-blue-600 transition-colors flex items-center justify-center">
-                    <span className="material-symbols-outlined text-xl">notifications</span>
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
-                  </button>
-                  <button onClick={handleLogout} className="w-8 h-8 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-600 transition-colors flex items-center justify-center">
-                    <span className="material-symbols-outlined text-xl">logout</span>
-                  </button>
-                </>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{currentUser.name}</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase truncate">{role}</p>
+                </div>
               )}
             </div>
           </div>

@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useApp } from "@/context/AppContext";
+import Link from "next/link";
 
 const ICON_COLOR: Record<string, string> = {
   blue: 'bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
@@ -252,10 +253,10 @@ export function RealTimeActivityFeed() {
           ))}
         </div>
 
-        <button className="mt-5 w-full h-9 rounded-xl border border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
+        <Link href="/admin/transactions" className="mt-5 w-full h-9 rounded-xl border border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
           View All Activities
           <span className="material-symbols-outlined text-sm">arrow_forward</span>
-        </button>
+        </Link>
       </motion.div>
 
       {/* Alerts & Notifications */}
@@ -267,7 +268,7 @@ export function RealTimeActivityFeed() {
       >
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-headline font-bold text-slate-900 dark:text-white text-base">Alerts & Notifications</h3>
-          <button className="text-[10px] font-black text-primary uppercase tracking-wider hover:underline">View All</button>
+          <Link href="/admin/listings" className="text-[10px] font-black text-primary uppercase tracking-wider hover:underline">View All</Link>
         </div>
 
         <div className="space-y-3">

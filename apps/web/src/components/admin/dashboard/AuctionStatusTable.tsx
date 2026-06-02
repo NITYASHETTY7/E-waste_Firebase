@@ -2,6 +2,7 @@
 
 import React from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 const AUCTIONS = [
   { id: 'AUC-2024-001', title: 'Dell IT Assets Auction', status: 'Live', endDate: '24 May 2024, 04:00 PM', topBid: '₹12,45,000', participants: 7 },
@@ -73,10 +74,10 @@ export function AuctionStatusTable() {
         </table>
       </div>
 
-      <button className="mt-5 w-full h-9 rounded-xl border border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
+      <Link href="/admin/auctions" className="mt-5 w-full h-9 rounded-xl border border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
         View All Auctions
         <span className="material-symbols-outlined text-sm">arrow_forward</span>
-      </button>
+      </Link>
     </motion.div>
   );
 }

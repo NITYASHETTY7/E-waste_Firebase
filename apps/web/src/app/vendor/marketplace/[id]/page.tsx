@@ -167,34 +167,34 @@ export default function VendorAuctionDetail() {
                  <span className="material-symbols-outlined text-[color:var(--color-primary)]">history</span>
                  Public Auction Ledger
               </h3>
-              
+
               {listingBids.length === 0 ? (
-                 <div className="card p-12 text-center bg-slate-50 border border-slate-100 dark:bg-slate-950 dark:border-slate-800">
+                 <div className="p-12 text-center bg-slate-50/50 border border-slate-100 dark:bg-slate-950/50 dark:border-slate-800 rounded-3xl">
                     <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">history_toggle_off</span>
                     <p className="text-slate-400 font-bold">No bids recorded yet.</p>
                  </div>
               ) : (
-                 <div className="card p-0 overflow-hidden shadow-sm">
+                 <div className="overflow-hidden border border-slate-100 dark:border-slate-800 rounded-3xl">
                     <div className="overflow-x-auto">
                        <table className="w-full text-left text-sm whitespace-nowrap">
-                          <thead className="bg-slate-50 text-slate-500 text-[10px] uppercase font-black tracking-widest border-b border-slate-100 dark:bg-slate-950 dark:border-slate-800">
+                          <thead className="bg-slate-50/50 text-slate-500 text-[10px] uppercase font-black tracking-widest border-b border-slate-100 dark:bg-slate-800/30 dark:border-slate-800">
                              <tr>
                                 <th className="px-6 py-4">Participant Entity</th>
                                 <th className="px-6 py-4 text-right">Authorized Bid</th>
                                 <th className="px-6 py-4 text-right">Timestamp</th>
                              </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-50 bg-white dark:bg-slate-900">
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-transparent">
                              {listingBids.map((bid, index) => {
                                 const isHighest = topBid?.id === bid.id;
                                 return (
-                                   <tr key={bid.id} className={`hover:bg-slate-50 transition-colors ${isHighest ? 'bg-blue-50/30' : ''}`}>
+                                   <tr key={bid.id} className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors ${isHighest ? 'bg-primary/5 dark:bg-primary/10' : ''}`}>
                                       <td className="px-6 py-5">
                                          <p className="font-black text-slate-800 flex items-center gap-2 dark:text-slate-200">
                                             {bid.vendorName}
-                                            {bid.vendorId === currentUser?.id && <span className="bg-black text-white text-[8px] px-1.5 py-0.5 rounded uppercase tracking-wider">You</span>}
+                                            {bid.vendorId === currentUser?.id && <span className="bg-primary text-white text-[8px] px-1.5 py-0.5 rounded uppercase tracking-wider font-black">You</span>}
                                          </p>
-                                         <p className="text-xs text-slate-400 font-mono mt-0.5">ID // {bid.vendorId.split('-')[0].toUpperCase()}</p>
+                                         <p className="text-xs text-slate-400 font-mono mt-0.5 uppercase tracking-tighter opacity-70">ID // {bid.vendorId.split('-')[0].toUpperCase()}</p>
                                       </td>
                                       <td className="px-6 py-5 text-right font-headline text-lg font-bold text-[color:var(--color-primary)]">
                                          ₹{bid.amount.toLocaleString()}

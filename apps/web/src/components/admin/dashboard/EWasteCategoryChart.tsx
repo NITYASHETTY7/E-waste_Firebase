@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { motion } from 'framer-motion';
+import Link from "next/link";
 
 const FILTER_DATA: Record<string, { total: string; data: Array<{ name: string; value: number; color: string }> }> = {
   this_month: {
@@ -141,10 +142,10 @@ export function EWasteCategoryChart() {
         </div>
       </div>
 
-      <button className="mt-4 w-full h-9 rounded-xl border border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
+      <Link href="/admin/reports" className="mt-4 w-full h-9 rounded-xl border border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
         View Full Report
         <span className="material-symbols-outlined text-sm">arrow_forward</span>
-      </button>
+      </Link>
     </motion.div>
   );
 }

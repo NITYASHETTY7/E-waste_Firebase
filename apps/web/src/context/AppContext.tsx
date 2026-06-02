@@ -795,11 +795,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
         return {
           ...prev,
-          listings: mergedListings,
-          bids: backendBids.length > 0 ? backendBids : prev.bids,
-          users: hasBackendUsers ? backendUsers : prev.users,
-          auditInvitations: backendAudits.length > 0 ? backendAudits : prev.auditInvitations,
-          notifications: backendNotifications.length > 0 ? backendNotifications : prev.notifications,
+          listings: requirementsRes.data ? backendListings : prev.listings,
+          bids: bidsRes.data ? backendBids : prev.bids,
+          users: usersRes.data ? backendUsers : prev.users,
+          auditInvitations: auditsRes.data ? backendAudits : prev.auditInvitations,
+          notifications: notificationsRes.data ? backendNotifications : prev.notifications,
         };
       });
     } catch (error) {

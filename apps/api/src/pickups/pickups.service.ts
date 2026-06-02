@@ -38,7 +38,9 @@ export class PickupsService {
         signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
       })),
     );
-    return { ...pickup, pickupDocs: docs, auctionDocs };
+    // Merge Invoice into auctionDocs for frontend visibility
+    const mergedAuctionDocs = [...auctionDocs, ...docs.filter(d => d.type === DocumentType.INVOICE)];
+    return { ...pickup, pickupDocs: docs, auctionDocs: mergedAuctionDocs };
   }
 
   async issueGatePass(
@@ -302,7 +304,7 @@ export class PickupsService {
       date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
     });
 
-    const bucket = process.env.AWS_S3_BUCKET_NAME ?? 'ecoloop-docs';
+    const bucket = this.s3.getPrivateBucket();
     await this.prisma.pickupDocument.create({
       data: {
         type: DocumentType.INVOICE,
@@ -364,7 +366,8 @@ export class PickupsService {
             signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
           })),
         );
-        return { ...pickup, pickupDocs: docs, auctionDocs };
+        const mergedAuctionDocs = [...auctionDocs, ...docs.filter(d => d.type === DocumentType.INVOICE)];
+        return { ...pickup, pickupDocs: docs, auctionDocs: mergedAuctionDocs };
       }),
     );
   }
@@ -394,7 +397,9 @@ export class PickupsService {
       })),
     );
 
-    return { ...pickup, pickupDocs: docs, auctionDocs };
+    const mergedAuctionDocs = [...auctionDocs, ...docs.filter(d => d.type === DocumentType.INVOICE)];
+
+    return { ...pickup, pickupDocs: docs, auctionDocs: mergedAuctionDocs };
   }
 
   async schedule(id: string, scheduledDate: string) {
