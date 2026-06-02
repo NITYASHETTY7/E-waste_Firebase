@@ -36,18 +36,22 @@ export class AuditsService {
     for (const vendor of vendors) {
       const user = vendor.users[0];
       if (user?.email) {
-        await this.notifications.notifyAuditInvitation(
-          user.email,
-          user.name || vendor.name,
-          requirement?.title || 'E-Waste Requirement',
-        ).catch(() => {});
+        await this.notifications
+          .notifyAuditInvitation(
+            user.email,
+            user.name || vendor.name,
+            requirement?.title || 'E-Waste Requirement',
+          )
+          .catch(() => {});
       }
-      await this.notifications.notifyCompanyUsers(vendor.id, {
-        type: 'audit_invitation',
-        title: 'New Site Audit Invitation',
-        message: `You have been invited to perform a site audit for "${requirement?.title || 'E-Waste Requirement'}".`,
-        link: '/vendor/audits',
-      }).catch(() => {});
+      await this.notifications
+        .notifyCompanyUsers(vendor.id, {
+          type: 'audit_invitation',
+          title: 'New Site Audit Invitation',
+          message: `You have been invited to perform a site audit for "${requirement?.title || 'E-Waste Requirement'}".`,
+          link: '/vendor/audits',
+        })
+        .catch(() => {});
     }
 
     return invitations;
@@ -93,37 +97,43 @@ export class AuditsService {
 
     const vendorUser = inv.vendor.users[0];
     if (vendorUser?.email && inv.spocName && inv.siteAddress) {
-      await this.notifications.notifyAuditSpocDetails(
-        vendorUser.email,
-        vendorUser.name || inv.vendor.name,
-        inv.requirement.client.name,
-        inv.spocName,
-        inv.spocPhone || '',
-        inv.siteAddress,
-      ).catch(() => {});
+      await this.notifications
+        .notifyAuditSpocDetails(
+          vendorUser.email,
+          vendorUser.name || inv.vendor.name,
+          inv.requirement.client.name,
+          inv.spocName,
+          inv.spocPhone || '',
+          inv.siteAddress,
+        )
+        .catch(() => {});
     }
 
     // In-app notifications
-    await this.notifications.notifyAdmins({
-      type: 'audit_accepted',
-      title: 'Audit Invitation Accepted',
-      message: `Vendor "${inv.vendor.name}" accepted the audit invitation for "${inv.requirement.title}".`,
-      link: '/admin/audits',
-    }).catch(() => {});
+    await this.notifications
+      .notifyAdmins({
+        type: 'audit_accepted',
+        title: 'Audit Invitation Accepted',
+        message: `Vendor "${inv.vendor.name}" accepted the audit invitation for "${inv.requirement.title}".`,
+        link: '/admin/audits',
+      })
+      .catch(() => {});
 
     const clientUsers = await this.prisma.user.findMany({
-      where: { companyId: inv.requirement.client.id }
+      where: { companyId: inv.requirement.client.id },
     });
     await Promise.all(
-      clientUsers.map(clientUser =>
-        this.notifications.createInAppNotification({
-          userId: clientUser.id,
-          type: 'audit_accepted',
-          title: 'Audit Invitation Accepted',
-          message: `Vendor "${inv.vendor.name}" accepted the audit invitation for "${inv.requirement.title}".`,
-          link: `/client/listings/${inv.requirementId}`,
-        }).catch(() => {})
-      )
+      clientUsers.map((clientUser) =>
+        this.notifications
+          .createInAppNotification({
+            userId: clientUser.id,
+            type: 'audit_accepted',
+            title: 'Audit Invitation Accepted',
+            message: `Vendor "${inv.vendor.name}" accepted the audit invitation for "${inv.requirement.title}".`,
+            link: `/client/listings/${inv.requirementId}`,
+          })
+          .catch(() => {}),
+      ),
     );
 
     return inv;
@@ -141,26 +151,30 @@ export class AuditsService {
 
     if (status === 'REJECTED') {
       // In-app notifications
-      await this.notifications.notifyAdmins({
-        type: 'audit_rejected',
-        title: 'Audit Invitation Declined',
-        message: `Vendor "${inv.vendor.name}" declined the audit invitation for "${inv.requirement.title}".`,
-        link: '/admin/audits',
-      }).catch(() => {});
+      await this.notifications
+        .notifyAdmins({
+          type: 'audit_rejected',
+          title: 'Audit Invitation Declined',
+          message: `Vendor "${inv.vendor.name}" declined the audit invitation for "${inv.requirement.title}".`,
+          link: '/admin/audits',
+        })
+        .catch(() => {});
 
       const clientUsers = await this.prisma.user.findMany({
-        where: { companyId: inv.requirement.client.id }
+        where: { companyId: inv.requirement.client.id },
       });
       await Promise.all(
-        clientUsers.map(clientUser =>
-          this.notifications.createInAppNotification({
-            userId: clientUser.id,
-            type: 'audit_rejected',
-            title: 'Audit Invitation Declined',
-            message: `Vendor "${inv.vendor.name}" declined the audit invitation for "${inv.requirement.title}".`,
-            link: `/client/listings/${inv.requirementId}`,
-          }).catch(() => {})
-        )
+        clientUsers.map((clientUser) =>
+          this.notifications
+            .createInAppNotification({
+              userId: clientUser.id,
+              type: 'audit_rejected',
+              title: 'Audit Invitation Declined',
+              message: `Vendor "${inv.vendor.name}" declined the audit invitation for "${inv.requirement.title}".`,
+              link: `/client/listings/${inv.requirementId}`,
+            })
+            .catch(() => {}),
+        ),
       );
     }
 
@@ -187,16 +201,18 @@ export class AuditsService {
       },
       include: {
         requirement: true,
-      }
+      },
     });
 
     // In-app notification to all vendor users
-    await this.notifications.notifyCompanyUsers(inv.vendorId, {
-      type: 'audit_scheduled',
-      title: 'Site Audit Scheduled',
-      message: `The site audit for "${inv.requirement.title}" has been scheduled. SPOC details are now available.`,
-      link: '/vendor/audits',
-    }).catch(() => {});
+    await this.notifications
+      .notifyCompanyUsers(inv.vendorId, {
+        type: 'audit_scheduled',
+        title: 'Site Audit Scheduled',
+        message: `The site audit for "${inv.requirement.title}" has been scheduled. SPOC details are now available.`,
+        link: '/vendor/audits',
+      })
+      .catch(() => {});
 
     return inv;
   }
@@ -263,30 +279,34 @@ export class AuditsService {
       include: {
         vendor: true,
         requirement: true,
-      }
+      },
     });
 
     if (invitation) {
-      await this.notifications.notifyAdmins({
-        type: 'audit_report_submitted',
-        title: 'Audit Report Submitted',
-        message: `Vendor "${invitation.vendor.name}" has submitted the site audit report for "${invitation.requirement.title}".`,
-        link: `/admin/listings/${invitation.requirementId}/audit-docs`,
-      }).catch(() => {});
+      await this.notifications
+        .notifyAdmins({
+          type: 'audit_report_submitted',
+          title: 'Audit Report Submitted',
+          message: `Vendor "${invitation.vendor.name}" has submitted the site audit report for "${invitation.requirement.title}".`,
+          link: `/admin/listings/${invitation.requirementId}/audit-docs`,
+        })
+        .catch(() => {});
 
       const clientUsers = await this.prisma.user.findMany({
-        where: { companyId: invitation.requirement.clientId }
+        where: { companyId: invitation.requirement.clientId },
       });
       await Promise.all(
-        clientUsers.map(clientUser =>
-          this.notifications.createInAppNotification({
-            userId: clientUser.id,
-            type: 'audit_report_submitted',
-            title: 'Audit Report Submitted',
-            message: `Vendor "${invitation.vendor.name}" has submitted the site audit report for "${invitation.requirement.title}".`,
-            link: `/client/listings/${invitation.requirementId}`,
-          }).catch(() => {})
-        )
+        clientUsers.map((clientUser) =>
+          this.notifications
+            .createInAppNotification({
+              userId: clientUser.id,
+              type: 'audit_report_submitted',
+              title: 'Audit Report Submitted',
+              message: `Vendor "${invitation.vendor.name}" has submitted the site audit report for "${invitation.requirement.title}".`,
+              link: `/client/listings/${invitation.requirementId}`,
+            })
+            .catch(() => {}),
+        ),
       );
     }
 

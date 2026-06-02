@@ -20,7 +20,13 @@ describe('Auction Concurrency (Race Condition)', () => {
         PrismaService,
         RedisService,
         { provide: S3Service, useValue: {} },
-        { provide: NotificationService, useValue: { notifyAdmins: jest.fn().mockResolvedValue({}), createInAppNotification: jest.fn().mockResolvedValue({}) } },
+        {
+          provide: NotificationService,
+          useValue: {
+            notifyAdmins: jest.fn().mockResolvedValue({}),
+            createInAppNotification: jest.fn().mockResolvedValue({}),
+          },
+        },
         { provide: DocumentsService, useValue: {} },
       ],
     }).compile();
@@ -39,19 +45,19 @@ describe('Auction Concurrency (Race Condition)', () => {
   it('should handle 20 concurrent bids for the same amount and only accept ONE', async () => {
     // 1. Create a test auction
     const client = await prisma.company.create({
-      data: { name: 'Test Client', type: 'CLIENT' }
+      data: { name: 'Test Client', type: 'CLIENT' },
     });
     const vendor = await prisma.company.create({
-        data: { name: 'Test Vendor', type: 'VENDOR' }
+      data: { name: 'Test Vendor', type: 'VENDOR' },
     });
     const vendorUser = await prisma.user.create({
-        data: { 
-          email: `test-${Date.now()}@test.com`, 
-          passwordHash: 'hashed', 
-          name: 'Test User', 
-          companyId: vendor.id, 
-          role: 'VENDOR' 
-        }
+      data: {
+        email: `test-${Date.now()}@test.com`,
+        passwordHash: 'hashed',
+        name: 'Test User',
+        companyId: vendor.id,
+        role: 'VENDOR',
+      },
     });
 
     const auction = await prisma.auction.create({
@@ -64,7 +70,7 @@ describe('Auction Concurrency (Race Condition)', () => {
         clientId: client.id,
         openPhaseStart: new Date(Date.now() - 10000),
         openPhaseEnd: new Date(Date.now() + 60000),
-      }
+      },
     });
 
     // Create a shortlisted sealed bid for this vendor
@@ -75,7 +81,7 @@ describe('Auction Concurrency (Race Condition)', () => {
         amount: 9000,
         phase: BidPhase.SEALED,
         isShortlisted: true,
-      }
+      },
     });
 
     // Clear any existing Redis leaderboard/locks for this auction ID
@@ -83,20 +89,24 @@ describe('Auction Concurrency (Race Condition)', () => {
 
     // 2. Launch 20 concurrent bids for 11000
     const bidAmount = 11000;
-    const requests = Array(20).fill(null).map((_, i) => 
-      service.placeLiveBid({
-        auctionId: auction.id,
-        vendorId: vendorUser.id,
-        amount: bidAmount,
-        idempotencyKey: `race-test-${i}` // Different idempotency keys to simulate different requests
-      }).catch(e => e)
-    );
+    const requests = Array(20)
+      .fill(null)
+      .map((_, i) =>
+        service
+          .placeLiveBid({
+            auctionId: auction.id,
+            vendorId: vendorUser.id,
+            amount: bidAmount,
+            idempotencyKey: `race-test-${i}`, // Different idempotency keys to simulate different requests
+          })
+          .catch((e) => e),
+      );
 
     const results = await Promise.all(requests);
 
     // 3. Assertions
-    const successes = results.filter(r => r && r.bid);
-    const failures = results.filter(r => r instanceof BadRequestException);
+    const successes = results.filter((r) => r && r.bid);
+    const failures = results.filter((r) => r instanceof BadRequestException);
 
     console.log(`Successes: ${successes.length}, Failures: ${failures.length}`);
     failures.forEach((f, idx) => {
@@ -105,13 +115,15 @@ describe('Auction Concurrency (Race Condition)', () => {
 
     expect(successes.length).toBe(1);
     expect(failures.length).toBe(19);
-    failures.forEach(f => {
-      expect(f.message).toBe('The price is already bid. Try the next highest bid.');
+    failures.forEach((f) => {
+      expect(f.message).toBe(
+        'The price is already bid. Try the next highest bid.',
+      );
     });
 
     // Check DB
     const bidsInDb = await prisma.bid.findMany({
-        where: { auctionId: auction.id, amount: bidAmount }
+      where: { auctionId: auction.id, amount: bidAmount },
     });
     expect(bidsInDb.length).toBe(1);
 
@@ -119,6 +131,8 @@ describe('Auction Concurrency (Race Condition)', () => {
     await prisma.bid.deleteMany({ where: { auctionId: auction.id } });
     await prisma.auction.delete({ where: { id: auction.id } });
     await prisma.user.delete({ where: { id: vendorUser.id } });
-    await prisma.company.deleteMany({ where: { id: { in: [client.id, vendor.id] } } });
+    await prisma.company.deleteMany({
+      where: { id: { in: [client.id, vendor.id] } },
+    });
   }, 30000);
 });

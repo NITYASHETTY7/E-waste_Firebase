@@ -9,7 +9,7 @@ console.log('--- EXECUTING MAIN.TS TOP LEVEL ---');
 
 async function bootstrap() {
   console.log('🔄 Starting EcoLoop API initialization...');
-  
+
   const app = await NestFactory.create(AppModule);
   console.log('✅ NestFactory created successfully (Redis/DB connected)');
 

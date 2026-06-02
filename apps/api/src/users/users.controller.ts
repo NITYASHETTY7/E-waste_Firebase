@@ -63,45 +63,72 @@ export class UsersController {
   }
 
   // --- Admin Endpoints --- //
-  
+
   @Patch(':id/approve')
   async approveUser(@Param('id') id: string) {
     const user = await this.usersService.approveUser(id);
-    this.notifications.notifyAccountApproved(user.email, user.name, user.phone ?? undefined).catch(() => {});
-    const dashboardLink = user.role === 'CLIENT' ? '/client/dashboard' : user.role === 'VENDOR' ? '/vendor/dashboard' : '/user/dashboard';
-    await this.notifications.createInAppNotification({
-      userId: user.id,
-      type: 'account_approved',
-      title: 'Account Approved',
-      message: 'Your account has been approved. Welcome to Ecoloop!',
-      link: dashboardLink,
-    }).catch(() => {});
+    this.notifications
+      .notifyAccountApproved(user.email, user.name, user.phone ?? undefined)
+      .catch(() => {});
+    const dashboardLink =
+      user.role === 'CLIENT'
+        ? '/client/dashboard'
+        : user.role === 'VENDOR'
+          ? '/vendor/dashboard'
+          : '/user/dashboard';
+    await this.notifications
+      .createInAppNotification({
+        userId: user.id,
+        type: 'account_approved',
+        title: 'Account Approved',
+        message: 'Your account has been approved. Welcome to Ecoloop!',
+        link: dashboardLink,
+      })
+      .catch(() => {});
     return user;
   }
 
   @Patch(':id/reject')
   async rejectUser(@Param('id') id: string, @Body('reason') reason?: string) {
     const user = await this.usersService.rejectUser(id);
-    this.notifications.notifyAccountRejected(user.email, user.name, user.phone ?? undefined, reason).catch(() => {});
-    await this.notifications.createInAppNotification({
-      userId: user.id,
-      type: 'account_rejected',
-      title: 'Account Application Update',
-      message: `Your account application was not approved. ${reason ? `Reason: ${reason}` : ''}`,
-    }).catch(() => {});
+    this.notifications
+      .notifyAccountRejected(
+        user.email,
+        user.name,
+        user.phone ?? undefined,
+        reason,
+      )
+      .catch(() => {});
+    await this.notifications
+      .createInAppNotification({
+        userId: user.id,
+        type: 'account_rejected',
+        title: 'Account Application Update',
+        message: `Your account application was not approved. ${reason ? `Reason: ${reason}` : ''}`,
+      })
+      .catch(() => {});
     return user;
   }
 
   @Patch(':id/hold')
   async holdUser(@Param('id') id: string, @Body('reason') reason?: string) {
     const user = await this.usersService.holdUser(id);
-    this.notifications.notifyAccountOnHold(user.email, user.name, user.phone ?? undefined, reason).catch(() => {});
-    await this.notifications.createInAppNotification({
-      userId: user.id,
-      type: 'account_on_hold',
-      title: 'Account On Hold',
-      message: `Your account has been placed on hold. ${reason ? `Reason: ${reason}` : ''}`,
-    }).catch(() => {});
+    this.notifications
+      .notifyAccountOnHold(
+        user.email,
+        user.name,
+        user.phone ?? undefined,
+        reason,
+      )
+      .catch(() => {});
+    await this.notifications
+      .createInAppNotification({
+        userId: user.id,
+        type: 'account_on_hold',
+        title: 'Account On Hold',
+        message: `Your account has been placed on hold. ${reason ? `Reason: ${reason}` : ''}`,
+      })
+      .catch(() => {});
     return user;
   }
 

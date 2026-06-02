@@ -63,10 +63,7 @@ export class PaymentsController {
 
   @Patch('admin/payments/:id/verify')
   @Roles(UserRole.ADMIN)
-  verifyPayment(
-    @Param('id') id: string,
-    @Body('adminNotes') notes?: string,
-  ) {
+  verifyPayment(@Param('id') id: string, @Body('adminNotes') notes?: string) {
     return this.svc.verifyPayment(id, notes);
   }
 

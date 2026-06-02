@@ -36,14 +36,14 @@ export class AuctionScheduler {
     const pendingPickups = await this.prisma.pickup.findMany({
       where: {
         status: { not: PickupStatus.COMPLETED },
-        createdAt: { lt: twentyFourHoursAgo }
+        createdAt: { lt: twentyFourHoursAgo },
       },
       include: {
         pickupDocs: true,
         auction: {
-          include: { winner: { include: { users: { take: 1 } } } }
-        }
-      }
+          include: { winner: { include: { users: { take: 1 } } } },
+        },
+      },
     });
 
     for (const pickup of pendingPickups) {
@@ -52,11 +52,13 @@ export class AuctionScheduler {
         'WEIGHT_SLIP_EMPTY',
         'WEIGHT_SLIP_LOADED',
         'RECYCLING_CERTIFICATE',
-        'DISPOSAL_CERTIFICATE'
+        'DISPOSAL_CERTIFICATE',
       ];
-      
-      const uploadedTypes = pickup.pickupDocs.map(d => d.type);
-      const missingTypes = requiredTypes.filter(t => !uploadedTypes.includes(t as any));
+
+      const uploadedTypes = pickup.pickupDocs.map((d) => d.type);
+      const missingTypes = requiredTypes.filter(
+        (t) => !uploadedTypes.includes(t as any),
+      );
 
       if (missingTypes.length > 0) {
         const vendorUser = pickup.auction?.winner?.users?.[0];
@@ -71,14 +73,19 @@ export class AuctionScheduler {
                 <p>You have missing compliance documents for the auction <strong>${pickup.auction.title}</strong>.</p>
                 <p>Please log in and upload the following missing documents to avoid penalties:</p>
                 <ul>
-                  ${missingTypes.map(t => `<li>${t.replace(/_/g, ' ')}</li>`).join('')}
+                  ${missingTypes.map((t) => `<li>${t.replace(/_/g, ' ')}</li>`).join('')}
                 </ul>
                 <p><a href="${process.env.WEB_URL || 'http://localhost:3000'}/vendor/pickups">Go to Pickups Dashboard</a></p>
-              `
+              `,
             });
-            this.logger.log(`Sent reminder to ${vendorUser.email} for pickup ${pickup.id}`);
+            this.logger.log(
+              `Sent reminder to ${vendorUser.email} for pickup ${pickup.id}`,
+            );
           } catch (err) {
-            this.logger.error(`Failed to send reminder for pickup ${pickup.id}`, err);
+            this.logger.error(
+              `Failed to send reminder for pickup ${pickup.id}`,
+              err,
+            );
           }
         }
       }

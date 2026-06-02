@@ -35,11 +35,16 @@ export class PickupsService {
     const auctionDocs = await Promise.all(
       (pickup.auction?.auctionDocs ?? []).map(async (doc) => ({
         ...doc,
-        signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
+        signedUrl: await this.s3
+          .getSignedUrl(doc.s3Key, doc.s3Bucket)
+          .catch(() => null),
       })),
     );
     // Merge Invoice into auctionDocs for frontend visibility
-    const mergedAuctionDocs = [...auctionDocs, ...docs.filter(d => d.type === DocumentType.INVOICE)];
+    const mergedAuctionDocs = [
+      ...auctionDocs,
+      ...docs.filter((d) => d.type === DocumentType.INVOICE),
+    ];
     return { ...pickup, pickupDocs: docs, auctionDocs: mergedAuctionDocs };
   }
 
@@ -62,7 +67,9 @@ export class PickupsService {
         pickupNotes: data.pickupNotes,
         gatePassIssuedAt: new Date(),
         status: PickupStatus.GATE_PASS_ISSUED,
-        ...(data.scheduledDate && { scheduledDate: new Date(data.scheduledDate) }),
+        ...(data.scheduledDate && {
+          scheduledDate: new Date(data.scheduledDate),
+        }),
       },
       include: {
         auction: {
@@ -75,13 +82,15 @@ export class PickupsService {
 
     const vendorUser = pickup.auction.winner?.users?.[0];
     if (vendorUser?.id) {
-      await this.notifications.createInAppNotification({
-        userId: vendorUser.id,
-        type: 'gate_pass_issued',
-        title: 'Gate Pass Issued',
-        message: `Gate pass has been issued for "${pickup.auction.title}". You can proceed with logistics/pickup.`,
-        link: `/vendor/pickups`,
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: vendorUser.id,
+          type: 'gate_pass_issued',
+          title: 'Gate Pass Issued',
+          message: `Gate pass has been issued for "${pickup.auction.title}". You can proceed with logistics/pickup.`,
+          link: `/vendor/pickups`,
+        })
+        .catch(() => {});
     }
 
     return pickup;
@@ -101,7 +110,10 @@ export class PickupsService {
     });
     if (!pickup) throw new NotFoundException('Pickup not found');
 
-    const { key, bucket } = await this.s3.upload(file, `pickups/${id}/gate-pass`);
+    const { key, bucket } = await this.s3.upload(
+      file,
+      `pickups/${id}/gate-pass`,
+    );
 
     await this.prisma.pickup.update({
       where: { id },
@@ -115,23 +127,27 @@ export class PickupsService {
     // Email vendor that gate pass is ready
     const vendorUser = pickup.auction.winner?.users?.[0];
     if (vendorUser?.email) {
-      await this.notifications.notifyVendorGatePassUploaded(
-        vendorUser.email,
-        vendorUser.name || pickup.auction.winner!.name,
-        pickup.auction.title,
-        pickup.auction.client.name,
-        pickup.gatePassNumber ?? 'N/A',
-      ).catch(() => {});
+      await this.notifications
+        .notifyVendorGatePassUploaded(
+          vendorUser.email,
+          vendorUser.name || pickup.auction.winner!.name,
+          pickup.auction.title,
+          pickup.auction.client.name,
+          pickup.gatePassNumber ?? 'N/A',
+        )
+        .catch(() => {});
     }
 
     if (vendorUser?.id) {
-      await this.notifications.createInAppNotification({
-        userId: vendorUser.id,
-        type: 'gate_pass_uploaded',
-        title: 'Gate Pass Document Uploaded',
-        message: `Gate pass document has been uploaded for "${pickup.auction.title}". Logistics can now proceed.`,
-        link: `/vendor/pickups`,
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: vendorUser.id,
+          type: 'gate_pass_uploaded',
+          title: 'Gate Pass Document Uploaded',
+          message: `Gate pass document has been uploaded for "${pickup.auction.title}". Logistics can now proceed.`,
+          link: `/vendor/pickups`,
+        })
+        .catch(() => {});
     }
 
     return { success: true };
@@ -139,16 +155,24 @@ export class PickupsService {
 
   async saveVendorLogistics(
     auctionId: string,
-    data: { vehicleNumber?: string; driverName?: string; preferredDate?: string },
+    data: {
+      vehicleNumber?: string;
+      driverName?: string;
+      preferredDate?: string;
+    },
   ) {
-    const pickup = await this.prisma.pickup.findUnique({ where: { auctionId } });
+    const pickup = await this.prisma.pickup.findUnique({
+      where: { auctionId },
+    });
     if (!pickup) return null;
     const updatedPickup = await this.prisma.pickup.update({
       where: { auctionId },
       data: {
         vendorVehicleNumber: data.vehicleNumber,
         vendorDriverName: data.driverName,
-        ...(data.preferredDate && { vendorPreferredDate: new Date(data.preferredDate) }),
+        ...(data.preferredDate && {
+          vendorPreferredDate: new Date(data.preferredDate),
+        }),
       },
       include: {
         auction: {
@@ -162,21 +186,25 @@ export class PickupsService {
 
     const clientUser = updatedPickup.auction.client?.users?.[0];
     if (clientUser?.id) {
-      await this.notifications.createInAppNotification({
-        userId: clientUser.id,
-        type: 'logistics_updated',
-        title: 'Pickup Logistics Updated',
-        message: `Vendor "${updatedPickup.auction.winner?.name || 'Winner'}" has updated pickup logistics/driver details for "${updatedPickup.auction.title}".`,
-        link: `/client/handover`,
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: clientUser.id,
+          type: 'logistics_updated',
+          title: 'Pickup Logistics Updated',
+          message: `Vendor "${updatedPickup.auction.winner?.name || 'Winner'}" has updated pickup logistics/driver details for "${updatedPickup.auction.title}".`,
+          link: `/client/handover`,
+        })
+        .catch(() => {});
     }
 
-    await this.notifications.notifyAdmins({
-      type: 'logistics_updated',
-      title: 'Pickup Logistics Updated',
-      message: `Vendor "${updatedPickup.auction.winner?.name || 'Winner'}" updated vehicle & driver details for "${updatedPickup.auction.title}".`,
-      link: `/admin/pickups`,
-    }).catch(() => {});
+    await this.notifications
+      .notifyAdmins({
+        type: 'logistics_updated',
+        title: 'Pickup Logistics Updated',
+        message: `Vendor "${updatedPickup.auction.winner?.name || 'Winner'}" updated vehicle & driver details for "${updatedPickup.auction.title}".`,
+        link: `/admin/pickups`,
+      })
+      .catch(() => {});
 
     return updatedPickup;
   }
@@ -200,32 +228,44 @@ export class PickupsService {
 
     const clientUser = pickup.auction.client?.users?.[0];
     if (clientUser?.id) {
-      await this.notifications.createInAppNotification({
-        userId: clientUser.id,
-        type: 'pickup_acknowledged',
-        title: 'Pickup Acknowledged by Vendor',
-        message: `Vendor "${pickup.auction.winner?.name || 'Winner'}" has acknowledged the scheduled pickup for "${pickup.auction.title}".`,
-        link: `/client/handover`,
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: clientUser.id,
+          type: 'pickup_acknowledged',
+          title: 'Pickup Acknowledged by Vendor',
+          message: `Vendor "${pickup.auction.winner?.name || 'Winner'}" has acknowledged the scheduled pickup for "${pickup.auction.title}".`,
+          link: `/client/handover`,
+        })
+        .catch(() => {});
     }
 
-    await this.notifications.notifyAdmins({
-      type: 'pickup_acknowledged',
-      title: 'Pickup Acknowledged by Vendor',
-      message: `Vendor "${pickup.auction.winner?.name || 'Winner'}" acknowledged scheduled pickup details for "${pickup.auction.title}".`,
-      link: `/admin/pickups`,
-    }).catch(() => {});
+    await this.notifications
+      .notifyAdmins({
+        type: 'pickup_acknowledged',
+        title: 'Pickup Acknowledged by Vendor',
+        message: `Vendor "${pickup.auction.winner?.name || 'Winner'}" acknowledged scheduled pickup details for "${pickup.auction.title}".`,
+        link: `/admin/pickups`,
+      })
+      .catch(() => {});
 
     return pickup;
   }
 
-  async uploadHandoverDoc(id: string, file: Express.Multer.File, type: DocumentType) {
+  async uploadHandoverDoc(
+    id: string,
+    file: Express.Multer.File,
+    type: DocumentType,
+  ) {
     return this.uploadDocument(id, file, type);
   }
 
   async reconcile(
     id: string,
-    data: { finalWeight: number; reconciliationNotes?: string; finalAmount: number },
+    data: {
+      finalWeight: number;
+      reconciliationNotes?: string;
+      finalAmount: number;
+    },
   ) {
     const pickup = await this.prisma.pickup.update({
       where: { id },
@@ -249,23 +289,27 @@ export class PickupsService {
     const vendorUser = pickup.auction.winner?.users?.[0];
 
     if (clientUser?.id) {
-      await this.notifications.createInAppNotification({
-        userId: clientUser.id,
-        type: 'weight_reconciled',
-        title: 'Weight Reconciled',
-        message: `Weight for "${pickup.auction.title}" has been reconciled. Final weight: ${data.finalWeight} kg, Final amount: ₹${data.finalAmount}.`,
-        link: `/client/handover`,
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: clientUser.id,
+          type: 'weight_reconciled',
+          title: 'Weight Reconciled',
+          message: `Weight for "${pickup.auction.title}" has been reconciled. Final weight: ${data.finalWeight} kg, Final amount: ₹${data.finalAmount}.`,
+          link: `/client/handover`,
+        })
+        .catch(() => {});
     }
 
     if (vendorUser?.id) {
-      await this.notifications.createInAppNotification({
-        userId: vendorUser.id,
-        type: 'weight_reconciled',
-        title: 'Weight Reconciled',
-        message: `Weight for "${pickup.auction.title}" has been reconciled. Final weight: ${data.finalWeight} kg, Final amount: ₹${data.finalAmount}.`,
-        link: `/vendor/pickups`,
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: vendorUser.id,
+          type: 'weight_reconciled',
+          title: 'Weight Reconciled',
+          message: `Weight for "${pickup.auction.title}" has been reconciled. Final weight: ${data.finalWeight} kg, Final amount: ₹${data.finalAmount}.`,
+          link: `/vendor/pickups`,
+        })
+        .catch(() => {});
     }
 
     return pickup;
@@ -289,7 +333,8 @@ export class PickupsService {
 
     const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
     const finalAmount = pickup.finalAmount ?? pickup.payment?.clientAmount ?? 0;
-    const commissionAmount = pickup.payment?.commissionAmount ?? Math.round(finalAmount * 0.05);
+    const commissionAmount =
+      pickup.payment?.commissionAmount ?? Math.round(finalAmount * 0.05);
 
     const s3Key = await this.documents.generateInvoicePdf({
       pickupId: pickup.id,
@@ -298,10 +343,15 @@ export class PickupsService {
       clientName: pickup.auction.client.name,
       vendorName: pickup.auction.winner?.name ?? 'Vendor',
       auctionTitle: pickup.auction.title,
-      finalWeight: pickup.finalWeight ?? pickup.auction.requirement?.totalWeight ?? 0,
+      finalWeight:
+        pickup.finalWeight ?? pickup.auction.requirement?.totalWeight ?? 0,
       finalAmount,
       commissionAmount,
-      date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      date: new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      }),
     });
 
     const bucket = this.s3.getPrivateBucket();
@@ -363,10 +413,15 @@ export class PickupsService {
         const auctionDocs = await Promise.all(
           (pickup.auction?.auctionDocs ?? []).map(async (doc) => ({
             ...doc,
-            signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
+            signedUrl: await this.s3
+              .getSignedUrl(doc.s3Key, doc.s3Bucket)
+              .catch(() => null),
           })),
         );
-        const mergedAuctionDocs = [...auctionDocs, ...docs.filter(d => d.type === DocumentType.INVOICE)];
+        const mergedAuctionDocs = [
+          ...auctionDocs,
+          ...docs.filter((d) => d.type === DocumentType.INVOICE),
+        ];
         return { ...pickup, pickupDocs: docs, auctionDocs: mergedAuctionDocs };
       }),
     );
@@ -393,11 +448,16 @@ export class PickupsService {
     const auctionDocs = await Promise.all(
       (pickup.auction?.auctionDocs ?? []).map(async (doc) => ({
         ...doc,
-        signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
+        signedUrl: await this.s3
+          .getSignedUrl(doc.s3Key, doc.s3Bucket)
+          .catch(() => null),
       })),
     );
 
-    const mergedAuctionDocs = [...auctionDocs, ...docs.filter(d => d.type === DocumentType.INVOICE)];
+    const mergedAuctionDocs = [
+      ...auctionDocs,
+      ...docs.filter((d) => d.type === DocumentType.INVOICE),
+    ];
 
     return { ...pickup, pickupDocs: docs, auctionDocs: mergedAuctionDocs };
   }
@@ -458,25 +518,31 @@ export class PickupsService {
       });
     }
 
-    const isCompliance = type === DocumentType.RECYCLING_CERTIFICATE || type === DocumentType.DISPOSAL_CERTIFICATE;
+    const isCompliance =
+      type === DocumentType.RECYCLING_CERTIFICATE ||
+      type === DocumentType.DISPOSAL_CERTIFICATE;
     if (isCompliance) {
       const clientUser = pickup.auction?.client?.users?.[0];
       if (clientUser?.id) {
-        await this.notifications.createInAppNotification({
-          userId: clientUser.id,
-          type: 'compliance_uploaded',
-          title: 'Compliance Document Uploaded',
-          message: `Vendor "${pickup.auction?.winner?.name || 'Winner'}" uploaded a compliance certificate (${type.replace('_', ' ')}) for "${pickup.auction?.title}".`,
-          link: `/client/handover`,
-        }).catch(() => {});
+        await this.notifications
+          .createInAppNotification({
+            userId: clientUser.id,
+            type: 'compliance_uploaded',
+            title: 'Compliance Document Uploaded',
+            message: `Vendor "${pickup.auction?.winner?.name || 'Winner'}" uploaded a compliance certificate (${type.replace('_', ' ')}) for "${pickup.auction?.title}".`,
+            link: `/client/handover`,
+          })
+          .catch(() => {});
       }
 
-      await this.notifications.notifyAdmins({
-        type: 'compliance_uploaded',
-        title: 'Compliance Document Uploaded',
-        message: `Vendor "${pickup.auction?.winner?.name || 'Winner'}" uploaded ${type.replace('_', ' ')} for "${pickup.auction?.title}".`,
-        link: `/admin/pickups`,
-      }).catch(() => {});
+      await this.notifications
+        .notifyAdmins({
+          type: 'compliance_uploaded',
+          title: 'Compliance Document Uploaded',
+          message: `Vendor "${pickup.auction?.winner?.name || 'Winner'}" uploaded ${type.replace('_', ' ')} for "${pickup.auction?.title}".`,
+          link: `/admin/pickups`,
+        })
+        .catch(() => {});
     }
 
     return doc;
@@ -487,14 +553,14 @@ export class PickupsService {
       where: { id },
       include: { pickupDocs: true },
     });
-    
+
     if (!pickup || pickup.pickupDocs.length === 0) {
       throw new NotFoundException('No documents found for this pickup');
     }
 
     const archive = archiver('zip', { zlib: { level: 9 } });
     const passThrough = new PassThrough();
-    
+
     archive.pipe(passThrough);
 
     for (const doc of pickup.pickupDocs) {
@@ -526,40 +592,46 @@ export class PickupsService {
           include: {
             client: { include: { users: { take: 1 } } },
             winner: { include: { users: { take: 1 } } },
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
     const clientUser = pickup.auction?.client?.users?.[0];
     const vendorUser = pickup.auction?.winner?.users?.[0];
 
     if (clientUser?.email) {
-      await this.notifications.notifyComplianceVerified(
-        clientUser.email,
-        clientUser.name || pickup.auction.client.name,
-        pickup.auction.title
-      ).catch(() => {});
+      await this.notifications
+        .notifyComplianceVerified(
+          clientUser.email,
+          clientUser.name || pickup.auction.client.name,
+          pickup.auction.title,
+        )
+        .catch(() => {});
     }
 
     if (clientUser?.id) {
-      await this.notifications.createInAppNotification({
-        userId: clientUser.id,
-        type: 'compliance_verified',
-        title: 'Compliance Documents Verified',
-        message: `Compliance documents for "${pickup.auction.title}" have been verified. The transaction is now complete.`,
-        link: `/client/handover`,
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: clientUser.id,
+          type: 'compliance_verified',
+          title: 'Compliance Documents Verified',
+          message: `Compliance documents for "${pickup.auction.title}" have been verified. The transaction is now complete.`,
+          link: `/client/handover`,
+        })
+        .catch(() => {});
     }
 
     if (vendorUser?.id) {
-      await this.notifications.createInAppNotification({
-        userId: vendorUser.id,
-        type: 'compliance_verified',
-        title: 'Compliance Documents Verified',
-        message: `Compliance documents for "${pickup.auction.title}" have been verified by the client. The transaction is now complete.`,
-        link: `/vendor/pickups`,
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: vendorUser.id,
+          type: 'compliance_verified',
+          title: 'Compliance Documents Verified',
+          message: `Compliance documents for "${pickup.auction.title}" have been verified by the client. The transaction is now complete.`,
+          link: `/vendor/pickups`,
+        })
+        .catch(() => {});
     }
 
     return pickup;

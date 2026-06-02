@@ -1,11 +1,24 @@
 import {
-  Controller, Get, Post, Patch, Body, Param,
-  UseGuards, Request, UseInterceptors, UploadedFiles,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UserProductsService } from './user-products.service';
-import { CreateUserProductDto, SubmitQuoteDto, AdminReviewDto, UpdateUserProfileDto } from './user-products.dto';
+import {
+  CreateUserProductDto,
+  SubmitQuoteDto,
+  AdminReviewDto,
+  UpdateUserProfileDto,
+} from './user-products.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('user-products')
@@ -14,16 +27,24 @@ export class UserProductsController {
 
   // USER: submit a new product
   @Post()
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'photos', maxCount: 5 },
-    { name: 'invoice', maxCount: 1 },
-  ]))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'photos', maxCount: 5 },
+      { name: 'invoice', maxCount: 1 },
+    ]),
+  )
   create(
     @Request() req: any,
     @Body() dto: CreateUserProductDto,
-    @UploadedFiles() files: { photos?: Express.Multer.File[]; invoice?: Express.Multer.File[] },
+    @UploadedFiles()
+    files: { photos?: Express.Multer.File[]; invoice?: Express.Multer.File[] },
   ) {
-    return this.svc.create(req.user.userId, dto, files.photos ?? [], files.invoice?.[0]);
+    return this.svc.create(
+      req.user.userId,
+      dto,
+      files.photos ?? [],
+      files.invoice?.[0],
+    );
   }
 
   // USER: list own products
@@ -47,10 +68,7 @@ export class UserProductsController {
 
   // ADMIN: approve or reject a product
   @Patch(':id/review')
-  adminReview(
-    @Param('id') id: string,
-    @Body() dto: AdminReviewDto,
-  ) {
+  adminReview(@Param('id') id: string, @Body() dto: AdminReviewDto) {
     return this.svc.adminReview(id, dto.action, dto.remarks);
   }
 
@@ -61,7 +79,12 @@ export class UserProductsController {
     @Body() dto: SubmitQuoteDto,
     @Request() req: any,
   ) {
-    return this.svc.submitQuote(id, req.user.companyId ?? '', dto.offeredPrice, dto.remarks);
+    return this.svc.submitQuote(
+      id,
+      req.user.companyId ?? '',
+      dto.offeredPrice,
+      dto.remarks,
+    );
   }
 
   // USER: accept a vendor quote

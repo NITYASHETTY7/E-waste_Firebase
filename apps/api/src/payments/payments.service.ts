@@ -40,14 +40,20 @@ export class PaymentsService {
     file: Express.Multer.File,
     utrNumber?: string,
   ) {
-    const payment = await this.prisma.payment.findUnique({ where: { auctionId } });
-    if (!payment) throw new NotFoundException('Payment not found for this auction');
+    const payment = await this.prisma.payment.findUnique({
+      where: { auctionId },
+    });
+    if (!payment)
+      throw new NotFoundException('Payment not found for this auction');
     return this.uploadProof(payment.id, file, utrNumber);
   }
 
   async verifyPaymentByAuction(auctionId: string, adminNotes?: string) {
-    const payment = await this.prisma.payment.findUnique({ where: { auctionId } });
-    if (!payment) throw new NotFoundException('Payment not found for this auction');
+    const payment = await this.prisma.payment.findUnique({
+      where: { auctionId },
+    });
+    if (!payment)
+      throw new NotFoundException('Payment not found for this auction');
     return this.verifyPayment(payment.id, adminNotes);
   }
 
@@ -67,11 +73,7 @@ export class PaymentsService {
   }
 
   // Vendor uploads payment proof (screenshot / UTR)
-  async uploadProof(
-    id: string,
-    file: Express.Multer.File,
-    utrNumber?: string,
-  ) {
+  async uploadProof(id: string, file: Express.Multer.File, utrNumber?: string) {
     const payment = await this.prisma.payment.findUnique({
       where: { id },
       include: { auction: { include: { winner: true } } },
@@ -90,12 +92,14 @@ export class PaymentsService {
     });
 
     // Notify admins in-app
-    await this.notifications.notifyAdmins({
-      type: 'payment_proof_uploaded',
-      title: 'Payment Proof Uploaded',
-      message: `Vendor "${payment.auction.winner?.name || 'Winner'}" uploaded payment proof for "${payment.auction.title}".`,
-      link: '/admin/payments',
-    }).catch(() => {});
+    await this.notifications
+      .notifyAdmins({
+        type: 'payment_proof_uploaded',
+        title: 'Payment Proof Uploaded',
+        message: `Vendor "${payment.auction.winner?.name || 'Winner'}" uploaded payment proof for "${payment.auction.title}".`,
+        link: '/admin/payments',
+      })
+      .catch(() => {});
 
     return updatedPayment;
   }
@@ -109,10 +113,10 @@ export class PaymentsService {
         auction: {
           include: {
             winner: { include: { users: { take: 1 } } },
-            client: { include: { users: { take: 1 } } }
-          }
-        }
-      }
+            client: { include: { users: { take: 1 } } },
+          },
+        },
+      },
     });
 
     const auction = payment.auction;
@@ -125,7 +129,7 @@ export class PaymentsService {
           vendorUser.email,
           vendorUser.name || auction.winner!.name,
           auction.title,
-          'VENDOR'
+          'VENDOR',
         );
         // Also trigger compliance pending email as requested originally
         await this.notifications.notifyCompliancePending(
@@ -137,14 +141,14 @@ export class PaymentsService {
       if (clientUser?.email) {
         await this.notifications.notifyPaymentVerified(
           clientUser.email,
-          clientUser.name || auction.client!.name,
+          clientUser.name || auction.client.name,
           auction.title,
-          'CLIENT'
+          'CLIENT',
         );
         // Ask client to upload gate pass now that payment is processing
         await this.notifications.notifyClientUploadGatePass(
           clientUser.email,
-          clientUser.name || auction.client!.name,
+          clientUser.name || auction.client.name,
           auction.title,
           auction.winner?.name ?? 'the vendor',
         );
@@ -155,23 +159,27 @@ export class PaymentsService {
 
     // In-app notifications
     if (vendorUser?.id) {
-      await this.notifications.createInAppNotification({
-        userId: vendorUser.id,
-        type: 'payment_verified',
-        title: 'Payment Confirmed & Verified',
-        message: `Your payment for "${auction.title}" has been verified. Please upload required compliance certificates.`,
-        link: '/vendor/pickups',
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: vendorUser.id,
+          type: 'payment_verified',
+          title: 'Payment Confirmed & Verified',
+          message: `Your payment for "${auction.title}" has been verified. Please upload required compliance certificates.`,
+          link: '/vendor/pickups',
+        })
+        .catch(() => {});
     }
 
     if (clientUser?.id) {
-      await this.notifications.createInAppNotification({
-        userId: clientUser.id,
-        type: 'payment_verified',
-        title: 'Vendor Payment Verified',
-        message: `Vendor payment for "${auction.title}" has been verified. Please upload the Gate Pass now.`,
-        link: '/client/handover',
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: clientUser.id,
+          type: 'payment_verified',
+          title: 'Vendor Payment Verified',
+          message: `Vendor payment for "${auction.title}" has been verified. Please upload the Gate Pass now.`,
+          link: '/client/handover',
+        })
+        .catch(() => {});
     }
 
     return payment;

@@ -776,6 +776,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setState(prev => {
         const hasBackendListings = backendListings.length > 0;
         const hasBackendUsers = backendUsers.length > 0;
+        const isAdmin = prev.currentUser?.role === 'admin';
 
         // Preserve local state for fields not yet fully implemented in the backend (e.g. closingDocuments, images)
         const mergedListings = hasBackendListings ? backendListings.map(bl => {
@@ -793,13 +794,51 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return bl;
         }) : prev.listings;
 
+        // For admin users: always include MOCK_LISTINGS so all admin accounts see the
+        // same demo data regardless of which admin account is used.
+        // Mock listings are prepended only if their IDs don't exist in the backend result.
+        const backendListingIds = new Set(mergedListings.map((l: any) => l.id));
+        const mockOnlyListings = isAdmin
+          ? MOCK_LISTINGS.filter(ml => !backendListingIds.has(ml.id))
+          : [];
+        const finalListings = isAdmin
+          ? [...mergedListings, ...mockOnlyListings]
+          : mergedListings;
+
+        // For admin users: merge mock bids for mock listings
+        const backendBidListingIds = new Set(backendBids.map((b: any) => b.listingId));
+        const mockOnlyBids = isAdmin
+          ? MOCK_BIDS.filter(mb => !backendBidListingIds.has(mb.listingId))
+          : [];
+        const finalBids = isAdmin && backendBids.length > 0
+          ? [...backendBids, ...mockOnlyBids]
+          : backendBids.length > 0 ? backendBids : prev.bids;
+
+        // For admin users: merge mock users that don't exist in the backend list
+        const backendUserIds = new Set(backendUsers.map((u: any) => u.id));
+        const mockOnlyUsers = isAdmin
+          ? MOCK_USERS.filter(mu => !backendUserIds.has(mu.id))
+          : [];
+        const finalUsers = isAdmin && hasBackendUsers
+          ? [...backendUsers, ...mockOnlyUsers]
+          : hasBackendUsers ? backendUsers : prev.users;
+
+        // For admin users: merge mock audit invitations
+        const backendAuditIds = new Set(backendAudits.map((a: any) => a.id));
+        const mockOnlyAudits = isAdmin
+          ? MOCK_AUDIT_INVITATIONS.filter(ma => !backendAuditIds.has(ma.id))
+          : [];
+        const finalAudits = isAdmin && backendAudits.length > 0
+          ? [...backendAudits, ...mockOnlyAudits]
+          : backendAudits.length > 0 ? backendAudits : prev.auditInvitations;
+
         return {
           ...prev,
-          listings: requirementsRes.data ? backendListings : prev.listings,
-          bids: bidsRes.data ? backendBids : prev.bids,
-          users: usersRes.data ? backendUsers : prev.users,
-          auditInvitations: auditsRes.data ? backendAudits : prev.auditInvitations,
-          notifications: notificationsRes.data ? backendNotifications : prev.notifications,
+          listings: finalListings,
+          bids: finalBids,
+          users: finalUsers,
+          auditInvitations: finalAudits,
+          notifications: backendNotifications.length > 0 ? backendNotifications : prev.notifications,
         };
       });
     } catch (error) {

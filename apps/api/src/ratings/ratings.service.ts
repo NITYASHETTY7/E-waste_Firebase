@@ -22,8 +22,14 @@ export class RatingsService {
     }
 
     const [fromCompany, auction] = await Promise.all([
-      this.prisma.company.findUnique({ where: { id: data.fromCompanyId }, select: { name: true } }),
-      this.prisma.auction.findUnique({ where: { id: data.auctionId }, select: { title: true } }),
+      this.prisma.company.findUnique({
+        where: { id: data.fromCompanyId },
+        select: { name: true },
+      }),
+      this.prisma.auction.findUnique({
+        where: { id: data.auctionId },
+        select: { title: true },
+      }),
     ]);
 
     const result = await this.prisma.rating.upsert({
@@ -41,12 +47,17 @@ export class RatingsService {
     const senderName = fromCompany?.name || 'A partner';
     const auctionTitle = auction?.title || 'an auction';
 
-    await this.notifications.notifyCompanyUsers(data.toCompanyId, {
-      type: 'rating_received',
-      title: 'New Rating Received',
-      message: `"${senderName}" rated you ${data.score}/5 stars for "${auctionTitle}".`,
-      link: data.type === 'CLIENT_TO_VENDOR' ? '/vendor/ratings' : '/client/ratings',
-    }).catch(() => {});
+    await this.notifications
+      .notifyCompanyUsers(data.toCompanyId, {
+        type: 'rating_received',
+        title: 'New Rating Received',
+        message: `"${senderName}" rated you ${data.score}/5 stars for "${auctionTitle}".`,
+        link:
+          data.type === 'CLIENT_TO_VENDOR'
+            ? '/vendor/ratings'
+            : '/client/ratings',
+      })
+      .catch(() => {});
 
     return result;
   }
@@ -64,10 +75,20 @@ export class RatingsService {
   async getRatingsForCompany(companyId: string) {
     const received = await this.prisma.rating.findMany({
       where: { toCompanyId: companyId },
-      include: { fromCompany: { select: { id: true, name: true } }, auction: { select: { id: true, title: true } } },
+      include: {
+        fromCompany: { select: { id: true, name: true } },
+        auction: { select: { id: true, title: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
-    const avg = received.length > 0 ? received.reduce((s, r) => s + r.score, 0) / received.length : 0;
-    return { ratings: received, averageScore: Math.round(avg * 10) / 10, count: received.length };
+    const avg =
+      received.length > 0
+        ? received.reduce((s, r) => s + r.score, 0) / received.length
+        : 0;
+    return {
+      ratings: received,
+      averageScore: Math.round(avg * 10) / 10,
+      count: received.length,
+    };
   }
 }

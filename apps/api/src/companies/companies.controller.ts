@@ -16,7 +16,12 @@ import { CompaniesService } from './companies.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { CompanyStatus, CompanyType, DocumentType, UserRole } from '@prisma/client';
+import {
+  CompanyStatus,
+  CompanyType,
+  DocumentType,
+  UserRole,
+} from '@prisma/client';
 
 @UseGuards(JwtAuthGuard)
 @Controller('companies')
@@ -117,7 +122,11 @@ export class CompaniesController {
   @Post('admin/:id/penalty')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  applyPenalty(@Param('id') id: string, @Body('amount') amount: number, @Body('reason') reason: string) {
+  applyPenalty(
+    @Param('id') id: string,
+    @Body('amount') amount: number,
+    @Body('reason') reason: string,
+  ) {
     return this.companiesService.applyPenalty(id, amount, reason);
   }
 }

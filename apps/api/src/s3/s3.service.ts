@@ -87,8 +87,8 @@ export class S3Service {
       new ListObjectsV2Command({ Bucket: b, Prefix: prefix }),
     );
     return (response.Contents || [])
-      .filter(obj => obj.Key && !obj.Key.endsWith('/'))
-      .map(obj => ({
+      .filter((obj) => obj.Key && !obj.Key.endsWith('/'))
+      .map((obj) => ({
         key: obj.Key!,
         size: obj.Size || 0,
         lastModified: obj.LastModified || new Date(),

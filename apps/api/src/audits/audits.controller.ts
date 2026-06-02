@@ -22,7 +22,10 @@ export class AuditsController {
   constructor(private svc: AuditsService) {}
 
   @Post(':requirementId/invite')
-  invite(@Param('requirementId') requirementId: string, @Body() body: { vendorIds: string[] }) {
+  invite(
+    @Param('requirementId') requirementId: string,
+    @Body() body: { vendorIds: string[] },
+  ) {
     return this.svc.inviteVendors(requirementId, body.vendorIds);
   }
 
@@ -58,8 +61,9 @@ export class AuditsController {
   @UseInterceptors(FilesInterceptor('photos'))
   complete(
     @Param('id') id: string,
-    @Body() body: { 
-      productMatch: string; 
+    @Body()
+    body: {
+      productMatch: string;
       remarks?: string;
       latitude?: string;
       longitude?: string;
@@ -68,10 +72,13 @@ export class AuditsController {
     @Request() req: any,
     @UploadedFiles() photos?: Express.Multer.File[],
   ) {
-    const isProductMatch = body.productMatch === 'true' || body.productMatch === true.toString(); 
+    const isProductMatch =
+      body.productMatch === 'true' || body.productMatch === true.toString();
 
     if (!isProductMatch && (!body.remarks || body.remarks.trim() === '')) {
-      throw new BadRequestException('Remarks are mandatory when product match is false.');        
+      throw new BadRequestException(
+        'Remarks are mandatory when product match is false.',
+      );
     }
 
     return this.svc.submitReport(id, {

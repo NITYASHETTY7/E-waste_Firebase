@@ -28,7 +28,10 @@ import {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('auctions')
 export class AuctionsController {
-  constructor(private svc: AuctionsService, private gateway: AuctionGateway) {}
+  constructor(
+    private svc: AuctionsService,
+    private gateway: AuctionGateway,
+  ) {}
 
   @Post()
   @Roles(UserRole.ADMIN)
@@ -75,10 +78,16 @@ export class AuctionsController {
   }
 
   @Patch(':id/status')
-  async updateStatus(@Param('id') id: string, @Body('status') status: AuctionStatus) {
+  async updateStatus(
+    @Param('id') id: string,
+    @Body('status') status: AuctionStatus,
+  ) {
     const result = await this.svc.updateStatus(id, status);
     // Notify all vendors in the auction room when auction ends
-    if (status === AuctionStatus.COMPLETED || status === AuctionStatus.PENDING_SELECTION) {
+    if (
+      status === AuctionStatus.COMPLETED ||
+      status === AuctionStatus.PENDING_SELECTION
+    ) {
       this.gateway.broadcastAuctionEnded(id).catch(console.error);
     }
     return result;
@@ -105,7 +114,10 @@ export class AuctionsController {
   }
 
   @Patch(':id/winner')
-  async selectWinner(@Param('id') id: string, @Body('vendorId') vendorId: string) {
+  async selectWinner(
+    @Param('id') id: string,
+    @Body('vendorId') vendorId: string,
+  ) {
     const result = await this.svc.selectWinner(id, vendorId);
     this.gateway.broadcastWinnerSelected(id, vendorId);
     return result;
@@ -122,7 +134,12 @@ export class AuctionsController {
     if (!reason?.trim()) {
       throw new BadRequestException('Reason for disqualification is required.');
     }
-    const result = await this.svc.disqualifyWinner(id, disqualifiedVendorId, reason, fineAmount ?? 0);
+    const result = await this.svc.disqualifyWinner(
+      id,
+      disqualifiedVendorId,
+      reason,
+      fineAmount ?? 0,
+    );
     this.gateway.broadcastWinnerSelected(id, result.winnerId ?? '');
     return result;
   }

@@ -11,7 +11,9 @@ export class PdfProcessor {
 
   @Process('generateWorkOrder')
   async handleGeneratePdf(job: Job<any>) {
-    this.logger.debug(`Processing background PDF generation job for auction ${job.data.auctionId}...`);
+    this.logger.debug(
+      `Processing background PDF generation job for auction ${job.data.auctionId}...`,
+    );
     try {
       await this.documentsService.executeGenerateWorkOrderPdf(job.data);
       this.logger.debug('Background PDF job completed');

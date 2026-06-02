@@ -30,7 +30,10 @@ export class AuctionsService {
 
     // 1. Idempotency Check
     if (idempotencyKey) {
-      const isNew = await this.redis.checkAndSetIdempotency(idempotencyKey, 1000 * 60 * 60); // 1 hour
+      const isNew = await this.redis.checkAndSetIdempotency(
+        idempotencyKey,
+        1000 * 60 * 60,
+      ); // 1 hour
       if (!isNew) {
         // Return current highest state instead of error to handle retries gracefully
         const auction = await this.findOne(auctionId);
@@ -47,7 +50,9 @@ export class AuctionsService {
         select: { amount: true },
       });
       if (highestBid && amount <= highestBid.amount) {
-        throw new BadRequestException('The price is already bid. Try the next highest bid.');
+        throw new BadRequestException(
+          'The price is already bid. Try the next highest bid.',
+        );
       }
     };
 
@@ -69,7 +74,9 @@ export class AuctionsService {
     }
 
     if (!locked) {
-      throw new BadRequestException('Bidding contention high, please try again.');
+      throw new BadRequestException(
+        'Bidding contention high, please try again.',
+      );
     }
 
     try {
@@ -77,122 +84,138 @@ export class AuctionsService {
       return await this.prisma.$transaction(
         async (tx) => {
           const auction = await tx.auction.findUnique({
-          where: { id: auctionId },
-          include: {
-            bids: {
-              where: { phase: BidPhase.OPEN },
-              orderBy: { amount: 'desc' },
-              take: 1,
+            where: { id: auctionId },
+            include: {
+              bids: {
+                where: { phase: BidPhase.OPEN },
+                orderBy: { amount: 'desc' },
+                take: 1,
+              },
             },
-          },
-        });
+          });
 
-        if (!auction) throw new NotFoundException('Auction not found');
+          if (!auction) throw new NotFoundException('Auction not found');
 
-        // Validation
-        if (auction.status !== AuctionStatus.OPEN_PHASE) {
-          throw new BadRequestException('Auction is not in open phase');
-        }
+          // Validation
+          if (auction.status !== AuctionStatus.OPEN_PHASE) {
+            throw new BadRequestException('Auction is not in open phase');
+          }
 
-        const now = new Date();
-        if (auction.openPhaseStart && now < auction.openPhaseStart) {
-          throw new BadRequestException('Auction has not started yet');
-        }
-        if (auction.openPhaseEnd && now > auction.openPhaseEnd) {
-          throw new BadRequestException('Auction has already ended');
-        }
+          const now = new Date();
+          if (auction.openPhaseStart && now < auction.openPhaseStart) {
+            throw new BadRequestException('Auction has not started yet');
+          }
+          if (auction.openPhaseEnd && now > auction.openPhaseEnd) {
+            throw new BadRequestException('Auction has already ended');
+          }
 
-        const vendorUser = await tx.user.findUnique({
-          where: { id: vendorId },
-          include: { company: true },
-        });
-        if (vendorUser?.company?.isLocked) {
-          throw new BadRequestException('Your account is locked');
-        }
+          const vendorUser = await tx.user.findUnique({
+            where: { id: vendorId },
+            include: { company: true },
+          });
+          if (vendorUser?.company?.isLocked) {
+            throw new BadRequestException('Your account is locked');
+          }
 
-        if (!vendorUser?.companyId) {
-          throw new BadRequestException('Vendor company not found');
-        }
+          if (!vendorUser?.companyId) {
+            throw new BadRequestException('Vendor company not found');
+          }
 
-        // 3b. Shortlist Check
-        const isShortlisted = await tx.bid.findFirst({
-          where: {
-            auctionId,
-            phase: BidPhase.SEALED,
-            isShortlisted: true,
-            vendor: {
-              companyId: vendorUser.companyId
-            }
-          },
-        });
+          // 3b. Shortlist Check
+          const isShortlisted = await tx.bid.findFirst({
+            where: {
+              auctionId,
+              phase: BidPhase.SEALED,
+              isShortlisted: true,
+              vendor: {
+                companyId: vendorUser.companyId,
+              },
+            },
+          });
 
-        if (!isShortlisted) {
-          throw new BadRequestException('Your company is not shortlisted for the live auction');
-        }
+          if (!isShortlisted) {
+            throw new BadRequestException(
+              'Your company is not shortlisted for the live auction',
+            );
+          }
 
-        const highestBid = auction.bids[0]?.amount || auction.basePrice;
-        const minRequired = highestBid + auction.tickSize;
+          const highestBid = auction.bids[0]?.amount || auction.basePrice;
+          const minRequired = highestBid + auction.tickSize;
 
-        if (auction.bids[0] && amount <= auction.bids[0].amount) {
-          throw new BadRequestException('The price is already bid. Try the next highest bid.');
-        }
+          if (auction.bids[0] && amount <= auction.bids[0].amount) {
+            throw new BadRequestException(
+              'The price is already bid. Try the next highest bid.',
+            );
+          }
 
-        if (amount < minRequired) {
-          throw new BadRequestException(`Minimum bid is ₹${minRequired}`);
-        }
+          if (amount < minRequired) {
+            throw new BadRequestException(`Minimum bid is ₹${minRequired}`);
+          }
 
-        // Create Bid
-        const bid = await tx.bid.create({
-          data: {
-            auctionId,
-            vendorId,
-            amount,
-            phase: BidPhase.OPEN,
-          },
-          include: { vendor: { select: { id: true, name: true } } },
-        });
-
-        // 4. Update Auction (Optimistic Lock)
-        let updatedAuction = await tx.auction.update({
-          where: {
-            id: auctionId,
-            version: auction.version,
-          },
-          data: {
-            version: { increment: 1 },
-          },
-        });
-
-        // 5. Timer Extension (Anti-sniping)
-        const endTime = updatedAuction.openPhaseEnd!;
-        const msToEnd = endTime.getTime() - now.getTime();
-        const extMinutes = updatedAuction.extensionMinutes ?? 3;
-        
-        if (extMinutes > 0 && msToEnd > 0 && msToEnd < extMinutes * 60 * 1000 && updatedAuction.extensionCount < updatedAuction.maxTicks) {
-          const newEnd = new Date(endTime.getTime() + extMinutes * 60 * 1000);
-          updatedAuction = await tx.auction.update({
-            where: { id: auctionId, version: updatedAuction.version },
+          // Create Bid
+          const bid = await tx.bid.create({
             data: {
-              openPhaseEnd: newEnd,
-              extensionCount: { increment: 1 },
+              auctionId,
+              vendorId,
+              amount,
+              phase: BidPhase.OPEN,
+            },
+            include: { vendor: { select: { id: true, name: true } } },
+          });
+
+          // 4. Update Auction (Optimistic Lock)
+          let updatedAuction = await tx.auction.update({
+            where: {
+              id: auctionId,
+              version: auction.version,
+            },
+            data: {
               version: { increment: 1 },
             },
           });
-        }
 
-        // 6. Update Leaderboard in Redis (Async-ish)
-        await this.redis.updateLeaderboard(auctionId, vendorId, amount);
+          // 5. Timer Extension (Anti-sniping)
+          const endTime = updatedAuction.openPhaseEnd!;
+          const msToEnd = endTime.getTime() - now.getTime();
+          const extMinutes = updatedAuction.extensionMinutes ?? 3;
 
-        const leaderboard = await this.getLeaderboard(auctionId);
+          if (
+            extMinutes > 0 &&
+            msToEnd > 0 &&
+            msToEnd < extMinutes * 60 * 1000 &&
+            updatedAuction.extensionCount < updatedAuction.maxTicks
+          ) {
+            const newEnd = new Date(endTime.getTime() + extMinutes * 60 * 1000);
+            updatedAuction = await tx.auction.update({
+              where: { id: auctionId, version: updatedAuction.version },
+              data: {
+                openPhaseEnd: newEnd,
+                extensionCount: { increment: 1 },
+                version: { increment: 1 },
+              },
+            });
+          }
 
-        return { bid, auction: updatedAuction, leaderboard };
-      }, {
-        maxWait: 15000,
-        timeout: 15000,
-      });
+          // 6. Update Leaderboard in Redis (Async-ish)
+          await this.redis.updateLeaderboard(auctionId, vendorId, amount);
+
+          const leaderboard = await this.getLeaderboard(auctionId);
+
+          return { bid, auction: updatedAuction, leaderboard };
+        },
+        {
+          maxWait: 15000,
+          timeout: 15000,
+        },
+      );
     } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
-        throw new BadRequestException('Concurrent update detected, please retry.');
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2025'
+      ) {
+        throw new BadRequestException(
+          'Concurrent update detected, please retry.',
+        );
       }
       throw e;
     } finally {
@@ -207,10 +230,10 @@ export class AuctionsService {
     for (let i = 0; i < raw.length; i += 2) {
       const vendorId = raw[i];
       const amount = parseFloat(raw[i + 1]);
-      
+
       // We could fetch vendor names from DB here or just return IDs
       // For efficiency, let's just return IDs and amounts
-      result.push({ vendorId, amount, rank: (i / 2) + 1 });
+      result.push({ vendorId, amount, rank: i / 2 + 1 });
     }
 
     if (result.length === 0) {
@@ -221,11 +244,18 @@ export class AuctionsService {
         include: { vendor: { select: { id: true, name: true } } },
       });
       const seen = new Set<string>();
-      return bids.filter((b) => {
-        if (seen.has(b.vendorId)) return false;
-        seen.add(b.vendorId);
-        return true;
-      }).map((b, idx) => ({ vendorId: b.vendorId, amount: b.amount, rank: idx + 1, vendor: b.vendor }));
+      return bids
+        .filter((b) => {
+          if (seen.has(b.vendorId)) return false;
+          seen.add(b.vendorId);
+          return true;
+        })
+        .map((b, idx) => ({
+          vendorId: b.vendorId,
+          amount: b.amount,
+          rank: idx + 1,
+          vendor: b.vendor,
+        }));
     }
 
     return result;
@@ -236,7 +266,14 @@ export class AuctionsService {
       where: auctionId ? { auctionId } : {},
       include: {
         vendor: { select: { id: true, name: true, companyId: true } },
-        auction: { select: { id: true, status: true, winnerId: true, requirementId: true } },
+        auction: {
+          select: {
+            id: true,
+            status: true,
+            winnerId: true,
+            requirementId: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -302,13 +339,17 @@ export class AuctionsService {
       extensionMinutes?: number;
     },
   ) {
-    const existing = await this.prisma.auction.findUnique({ where: { id }, select: { status: true } });
+    const existing = await this.prisma.auction.findUnique({
+      where: { id },
+      select: { status: true },
+    });
     if (!existing) throw new NotFoundException('Auction not found');
 
     // Preserve current status if already in an active phase; only set UPCOMING for DRAFT
-    const nextStatus = existing.status === AuctionStatus.DRAFT
-      ? AuctionStatus.UPCOMING
-      : existing.status;
+    const nextStatus =
+      existing.status === AuctionStatus.DRAFT
+        ? AuctionStatus.UPCOMING
+        : existing.status;
 
     const updated = await this.prisma.auction.update({
       where: { id },
@@ -319,7 +360,9 @@ export class AuctionsService {
         openPhaseEnd: new Date(data.openPhaseEnd),
         ...(data.tickSize && { tickSize: data.tickSize }),
         ...(data.maxTicks && { maxTicks: data.maxTicks }),
-        ...(data.extensionMinutes && { extensionMinutes: data.extensionMinutes }),
+        ...(data.extensionMinutes && {
+          extensionMinutes: data.extensionMinutes,
+        }),
         status: nextStatus,
       },
       include: { client: { include: { users: true } } },
@@ -329,20 +372,24 @@ export class AuctionsService {
     if (clientUser) {
       if (clientUser.email) {
         const configureUrl = `${process.env.WEB_URL || 'http://localhost:3000'}/client/listings/${updated.requirementId || id}/configure-live`;
-        await this.notifications.notifyClientLiveAuctionApproval(
-          clientUser.email,
-          clientUser.name,
-          updated.title,
-          configureUrl
-        ).catch(console.error);
+        await this.notifications
+          .notifyClientLiveAuctionApproval(
+            clientUser.email,
+            clientUser.name,
+            updated.title,
+            configureUrl,
+          )
+          .catch(console.error);
       }
-      await this.notifications.createInAppNotification({
-        userId: clientUser.id,
-        type: 'live_auction_approval',
-        title: 'Review Live Auction Parameters',
-        message: `Admin has scheduled the live parameters for "${updated.title}". Please review and approve.`,
-        link: `/client/listings/${updated.requirementId || id}/configure-live`,
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: clientUser.id,
+          type: 'live_auction_approval',
+          title: 'Review Live Auction Parameters',
+          message: `Admin has scheduled the live parameters for "${updated.title}". Please review and approve.`,
+          link: `/client/listings/${updated.requirementId || id}/configure-live`,
+        })
+        .catch(() => {});
     }
 
     return updated;
@@ -354,33 +401,46 @@ export class AuctionsService {
       data: { status: AuctionStatus.OPEN_PHASE }, // Optionally set state to OPEN_PHASE or just UPCOMING.
       include: {
         client: true,
-        bids: { include: { vendor: { select: { id: true, name: true, email: true } } } },
+        bids: {
+          include: {
+            vendor: { select: { id: true, name: true, email: true } },
+          },
+        },
       },
     });
 
     if (!auction) throw new NotFoundException('Auction not found');
 
-    const approvedBids = auction.bids.filter(b => b.phase === BidPhase.SEALED && b.clientStatus === 'approved');
+    const approvedBids = auction.bids.filter(
+      (b) => b.phase === BidPhase.SEALED && b.clientStatus === 'approved',
+    );
 
     for (const bid of approvedBids) {
       if (bid.vendor?.email) {
-        await this.notifications.notifyLiveAuctionApproved(
-          bid.vendor.email,
-          bid.vendor.name,
-          auction.title,
-          `${process.env.WEB_URL || 'http://localhost:3000'}/vendor/marketplace/${auction.requirementId || auction.id}`
-        ).catch(console.error);
+        await this.notifications
+          .notifyLiveAuctionApproved(
+            bid.vendor.email,
+            bid.vendor.name,
+            auction.title,
+            `${process.env.WEB_URL || 'http://localhost:3000'}/vendor/marketplace/${auction.requirementId || auction.id}`,
+          )
+          .catch(console.error);
       }
-      await this.notifications.createInAppNotification({
-        userId: bid.vendorId,
-        type: 'live_auction_approved',
-        title: "You're Shortlisted for Live Auction!",
-        message: `The live auction for "${auction.title}" has been approved. Place your bids now!`,
-        link: `/vendor/marketplace/${auction.requirementId || auction.id}`,
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: bid.vendorId,
+          type: 'live_auction_approved',
+          title: "You're Shortlisted for Live Auction!",
+          message: `The live auction for "${auction.title}" has been approved. Place your bids now!`,
+          link: `/vendor/marketplace/${auction.requirementId || auction.id}`,
+        })
+        .catch(() => {});
     }
 
-    return { success: true, message: 'Live auction approved and vendors notified' };
+    return {
+      success: true,
+      message: 'Live auction approved and vendors notified',
+    };
   }
 
   async submitSealedBid(
@@ -401,7 +461,9 @@ export class AuctionsService {
     });
 
     if (vendorUser?.company?.isLocked) {
-      throw new BadRequestException('Your account is locked. Please contact admin.');
+      throw new BadRequestException(
+        'Your account is locked. Please contact admin.',
+      );
     }
     if (auction.status !== AuctionStatus.SEALED_PHASE) {
       throw new BadRequestException('Sealed bidding is not currently open');
@@ -435,35 +497,41 @@ export class AuctionsService {
     });
 
     // Notify client and admins in-app
-    await this.notifications.notifyAdmins({
-      type: 'sealed_bid_submitted',
-      title: 'Sealed Bid Submitted',
-      message: `Vendor "${vendorUser?.company?.name || vendorUser?.name || 'A vendor'}" submitted a sealed bid of ₹${amount.toLocaleString('en-IN')} for "${auction.title}".`,
-      link: `/admin/listings/${auction.requirementId || auctionId}`,
-    }).catch(() => {});
+    await this.notifications
+      .notifyAdmins({
+        type: 'sealed_bid_submitted',
+        title: 'Sealed Bid Submitted',
+        message: `Vendor "${vendorUser?.company?.name || vendorUser?.name || 'A vendor'}" submitted a sealed bid of ₹${amount.toLocaleString('en-IN')} for "${auction.title}".`,
+        link: `/admin/listings/${auction.requirementId || auctionId}`,
+      })
+      .catch(() => {});
 
     const clientUsers = await this.prisma.user.findMany({
       where: { companyId: auction.clientId },
     });
     await Promise.all(
       clientUsers.map((clientUser) =>
-        this.notifications.createInAppNotification({
-          userId: clientUser.id,
-          type: 'sealed_bid_submitted',
-          title: 'Sealed Bid Submitted',
-          message: `Vendor "${vendorUser?.company?.name || vendorUser?.name || 'A vendor'}" submitted a sealed bid of ₹${amount.toLocaleString('en-IN')} for "${auction.title}".`,
-          link: `/client/listings/${auction.requirementId || auctionId}`,
-        }).catch(() => {}),
+        this.notifications
+          .createInAppNotification({
+            userId: clientUser.id,
+            type: 'sealed_bid_submitted',
+            title: 'Sealed Bid Submitted',
+            message: `Vendor "${vendorUser?.company?.name || vendorUser?.name || 'A vendor'}" submitted a sealed bid of ₹${amount.toLocaleString('en-IN')} for "${auction.title}".`,
+            link: `/client/listings/${auction.requirementId || auctionId}`,
+          })
+          .catch(() => {}),
       ),
     );
 
-    await this.notifications.createInAppNotification({
-      userId: vendorId,
-      type: 'sealed_bid_submitted',
-      title: 'Sealed Bid Submitted',
-      message: `Your sealed bid of ₹${amount.toLocaleString('en-IN')} for "${auction.title}" has been successfully submitted.`,
-      link: `/vendor/marketplace/${auction.requirementId || auctionId}`,
-    }).catch(() => {});
+    await this.notifications
+      .createInAppNotification({
+        userId: vendorId,
+        type: 'sealed_bid_submitted',
+        title: 'Sealed Bid Submitted',
+        message: `Your sealed bid of ₹${amount.toLocaleString('en-IN')} for "${auction.title}" has been successfully submitted.`,
+        link: `/vendor/marketplace/${auction.requirementId || auctionId}`,
+      })
+      .catch(() => {});
 
     return bid;
   }
@@ -538,13 +606,15 @@ export class AuctionsService {
     }
 
     // In-app notification for the winner
-    await this.notifications.createInAppNotification({
-      userId: vendorUserId,
-      type: 'auction_won',
-      title: 'You Won the Auction!',
-      message: `Congratulations! You won the auction for "${auction.title}" with a bid of ₹${winningBid?.amount || 0}.`,
-      link: '/vendor/final-quote',
-    }).catch(() => {});
+    await this.notifications
+      .createInAppNotification({
+        userId: vendorUserId,
+        type: 'auction_won',
+        title: 'You Won the Auction!',
+        message: `Congratulations! You won the auction for "${auction.title}" with a bid of ₹${winningBid?.amount || 0}.`,
+        link: '/vendor/final-quote',
+      })
+      .catch(() => {});
 
     // In-app notifications for client users
     const clientUsers = await this.prisma.user.findMany({
@@ -552,13 +622,15 @@ export class AuctionsService {
     });
     await Promise.all(
       clientUsers.map((clientUser) =>
-        this.notifications.createInAppNotification({
-          userId: clientUser.id,
-          type: 'auction_winner_selected',
-          title: 'Auction Winner Selected',
-          message: `You selected "${winningBid?.vendor?.name || 'a vendor'}" as the winner for "${auction.title}".`,
-          link: `/client/purchase-order`,
-        }).catch(() => {}),
+        this.notifications
+          .createInAppNotification({
+            userId: clientUser.id,
+            type: 'auction_winner_selected',
+            title: 'Auction Winner Selected',
+            message: `You selected "${winningBid?.vendor?.name || 'a vendor'}" as the winner for "${auction.title}".`,
+            link: `/client/purchase-order`,
+          })
+          .catch(() => {}),
       ),
     );
 
@@ -570,12 +642,14 @@ export class AuctionsService {
     });
     await Promise.all(
       otherBids.map((ob) =>
-        this.notifications.createInAppNotification({
-          userId: ob.vendorId,
-          type: 'auction_lost',
-          title: 'Auction Concluded',
-          message: `The auction for "${auction.title}" has concluded. Thank you for participating.`,
-        }).catch(() => {}),
+        this.notifications
+          .createInAppNotification({
+            userId: ob.vendorId,
+            type: 'auction_lost',
+            title: 'Auction Concluded',
+            message: `The auction for "${auction.title}" has concluded. Thank you for participating.`,
+          })
+          .catch(() => {}),
       ),
     );
 
@@ -596,101 +670,164 @@ export class AuctionsService {
     if (!auction) throw new NotFoundException('Auction not found');
 
     if (!auction.winnerId) {
-      throw new BadRequestException('Winner must be selected and approved before generating documents.');
+      throw new BadRequestException(
+        'Winner must be selected and approved before generating documents.',
+      );
     }
 
-    const winningBid = auction.bids.find(b => b.vendorId === auction.winnerId) || auction.bids[0];
+    const winningBid =
+      auction.bids.find((b) => b.vendorId === auction.winnerId) ||
+      auction.bids[0];
     const winningAmount = winningBid?.amount ?? auction.basePrice;
     const commissionAmount = Math.round(winningAmount * 0.05);
     const totalWeight = auction.requirement?.totalWeight ?? 0;
     const vendorName = auction.winner?.name ?? 'Vendor';
     const clientName = auction.client.name;
     const poNumber = `PO-${new Date().getFullYear()}-${id.substring(0, 8).toUpperCase()}`;
-    const date = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const date = new Date().toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
     const bucket = this.s3.getPrivateBucket();
 
     const results: { type: string; s3Key: string; fileName: string }[] = [];
 
     // Generate Purchase Order PDF
-    const hasPO = auction.auctionDocs.some(d => d.type === DocumentType.PURCHASE_ORDER);
+    const hasPO = auction.auctionDocs.some(
+      (d) => d.type === DocumentType.PURCHASE_ORDER,
+    );
     if (!hasPO) {
       try {
         const poKey = await this.documents.generatePoPdf({
-          auctionId: id, poNumber,
-          clientName, clientAddress: auction.client.address ?? '',
+          auctionId: id,
+          poNumber,
+          clientName,
+          clientAddress: auction.client.address ?? '',
           clientGst: auction.client.gstNumber ?? '',
-          vendorName, vendorAddress: auction.winner?.address ?? '',
+          vendorName,
+          vendorAddress: auction.winner?.address ?? '',
           vendorGst: auction.winner?.gstNumber ?? '',
           auctionTitle: auction.title,
           category: auction.category,
-          totalWeight, winningAmount, commissionAmount,
+          totalWeight,
+          winningAmount,
+          commissionAmount,
           date,
         });
         await this.prisma.auctionDocument.create({
           data: {
-            auctionId: id, type: DocumentType.PURCHASE_ORDER,
-            s3Key: poKey, s3Bucket: bucket,
-            fileName: `${poNumber}.pdf`, mimeType: 'application/pdf',
+            auctionId: id,
+            type: DocumentType.PURCHASE_ORDER,
+            s3Key: poKey,
+            s3Bucket: bucket,
+            fileName: `${poNumber}.pdf`,
+            mimeType: 'application/pdf',
           },
         });
-        results.push({ type: 'PURCHASE_ORDER', s3Key: poKey, fileName: `${poNumber}.pdf` });
-      } catch (e) { 
+        results.push({
+          type: 'PURCHASE_ORDER',
+          s3Key: poKey,
+          fileName: `${poNumber}.pdf`,
+        });
+      } catch (e) {
         console.error('PO generation failed', e);
-        throw new BadRequestException(`Failed to generate Purchase Order: ${e.message}`);
+        throw new BadRequestException(
+          `Failed to generate Purchase Order: ${e.message}`,
+        );
       }
     }
 
     // Generate Agreement PDF
-    const hasAgr = auction.auctionDocs.some(d => d.type === DocumentType.AGREEMENT);
+    const hasAgr = auction.auctionDocs.some(
+      (d) => d.type === DocumentType.AGREEMENT,
+    );
     if (!hasAgr) {
       try {
         const agrKey = await this.documents.generateAgreementPdf({
           auctionId: id,
-          clientName, vendorName,
+          clientName,
+          vendorName,
           auctionTitle: auction.title,
-          totalWeight, winningAmount, date,
+          totalWeight,
+          winningAmount,
+          date,
         });
         await this.prisma.auctionDocument.create({
           data: {
-            auctionId: id, type: DocumentType.AGREEMENT,
-            s3Key: agrKey, s3Bucket: bucket,
-            fileName: `AGR-${poNumber}.pdf`, mimeType: 'application/pdf',
+            auctionId: id,
+            type: DocumentType.AGREEMENT,
+            s3Key: agrKey,
+            s3Bucket: bucket,
+            fileName: `AGR-${poNumber}.pdf`,
+            mimeType: 'application/pdf',
           },
         });
-        results.push({ type: 'AGREEMENT', s3Key: agrKey, fileName: `AGR-${poNumber}.pdf` });
-      } catch (e) { 
+        results.push({
+          type: 'AGREEMENT',
+          s3Key: agrKey,
+          fileName: `AGR-${poNumber}.pdf`,
+        });
+      } catch (e) {
         console.error('Agreement generation failed', e);
-        throw new BadRequestException(`Failed to generate Agreement: ${e.message}`);
+        throw new BadRequestException(
+          `Failed to generate Agreement: ${e.message}`,
+        );
       }
     }
 
     // Ensure Work Order exists — generate if missing
-    const hasWO = auction.auctionDocs.some(d => d.type === DocumentType.WORK_ORDER);
+    const hasWO = auction.auctionDocs.some(
+      (d) => d.type === DocumentType.WORK_ORDER,
+    );
     if (!hasWO) {
       try {
         const woKey = await this.documents.generateWorkOrderPdf(
-          id, clientName, vendorName, auction.winner?.address ?? '',
-          auction.title, totalWeight, winningAmount,
+          id,
+          clientName,
+          vendorName,
+          auction.winner?.address ?? '',
+          auction.title,
+          totalWeight,
+          winningAmount,
         );
         await this.prisma.auctionDocument.create({
           data: {
-            auctionId: id, type: DocumentType.WORK_ORDER,
-            s3Key: woKey, s3Bucket: bucket,
-            fileName: `WO-${id.substring(0, 8).toUpperCase()}.pdf`, mimeType: 'application/pdf',
+            auctionId: id,
+            type: DocumentType.WORK_ORDER,
+            s3Key: woKey,
+            s3Bucket: bucket,
+            fileName: `WO-${id.substring(0, 8).toUpperCase()}.pdf`,
+            mimeType: 'application/pdf',
           },
         });
-        results.push({ type: 'WORK_ORDER', s3Key: woKey, fileName: `WO-${id.substring(0, 8).toUpperCase()}.pdf` });
-      } catch (e) { 
+        results.push({
+          type: 'WORK_ORDER',
+          s3Key: woKey,
+          fileName: `WO-${id.substring(0, 8).toUpperCase()}.pdf`,
+        });
+      } catch (e) {
         console.error('WO generation failed', e);
-        throw new BadRequestException(`Failed to generate Work Order: ${e.message}`);
+        throw new BadRequestException(
+          `Failed to generate Work Order: ${e.message}`,
+        );
       }
     }
 
     // Upsert payment record
     await this.prisma.payment.upsert({
       where: { auctionId: id },
-      create: { auctionId: id, clientAmount: winningAmount, commissionAmount, totalAmount: winningAmount + commissionAmount },
-      update: { clientAmount: winningAmount, commissionAmount, totalAmount: winningAmount + commissionAmount },
+      create: {
+        auctionId: id,
+        clientAmount: winningAmount,
+        commissionAmount,
+        totalAmount: winningAmount + commissionAmount,
+      },
+      update: {
+        clientAmount: winningAmount,
+        commissionAmount,
+        totalAmount: winningAmount + commissionAmount,
+      },
     });
 
     // Upsert pickup record
@@ -747,25 +884,29 @@ export class AuctionsService {
       include: { winner: true },
     });
     if (auction) {
-      await this.notifications.notifyAdmins({
-        type: 'final_quote_uploaded',
-        title: 'Final Quote Uploaded',
-        message: `Vendor "${auction.winner?.name || 'Winner'}" uploaded the final quote for "${auction.title}".`,
-        link: `/admin/auctions`,
-      }).catch(() => {});
+      await this.notifications
+        .notifyAdmins({
+          type: 'final_quote_uploaded',
+          title: 'Final Quote Uploaded',
+          message: `Vendor "${auction.winner?.name || 'Winner'}" uploaded the final quote for "${auction.title}".`,
+          link: `/admin/auctions`,
+        })
+        .catch(() => {});
 
       const clientUsers = await this.prisma.user.findMany({
         where: { companyId: auction.clientId },
       });
       await Promise.all(
         clientUsers.map((clientUser) =>
-          this.notifications.createInAppNotification({
-            userId: clientUser.id,
-            type: 'final_quote_uploaded',
-            title: 'Final Quote Uploaded',
-            message: `Vendor "${auction.winner?.name || 'Winner'}" uploaded the final quote for "${auction.title}". Please review.`,
-            link: `/client/purchase-order`,
-          }).catch(() => {}),
+          this.notifications
+            .createInAppNotification({
+              userId: clientUser.id,
+              type: 'final_quote_uploaded',
+              title: 'Final Quote Uploaded',
+              message: `Vendor "${auction.winner?.name || 'Winner'}" uploaded the final quote for "${auction.title}". Please review.`,
+              link: `/client/purchase-order`,
+            })
+            .catch(() => {}),
         ),
       );
     }
@@ -794,13 +935,15 @@ export class AuctionsService {
 
     // Notify vendor user
     if (winningBid?.vendorId) {
-      await this.notifications.createInAppNotification({
-        userId: winningBid.vendorId,
-        type: 'final_quote_approved',
-        title: 'Final Quote Approved',
-        message: `Your final quote for "${auction.title}" has been approved. Please submit payment.`,
-        link: '/vendor/payments',
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: winningBid.vendorId,
+          type: 'final_quote_approved',
+          title: 'Final Quote Approved',
+          message: `Your final quote for "${auction.title}" has been approved. Please submit payment.`,
+          link: '/vendor/payments',
+        })
+        .catch(() => {});
     }
 
     // Upsert payment record — safe to call multiple times
@@ -822,20 +965,24 @@ export class AuctionsService {
 
     const winningBid = auction.bids[0];
     if (winningBid?.vendorId) {
-      await this.notifications.createInAppNotification({
-        userId: winningBid.vendorId,
-        type: 'final_quote_rejected',
-        title: 'Final Quote Rejected',
-        message: `Your final quote for "${auction.title}" has been rejected. Remarks: ${remarks}`,
-        link: '/vendor/final-quote',
-      }).catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: winningBid.vendorId,
+          type: 'final_quote_rejected',
+          title: 'Final Quote Rejected',
+          message: `Your final quote for "${auction.title}" has been rejected. Remarks: ${remarks}`,
+          link: '/vendor/final-quote',
+        })
+        .catch(() => {});
     }
 
     return auction;
   }
 
   async shareSealedBids(auctionId: string, bidIds: string[]) {
-    const auction = await this.prisma.auction.findUnique({ where: { id: auctionId } });
+    const auction = await this.prisma.auction.findUnique({
+      where: { id: auctionId },
+    });
     if (!auction) throw new NotFoundException('Auction not found');
 
     // Reset all bids to false
@@ -884,12 +1031,12 @@ export class AuctionsService {
 
     if (endingAuctions.length > 0) {
       await this.prisma.auction.updateMany({
-        where: { id: { in: endingAuctions.map(a => a.id) } },
+        where: { id: { in: endingAuctions.map((a) => a.id) } },
         data: { status: AuctionStatus.PENDING_SELECTION },
       });
     }
 
-    return { endedAuctionIds: endingAuctions.map(a => a.id) };
+    return { endedAuctionIds: endingAuctions.map((a) => a.id) };
   }
 
   async disqualifyWinner(
@@ -905,7 +1052,9 @@ export class AuctionsService {
         client: true,
         bids: {
           orderBy: { amount: 'desc' },
-          include: { vendor: { select: { id: true, name: true, email: true } } },
+          include: {
+            vendor: { select: { id: true, name: true, email: true } },
+          },
         },
       },
     });
@@ -916,11 +1065,12 @@ export class AuctionsService {
       where: { id: disqualifiedVendorUserId },
       select: { id: true, name: true, email: true, companyId: true },
     });
-    if (!disqualifiedUser) throw new NotFoundException('Disqualified vendor not found');
+    if (!disqualifiedUser)
+      throw new NotFoundException('Disqualified vendor not found');
 
     // 3. Find the next highest unique bidder (excluding the disqualified one)
     const seenVendors = new Set<string>();
-    let nextWinnerBid: typeof auction.bids[0] | null = null;
+    let nextWinnerBid: (typeof auction.bids)[0] | null = null;
     for (const bid of auction.bids) {
       if (bid.vendorId === disqualifiedVendorUserId) continue;
       if (!seenVendors.has(bid.vendorId)) {
@@ -930,7 +1080,9 @@ export class AuctionsService {
     }
 
     if (!nextWinnerBid) {
-      throw new BadRequestException('No other eligible bidder found to elevate as winner.');
+      throw new BadRequestException(
+        'No other eligible bidder found to elevate as winner.',
+      );
     }
 
     // 4. Remove current winner & reset auction status back to allow re-selection
@@ -941,23 +1093,27 @@ export class AuctionsService {
 
     // 5. Send disqualification email to the rejected vendor
     if (disqualifiedUser.email) {
-      await this.notifications.notifyVendorDisqualified(
-        disqualifiedUser.email,
-        disqualifiedUser.name,
-        auction.title,
-        reason,
-        fineAmount,
-      ).catch(() => {});
+      await this.notifications
+        .notifyVendorDisqualified(
+          disqualifiedUser.email,
+          disqualifiedUser.name,
+          auction.title,
+          reason,
+          fineAmount,
+        )
+        .catch(() => {});
     }
 
     // 6. In-app notification to the disqualified vendor
-    await this.notifications.createInAppNotification({
-      userId: disqualifiedUser.id,
-      type: 'auction_disqualified',
-      title: 'You Have Been Disqualified',
-      message: `Your auction win for "${auction.title}" has been revoked by the admin. Reason: ${reason}${fineAmount > 0 ? `. A fine of ₹${fineAmount.toLocaleString('en-IN')} has been levied.` : ''}`,
-      link: '/vendor/auctions',
-    }).catch(() => {});
+    await this.notifications
+      .createInAppNotification({
+        userId: disqualifiedUser.id,
+        type: 'auction_disqualified',
+        title: 'You Have Been Disqualified',
+        message: `Your auction win for "${auction.title}" has been revoked by the admin. Reason: ${reason}${fineAmount > 0 ? `. A fine of ₹${fineAmount.toLocaleString('en-IN')} has been levied.` : ''}`,
+        link: '/vendor/auctions',
+      })
+      .catch(() => {});
 
     // 7. Now select the next winner using the existing logic
     return this.selectWinner(auctionId, nextWinnerBid.vendorId);

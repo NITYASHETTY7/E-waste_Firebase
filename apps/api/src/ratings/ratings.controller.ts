@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { RatingsService } from './ratings.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -11,7 +19,8 @@ export class RatingsController {
   @Post()
   submit(
     @Request() req: any,
-    @Body() body: {
+    @Body()
+    body: {
       auctionId: string;
       toCompanyId: string;
       score: number;

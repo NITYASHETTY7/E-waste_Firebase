@@ -16,33 +16,33 @@ import { NotificationService } from '../notifications/notification.service';
 
 @Injectable()
 export class AuthService {
-constructor(
-  private usersService: UsersService,
-  private jwtService: JwtService,
-  private otpService: OtpService,
-  private prisma: PrismaService,
-  private notifications: NotificationService,
-) {}
+  constructor(
+    private usersService: UsersService,
+    private jwtService: JwtService,
+    private otpService: OtpService,
+    private prisma: PrismaService,
+    private notifications: NotificationService,
+  ) {}
 
-async completeVerification(email: string) {
-  const user = await this.prisma.user.findUnique({
-    where: { email }
-  });
+  async completeVerification(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
 
-  if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('User not found');
 
-  // User might not have a phone number depending on role, check appropriately
-  if (!user.emailVerified || (user.phone && !user.phoneVerified)) {
-    throw new BadRequestException(
-      'Both email and phone must be verified before completing registration'
-    );
+    // User might not have a phone number depending on role, check appropriately
+    if (!user.emailVerified || (user.phone && !user.phoneVerified)) {
+      throw new BadRequestException(
+        'Both email and phone must be verified before completing registration',
+      );
+    }
+
+    // Only now send the notifications
+    await this.sendPostOtpNotifications(email);
+
+    return { success: true, message: 'Registration complete' };
   }
-
-  // Only now send the notifications
-  await this.sendPostOtpNotifications(email);
-
-  return { success: true, message: 'Registration complete' };
-}
   async register(dto: RegisterDto) {
     // Check for an incomplete registration to resume
     const existing = await this.usersService.findByEmail(dto.email);
@@ -109,39 +109,44 @@ async completeVerification(email: string) {
   async sendPostOtpNotifications(email: string) {
     const user = await this.prisma.user.findUnique({
       where: { email },
-      include: { company: true }
+      include: { company: true },
     });
-    
+
     if (!user) return;
 
     // Send "under review" email to the registered user
-    this.notifications.sendEmail({
-      to: user.email,
-      subject: 'Your account is under review - WeConnect',
-      body: `Thank you for completing your registration on WeConnect.
+    this.notifications
+      .sendEmail({
+        to: user.email,
+        subject: 'Your account is under review - WeConnect',
+        body: `Thank you for completing your registration on WeConnect.
       Your account is currently being reviewed by our admin team.
-      You will receive an email within 24-72 hours once approved.`
-    }).catch(() => {});
+      You will receive an email within 24-72 hours once approved.`,
+      })
+      .catch(() => {});
 
     // Send in-app notification to all admins
-    await this.notifications.notifyAdmins({
-      type: 'new_registration_pending',
-      title: 'New User Registration',
-      message: `A new ${user.role.toLowerCase()} "${user.name}" (${user.email}) has registered and requires approval.`,
-      link: '/admin/users',
-    }).catch(() => {});
+    await this.notifications
+      .notifyAdmins({
+        type: 'new_registration_pending',
+        title: 'New User Registration',
+        message: `A new ${user.role.toLowerCase()} "${user.name}" (${user.email}) has registered and requires approval.`,
+        link: '/admin/users',
+      })
+      .catch(() => {});
 
     // Fetch ALL admins from database
     const admins = await this.prisma.user.findMany({
-      where: { role: 'ADMIN', isActive: true }
+      where: { role: 'ADMIN', isActive: true },
     });
 
     // Send notification email to EVERY admin
     for (const admin of admins) {
-      this.notifications.sendEmail({
-        to: admin.email,
-        subject: `New ${user.role} pending approval - ${user.name}`,
-        body: `
+      this.notifications
+        .sendEmail({
+          to: admin.email,
+          subject: `New ${user.role} pending approval - ${user.name}`,
+          body: `
           <p>A new user has completed registration and requires your approval.</p>
           <p><strong>Name:</strong> ${user.name}</p>
           <p><strong>Email:</strong> ${user.email}</p>
@@ -152,8 +157,9 @@ async completeVerification(email: string) {
           <a href="${process.env.WEB_URL || 'http://localhost:3000'}/admin/users">
             Review Application
           </a>
-        `
-      }).catch(() => {});
+        `,
+        })
+        .catch(() => {});
     }
   }
 
@@ -193,7 +199,9 @@ async completeVerification(email: string) {
     }
 
     if (user.isActive === false || user.company?.status === 'PENDING') {
-      throw new UnauthorizedException('Your account is pending admin approval. Check your email for updates.');
+      throw new UnauthorizedException(
+        'Your account is pending admin approval. Check your email for updates.',
+      );
     }
     return this.buildResponse(user);
   }

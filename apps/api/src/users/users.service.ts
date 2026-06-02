@@ -129,7 +129,9 @@ export class UsersService {
   }
 
   async createAdmin(data: { email: string; name: string; password: string }) {
-    const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+    const existing = await this.prisma.user.findUnique({
+      where: { email: data.email },
+    });
     if (existing) throw new ConflictException('Email already registered');
 
     const { hash } = await import('bcryptjs');

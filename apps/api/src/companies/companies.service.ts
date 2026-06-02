@@ -45,7 +45,15 @@ export class CompaniesService {
     const companies = await this.prisma.company.findMany({
       where,
       include: {
-        users: { select: { id: true, name: true, email: true, role: true, phone: true } },
+        users: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            phone: true,
+          },
+        },
         kycDocuments: true,
       },
     });
@@ -55,7 +63,9 @@ export class CompaniesService {
         const docs = await Promise.all(
           company.kycDocuments.map(async (doc) => ({
             ...doc,
-            signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
+            signedUrl: await this.s3
+              .getSignedUrl(doc.s3Key, doc.s3Bucket)
+              .catch(() => null),
           })),
         );
         return { ...company, kycDocuments: docs };
@@ -67,7 +77,15 @@ export class CompaniesService {
     const company = await this.prisma.company.findUnique({
       where: { id },
       include: {
-        users: { select: { id: true, name: true, email: true, role: true, phone: true } },
+        users: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            phone: true,
+          },
+        },
         kycDocuments: true,
       },
     });
@@ -82,7 +100,7 @@ export class CompaniesService {
         if (s3Files.length > 0) {
           // Sync found files back into the DB so they persist for next time
           const created = await Promise.all(
-            s3Files.map(file => {
+            s3Files.map((file) => {
               const fileName = file.key.split('/').pop() || file.key;
               const type = this.inferDocType(fileName);
               return this.prisma.kycDocument.upsert({
@@ -109,7 +127,9 @@ export class CompaniesService {
     const docs = await Promise.all(
       kycDocuments.map(async (doc) => ({
         ...doc,
-        signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
+        signedUrl: await this.s3
+          .getSignedUrl(doc.s3Key, doc.s3Bucket)
+          .catch(() => null),
       })),
     );
 
@@ -120,9 +140,12 @@ export class CompaniesService {
     const lower = fileName.toLowerCase();
     if (lower.includes('gst')) return 'GST_CERTIFICATE';
     if (lower.includes('pan')) return 'PAN_CARD';
-    if (lower.includes('cheque') || lower.includes('bank')) return 'CANCELLED_CHEQUE';
-    if (lower.includes('incorp') || lower.includes('cert')) return 'INCORPORATION_CERTIFICATE';
-    if (lower.includes('address') || lower.includes('proof')) return 'ADDRESS_PROOF';
+    if (lower.includes('cheque') || lower.includes('bank'))
+      return 'CANCELLED_CHEQUE';
+    if (lower.includes('incorp') || lower.includes('cert'))
+      return 'INCORPORATION_CERTIFICATE';
+    if (lower.includes('address') || lower.includes('proof'))
+      return 'ADDRESS_PROOF';
     return 'OTHER';
   }
 
@@ -197,67 +220,135 @@ export class CompaniesService {
   // --- Admin Approval / Hold / Reject ---
 
   async approveCompany(id: string) {
-    const company = await this.prisma.company.findUnique({ where: { id }, include: { users: true } });
+    const company = await this.prisma.company.findUnique({
+      where: { id },
+      include: { users: true },
+    });
     if (!company) throw new NotFoundException('Company not found');
 
-    await this.prisma.company.update({ where: { id }, data: { status: 'APPROVED' } });
+    await this.prisma.company.update({
+      where: { id },
+      data: { status: 'APPROVED' },
+    });
 
     const primaryUser = company.users[0];
     if (primaryUser) {
-      await this.prisma.user.update({ where: { id: primaryUser.id }, data: { isActive: true } });
-      await this.notifications.notifyAccountApproved(primaryUser.email, primaryUser.name, primaryUser.phone ?? undefined).catch(() => {});
-      await this.notifications.createInAppNotification({
-        userId: primaryUser.id,
-        type: 'account_approved',
-        title: 'Company Application Approved',
-        message: `Your company ${company.name} has been approved. Welcome to Ecoloop!`,
-        link: '/vendor/dashboard',
-      }).catch(() => {});
+      await this.prisma.user.update({
+        where: { id: primaryUser.id },
+        data: { isActive: true },
+      });
+      await this.notifications
+        .notifyAccountApproved(
+          primaryUser.email,
+          primaryUser.name,
+          primaryUser.phone ?? undefined,
+        )
+        .catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: primaryUser.id,
+          type: 'account_approved',
+          title: 'Company Application Approved',
+          message: `Your company ${company.name} has been approved. Welcome to Ecoloop!`,
+          link: '/vendor/dashboard',
+        })
+        .catch(() => {});
     }
 
-    return this.prisma.company.findUnique({ where: { id }, include: { users: { select: { id: true, name: true, email: true, role: true } } } });
+    return this.prisma.company.findUnique({
+      where: { id },
+      include: {
+        users: { select: { id: true, name: true, email: true, role: true } },
+      },
+    });
   }
 
   async holdCompany(id: string, reason?: string) {
-    const company = await this.prisma.company.findUnique({ where: { id }, include: { users: true } });
+    const company = await this.prisma.company.findUnique({
+      where: { id },
+      include: { users: true },
+    });
     if (!company) throw new NotFoundException('Company not found');
 
-    await this.prisma.company.update({ where: { id }, data: { status: 'BLOCKED' } });
+    await this.prisma.company.update({
+      where: { id },
+      data: { status: 'BLOCKED' },
+    });
 
     const primaryUser = company.users[0];
     if (primaryUser) {
-      await this.prisma.user.update({ where: { id: primaryUser.id }, data: { isActive: false } });
-      await this.notifications.notifyAccountOnHold(primaryUser.email, primaryUser.name, primaryUser.phone ?? undefined, reason).catch(() => {});
-      await this.notifications.createInAppNotification({
-        userId: primaryUser.id,
-        type: 'account_on_hold',
-        title: 'Company Account On Hold',
-        message: `Your company account has been placed on hold. ${reason ? `Reason: ${reason}` : ''}`,
-      }).catch(() => {});
+      await this.prisma.user.update({
+        where: { id: primaryUser.id },
+        data: { isActive: false },
+      });
+      await this.notifications
+        .notifyAccountOnHold(
+          primaryUser.email,
+          primaryUser.name,
+          primaryUser.phone ?? undefined,
+          reason,
+        )
+        .catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: primaryUser.id,
+          type: 'account_on_hold',
+          title: 'Company Account On Hold',
+          message: `Your company account has been placed on hold. ${reason ? `Reason: ${reason}` : ''}`,
+        })
+        .catch(() => {});
     }
 
-    return this.prisma.company.findUnique({ where: { id }, include: { users: { select: { id: true, name: true, email: true, role: true } } } });
+    return this.prisma.company.findUnique({
+      where: { id },
+      include: {
+        users: { select: { id: true, name: true, email: true, role: true } },
+      },
+    });
   }
 
   async rejectCompany(id: string, reason?: string) {
-    const company = await this.prisma.company.findUnique({ where: { id }, include: { users: true } });
+    const company = await this.prisma.company.findUnique({
+      where: { id },
+      include: { users: true },
+    });
     if (!company) throw new NotFoundException('Company not found');
 
-    await this.prisma.company.update({ where: { id }, data: { status: 'REJECTED' } });
+    await this.prisma.company.update({
+      where: { id },
+      data: { status: 'REJECTED' },
+    });
 
     const primaryUser = company.users[0];
     if (primaryUser) {
-      await this.prisma.user.update({ where: { id: primaryUser.id }, data: { isActive: false } });
-      await this.notifications.notifyAccountRejected(primaryUser.email, primaryUser.name, primaryUser.phone ?? undefined, reason).catch(() => {});
-      await this.notifications.createInAppNotification({
-        userId: primaryUser.id,
-        type: 'account_rejected',
-        title: 'Company Application Update',
-        message: `Your company application was not approved. ${reason ? `Reason: ${reason}` : ''}`,
-      }).catch(() => {});
+      await this.prisma.user.update({
+        where: { id: primaryUser.id },
+        data: { isActive: false },
+      });
+      await this.notifications
+        .notifyAccountRejected(
+          primaryUser.email,
+          primaryUser.name,
+          primaryUser.phone ?? undefined,
+          reason,
+        )
+        .catch(() => {});
+      await this.notifications
+        .createInAppNotification({
+          userId: primaryUser.id,
+          type: 'account_rejected',
+          title: 'Company Application Update',
+          message: `Your company application was not approved. ${reason ? `Reason: ${reason}` : ''}`,
+        })
+        .catch(() => {});
     }
 
-    return this.prisma.company.findUnique({ where: { id }, include: { users: { select: { id: true, name: true, email: true, role: true } } } });
+    return this.prisma.company.findUnique({
+      where: { id },
+      include: {
+        users: { select: { id: true, name: true, email: true, role: true } },
+      },
+    });
   }
 
   // --- Admin Risk Control ---
@@ -266,28 +357,32 @@ export class CompaniesService {
     const company = await this.prisma.company.update({
       where: { id },
       data: { isLocked: true, lockReason: reason },
-      include: { users: true }
+      include: { users: true },
     });
 
-    await this.notifications.notifyCompanyUsers(id, {
-      type: 'company_locked',
-      title: 'Company Account Locked',
-      message: `Your company account has been locked by an administrator. Reason: ${reason}`,
-    }).catch(() => {});
+    await this.notifications
+      .notifyCompanyUsers(id, {
+        type: 'company_locked',
+        title: 'Company Account Locked',
+        message: `Your company account has been locked by an administrator. Reason: ${reason}`,
+      })
+      .catch(() => {});
 
     const primaryUser = company.users[0];
     if (primaryUser?.email) {
-      await this.notifications.sendEmail({
-        to: primaryUser.email,
-        subject: `[WeConnect] Urgent: Your account has been locked`,
-        body: `
+      await this.notifications
+        .sendEmail({
+          to: primaryUser.email,
+          subject: `[WeConnect] Urgent: Your account has been locked`,
+          body: `
           <h2>Account Locked</h2>
           <p>Hello ${primaryUser.name || company.name},</p>
           <p>Your company account on WeConnect has been locked by an administrator.</p>
           <p><strong>Reason:</strong> ${reason}</p>
           <p>You will not be able to place bids or participate in auctions until this issue is resolved. Please contact support immediately.</p>
-        `
-      }).catch(() => {});
+        `,
+        })
+        .catch(() => {});
     }
 
     return company;
@@ -297,27 +392,32 @@ export class CompaniesService {
     const company = await this.prisma.company.update({
       where: { id },
       data: { isLocked: false, lockReason: null },
-      include: { users: true }
+      include: { users: true },
     });
 
-    await this.notifications.notifyCompanyUsers(id, {
-      type: 'company_unlocked',
-      title: 'Company Account Unlocked',
-      message: 'Your company account has been unlocked. Full platform services restored.',
-      link: '/vendor/dashboard',
-    }).catch(() => {});
+    await this.notifications
+      .notifyCompanyUsers(id, {
+        type: 'company_unlocked',
+        title: 'Company Account Unlocked',
+        message:
+          'Your company account has been unlocked. Full platform services restored.',
+        link: '/vendor/dashboard',
+      })
+      .catch(() => {});
 
     const primaryUser = company.users[0];
     if (primaryUser?.email) {
-      await this.notifications.sendEmail({
-        to: primaryUser.email,
-        subject: `[WeConnect] Your account has been unlocked`,
-        body: `
+      await this.notifications
+        .sendEmail({
+          to: primaryUser.email,
+          subject: `[WeConnect] Your account has been unlocked`,
+          body: `
           <h2>Account Unlocked</h2>
           <p>Hello ${primaryUser.name || company.name},</p>
           <p>Your company account has been unlocked. You may now resume full platform activity.</p>
-        `
-      }).catch(() => {});
+        `,
+        })
+        .catch(() => {});
     }
 
     return company;
@@ -332,29 +432,33 @@ export class CompaniesService {
     const updated = await this.prisma.company.update({
       where: { id },
       data: { penaltyAmount: currentPenalty + amount },
-      include: { users: true }
+      include: { users: true },
     });
 
-    await this.notifications.notifyCompanyUsers(id, {
-      type: 'penalty_applied',
-      title: 'Penalty Notice',
-      message: `A penalty of ₹${amount.toLocaleString('en-IN')} has been applied to your company account. Reason: ${reason}`,
-    }).catch(() => {});
+    await this.notifications
+      .notifyCompanyUsers(id, {
+        type: 'penalty_applied',
+        title: 'Penalty Notice',
+        message: `A penalty of ₹${amount.toLocaleString('en-IN')} has been applied to your company account. Reason: ${reason}`,
+      })
+      .catch(() => {});
 
     const primaryUser = updated.users[0];
     if (primaryUser?.email) {
-      await this.notifications.sendEmail({
-        to: primaryUser.email,
-        subject: `[WeConnect] Penalty Applied to Account`,
-        body: `
+      await this.notifications
+        .sendEmail({
+          to: primaryUser.email,
+          subject: `[WeConnect] Penalty Applied to Account`,
+          body: `
           <h2>Penalty Notice</h2>
           <p>Hello ${primaryUser.name || company.name},</p>
           <p>A financial penalty has been applied to your account.</p>
           <p><strong>Amount:</strong> ₹${amount.toLocaleString('en-IN')}</p>
           <p><strong>Reason:</strong> ${reason}</p>
           <p>Please clear this penalty immediately to avoid suspension of services.</p>
-        `
-      }).catch(() => {});
+        `,
+        })
+        .catch(() => {});
     }
 
     return updated;

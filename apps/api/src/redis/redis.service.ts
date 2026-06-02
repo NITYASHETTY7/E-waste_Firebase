@@ -15,7 +15,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.redis.quit();
   }
 
-  async acquireLock(key: string, value: string, ttlMs: number): Promise<boolean> {
+  async acquireLock(
+    key: string,
+    value: string,
+    ttlMs: number,
+  ): Promise<boolean> {
     const result = await this.redis.set(key, value, 'PX', ttlMs, 'NX');
     return result === 'OK';
   }
@@ -33,11 +37,21 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async checkAndSetIdempotency(key: string, ttlMs: number): Promise<boolean> {
-    const result = await this.redis.set(`idempotency:${key}`, '1', 'PX', ttlMs, 'NX');
+    const result = await this.redis.set(
+      `idempotency:${key}`,
+      '1',
+      'PX',
+      ttlMs,
+      'NX',
+    );
     return result === 'OK';
   }
 
-  async checkRateLimit(key: string, limit: number, ttlSec: number): Promise<boolean> {
+  async checkRateLimit(
+    key: string,
+    limit: number,
+    ttlSec: number,
+  ): Promise<boolean> {
     const current = await this.redis.incr(key);
     if (current === 1) {
       await this.redis.expire(key, ttlSec);
@@ -51,7 +65,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async getLeaderboard(auctionId: string) {
-    return this.redis.zrevrange(`leaderboard:${auctionId}`, 0, -1, 'WITHSCORES');
+    return this.redis.zrevrange(
+      `leaderboard:${auctionId}`,
+      0,
+      -1,
+      'WITHSCORES',
+    );
   }
 
   async reset() {

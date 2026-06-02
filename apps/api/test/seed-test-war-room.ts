@@ -1,9 +1,16 @@
-import { PrismaClient, AuctionStatus, BidPhase, UserRole } from '@prisma/client';
+import {
+  PrismaClient,
+  AuctionStatus,
+  BidPhase,
+  UserRole,
+} from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 
 const prisma = new PrismaClient();
-const AUCTION_ID = process.argv.find(arg => arg.startsWith('--auctionId='))?.split('=')[1];
+const AUCTION_ID = process.argv
+  .find((arg) => arg.startsWith('--auctionId='))
+  ?.split('=')[1];
 
 async function seed() {
   if (!AUCTION_ID) {
@@ -13,7 +20,9 @@ async function seed() {
 
   console.log(`🏗️ Seeding 20 Shortlisted Vendors for Auction: ${AUCTION_ID}`);
 
-  const auction = await prisma.auction.findUnique({ where: { id: AUCTION_ID } });
+  const auction = await prisma.auction.findUnique({
+    where: { id: AUCTION_ID },
+  });
   if (!auction) throw new Error('Auction not found');
 
   const vendors = [];
@@ -24,12 +33,12 @@ async function seed() {
       name: `Bot Recyclers Corp`,
       type: 'VENDOR',
       status: 'APPROVED',
-    }
+    },
   });
 
   for (let i = 0; i < 20; i++) {
-    const email = `bot-${i}-${uuidv4().substring(0,8)}@ecoloop-test.com`;
-    
+    const email = `bot-${i}-${uuidv4().substring(0, 8)}@ecoloop-test.com`;
+
     // 2. Create User
     const user = await prisma.user.create({
       data: {
@@ -39,7 +48,7 @@ async function seed() {
         role: UserRole.VENDOR,
         companyId: botCompany.id,
         isActive: true,
-      }
+      },
     });
 
     // 3. Create Shortlisted Sealed Bid
@@ -51,7 +60,7 @@ async function seed() {
         phase: BidPhase.SEALED,
         isShortlisted: true,
         clientStatus: 'approved',
-      }
+      },
     });
 
     vendors.push({ id: user.id, name: user.name });
@@ -62,4 +71,6 @@ async function seed() {
   console.log('✅ Done! 20 vendors seeded. Data saved to test-vendors.json');
 }
 
-seed().catch(console.error).finally(() => prisma.$disconnect());
+seed()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());

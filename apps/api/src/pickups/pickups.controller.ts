@@ -51,7 +51,14 @@ export class PickupsController {
   @Patch('pickups/:id/gate-pass')
   issueGatePass(
     @Param('id') id: string,
-    @Body() body: { gatePassNumber: string; vehicleNumber?: string; driverName?: string; scheduledDate?: string; pickupNotes?: string },
+    @Body()
+    body: {
+      gatePassNumber: string;
+      vehicleNumber?: string;
+      driverName?: string;
+      scheduledDate?: string;
+      pickupNotes?: string;
+    },
   ) {
     return this.svc.issueGatePass(id, body);
   }
@@ -68,7 +75,12 @@ export class PickupsController {
   @Patch('pickups/by-auction/:auctionId/vendor-logistics')
   saveVendorLogistics(
     @Param('auctionId') auctionId: string,
-    @Body() body: { vehicleNumber?: string; driverName?: string; preferredDate?: string },
+    @Body()
+    body: {
+      vehicleNumber?: string;
+      driverName?: string;
+      preferredDate?: string;
+    },
   ) {
     return this.svc.saveVendorLogistics(auctionId, body);
   }
@@ -92,7 +104,12 @@ export class PickupsController {
   @Post('pickups/:id/reconcile')
   reconcile(
     @Param('id') id: string,
-    @Body() body: { finalWeight: number; reconciliationNotes?: string; finalAmount: number },
+    @Body()
+    body: {
+      finalWeight: number;
+      reconciliationNotes?: string;
+      finalAmount: number;
+    },
   ) {
     return this.svc.reconcile(id, body);
   }
@@ -123,7 +140,10 @@ export class PickupsController {
     @Query('type') type: 'empty' | 'loaded',
     @UploadedFile() file: Express.Multer.File,
   ) {
-    const docType = type === 'empty' ? DocumentType.WEIGHT_SLIP_EMPTY : DocumentType.WEIGHT_SLIP_LOADED;
+    const docType =
+      type === 'empty'
+        ? DocumentType.WEIGHT_SLIP_EMPTY
+        : DocumentType.WEIGHT_SLIP_LOADED;
     return this.svc.uploadDocument(id, file, docType);
   }
 
@@ -134,7 +154,10 @@ export class PickupsController {
     @Query('type') type: 'recycling' | 'disposal',
     @UploadedFile() file: Express.Multer.File,
   ) {
-    const docType = type === 'recycling' ? DocumentType.RECYCLING_CERTIFICATE : DocumentType.DISPOSAL_CERTIFICATE;
+    const docType =
+      type === 'recycling'
+        ? DocumentType.RECYCLING_CERTIFICATE
+        : DocumentType.DISPOSAL_CERTIFICATE;
     return this.svc.uploadDocument(id, file, docType);
   }
 

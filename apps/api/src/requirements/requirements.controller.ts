@@ -12,7 +12,10 @@ import {
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor, FileFieldsInterceptor } from '@nestjs/platform-express';
+import {
+  FileInterceptor,
+  FileFieldsInterceptor,
+} from '@nestjs/platform-express';
 import { RequirementsService } from './requirements.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
@@ -26,13 +29,16 @@ export class RequirementsController {
   constructor(private svc: RequirementsService) {}
 
   @Post()
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'file', maxCount: 1 },
-    { name: 'documents', maxCount: 20 },
-  ]))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'file', maxCount: 1 },
+      { name: 'documents', maxCount: 20 },
+    ]),
+  )
   create(
     @Body() body: CreateRequirementDto,
-    @UploadedFiles() files: { file?: Express.Multer.File[]; documents?: Express.Multer.File[] },
+    @UploadedFiles()
+    files: { file?: Express.Multer.File[]; documents?: Express.Multer.File[] },
     @Request() req: any,
   ) {
     let invitedVendorIds: string[] = [];
@@ -134,14 +140,21 @@ export class RequirementsController {
 
   // Vendor uploads audit docs (audit report + images + filled excel) — NO bid price
   @Post(':id/audit-docs')
-  @UseInterceptors(FileFieldsInterceptor([
-    { name: 'auditReport', maxCount: 1 },
-    { name: 'filledExcel', maxCount: 1 },
-    { name: 'images', maxCount: 10 },
-  ]))
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'auditReport', maxCount: 1 },
+      { name: 'filledExcel', maxCount: 1 },
+      { name: 'images', maxCount: 10 },
+    ]),
+  )
   uploadAuditDocs(
     @Param('id') id: string,
-    @UploadedFiles() files: { auditReport?: Express.Multer.File[]; filledExcel?: Express.Multer.File[]; images?: Express.Multer.File[] },
+    @UploadedFiles()
+    files: {
+      auditReport?: Express.Multer.File[];
+      filledExcel?: Express.Multer.File[];
+      images?: Express.Multer.File[];
+    },
     @Request() req: any,
   ) {
     return this.svc.uploadAuditDocs(id, req.user?.userId, {
@@ -173,7 +186,11 @@ export class RequirementsController {
     @Param('id') id: string,
     @Body() body: { sealedBidDeadline: string; sealedBidStart?: string },
   ) {
-    return this.svc.createSealedBidEvent(id, body.sealedBidDeadline, body.sealedBidStart);
+    return this.svc.createSealedBidEvent(
+      id,
+      body.sealedBidDeadline,
+      body.sealedBidStart,
+    );
   }
 
   // Vendor submits sealed bid price (after audit approved + event created)
@@ -183,7 +200,12 @@ export class RequirementsController {
     @Body() body: { amount: number; remarks?: string },
     @Request() req: any,
   ) {
-    return this.svc.submitSealedBid(id, req.user?.userId, Number(body.amount), body.remarks);
+    return this.svc.submitSealedBid(
+      id,
+      req.user?.userId,
+      Number(body.amount),
+      body.remarks,
+    );
   }
 
   // Admin/client get all sealed bids for a requirement
@@ -220,7 +242,13 @@ export class RequirementsController {
   @Patch(':id/client-approve-live')
   clientApproveLive(
     @Param('id') id: string,
-    @Body() body: { basePrice?: number; targetPrice?: number; startDate?: string; endDate?: string },
+    @Body()
+    body: {
+      basePrice?: number;
+      targetPrice?: number;
+      startDate?: string;
+      endDate?: string;
+    },
   ) {
     return this.svc.clientApproveLive(id, body);
   }

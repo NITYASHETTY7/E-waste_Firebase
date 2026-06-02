@@ -11,7 +11,7 @@ export class DocumentsService {
 
   constructor(
     private s3: S3Service,
-    @Optional() @InjectQueue('pdf') private pdfQueue?: Queue
+    @Optional() @InjectQueue('pdf') private pdfQueue?: Queue,
   ) {}
 
   async generateWorkOrderPdf(
@@ -26,7 +26,14 @@ export class DocumentsService {
     const s3Key = `work-orders/${auctionId}/WO-${Date.now()}.pdf`;
 
     const payload = {
-      auctionId, clientName, vendorName, vendorAddress, auctionTitle, totalWeight, winningAmount, s3Key
+      auctionId,
+      clientName,
+      vendorName,
+      vendorAddress,
+      auctionTitle,
+      totalWeight,
+      winningAmount,
+      s3Key,
     };
 
     if (this.pdfQueue) {
@@ -36,10 +43,12 @@ export class DocumentsService {
       });
       this.logger.log(`Queued PDF generation for Auction ${auctionId}`);
     } else {
-      this.logger.warn(`PDF Queue not found. Running generation synchronously for Auction ${auctionId}`);
+      this.logger.warn(
+        `PDF Queue not found. Running generation synchronously for Auction ${auctionId}`,
+      );
       await this.executeGenerateWorkOrderPdf(payload);
     }
-    
+
     // We return the expected key immediately so the caller can save the DB record.
     // The background job will fulfill the file at this key location shortly after.
     return s3Key;
@@ -63,7 +72,11 @@ export class DocumentsService {
   }): Promise<string> {
     const { auctionId } = params;
     const html = this.buildPoHtml(params);
-    return this.htmlToPdfAndUpload(html, `purchase-orders/${auctionId}`, `PO-${auctionId.substring(0, 8).toUpperCase()}.pdf`);
+    return this.htmlToPdfAndUpload(
+      html,
+      `purchase-orders/${auctionId}`,
+      `PO-${auctionId.substring(0, 8).toUpperCase()}.pdf`,
+    );
   }
 
   async generateAgreementPdf(params: {
@@ -77,7 +90,11 @@ export class DocumentsService {
   }): Promise<string> {
     const { auctionId } = params;
     const html = this.buildAgreementHtml(params);
-    return this.htmlToPdfAndUpload(html, `agreements/${auctionId}`, `AGR-${auctionId.substring(0, 8).toUpperCase()}.pdf`);
+    return this.htmlToPdfAndUpload(
+      html,
+      `agreements/${auctionId}`,
+      `AGR-${auctionId.substring(0, 8).toUpperCase()}.pdf`,
+    );
   }
 
   async generateInvoicePdf(params: {
@@ -94,22 +111,44 @@ export class DocumentsService {
   }): Promise<string> {
     const { pickupId } = params;
     const html = this.buildInvoiceHtml(params);
-    return this.htmlToPdfAndUpload(html, `invoices/${pickupId}`, `INV-${params.invoiceNumber}.pdf`);
+    return this.htmlToPdfAndUpload(
+      html,
+      `invoices/${pickupId}`,
+      `INV-${params.invoiceNumber}.pdf`,
+    );
   }
 
-  private async htmlToPdfAndUpload(html: string, folder: string, fileName: string): Promise<string> {
+  private async htmlToPdfAndUpload(
+    html: string,
+    folder: string,
+    fileName: string,
+  ): Promise<string> {
     let browser;
     try {
-      browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'domcontentloaded' });
-      const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' } });
-      
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
+      });
+
       const customKey = `${folder}/${fileName}`;
       const file: Express.Multer.File = {
-        fieldname: 'file', originalname: fileName, encoding: '7bit', mimetype: 'application/pdf',
-        size: pdfBuffer.length, buffer: Buffer.from(pdfBuffer), stream: null as any,
-        destination: '', filename: '', path: '',
+        fieldname: 'file',
+        originalname: fileName,
+        encoding: '7bit',
+        mimetype: 'application/pdf',
+        size: pdfBuffer.length,
+        buffer: Buffer.from(pdfBuffer),
+        stream: null as any,
+        destination: '',
+        filename: '',
+        path: '',
       };
       const { key } = await this.s3.upload(file, folder, false, customKey);
       return key;
@@ -298,7 +337,16 @@ export class DocumentsService {
   }
 
   async executeGenerateWorkOrderPdf(payload: any): Promise<string> {
-    const { auctionId, clientName, vendorName, vendorAddress, auctionTitle, totalWeight, winningAmount, s3Key } = payload;
+    const {
+      auctionId,
+      clientName,
+      vendorName,
+      vendorAddress,
+      auctionTitle,
+      totalWeight,
+      winningAmount,
+      s3Key,
+    } = payload;
     this.logger.log(`Executing Work Order Generation for Auction ${auctionId}`);
 
     const htmlContent = `
@@ -407,7 +455,7 @@ export class DocumentsService {
       });
       const page = await browser.newPage();
       await page.setContent(compiledHtml, { waitUntil: 'domcontentloaded' });
-      
+
       const pdfBuffer = await page.pdf({
         format: 'A4',
         printBackground: true,
@@ -427,8 +475,13 @@ export class DocumentsService {
         path: '',
       };
 
-      const { key } = await this.s3.upload(file, `work-orders/${auctionId}`, false, s3Key);
-      
+      const { key } = await this.s3.upload(
+        file,
+        `work-orders/${auctionId}`,
+        false,
+        s3Key,
+      );
+
       this.logger.log(`Successfully generated and uploaded Work Order: ${key}`);
       return key;
     } catch (error) {

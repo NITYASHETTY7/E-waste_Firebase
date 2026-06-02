@@ -59,13 +59,20 @@ export class AuctionGateway
   async handleBid(
     @ConnectedSocket() client: Socket,
     @MessageBody()
-    payload: { auctionId: string; vendorId: string; amount: number; idempotencyKey?: string },
+    payload: {
+      auctionId: string;
+      vendorId: string;
+      amount: number;
+      idempotencyKey?: string;
+    },
   ) {
     // 1. Rate Limiting
     const rateLimitKey = `ratelimit:bid:${payload.vendorId}`;
     const isAllowed = await this.redis.checkRateLimit(rateLimitKey, 3, 1);
     if (!isAllowed) {
-      client.emit('bidError', { message: 'Too many bids. Please wait a second.' });
+      client.emit('bidError', {
+        message: 'Too many bids. Please wait a second.',
+      });
       return;
     }
 
@@ -91,7 +98,6 @@ export class AuctionGateway
         bid: result.bid,
         leaderboard: result.leaderboard,
       });
-
     } catch (e) {
       client.emit('bidError', { message: e.message || 'Failed to place bid' });
     }
