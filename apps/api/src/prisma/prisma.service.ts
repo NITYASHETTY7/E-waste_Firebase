@@ -33,32 +33,6 @@ export class PrismaService
       }
     }
 
-    // Middleware to catch connection reset and retry
-    (this as any).$use(
-      async (params: any, next: (params: any) => Promise<any>) => {
-        try {
-          return await next(params);
-        } catch (error: any) {
-          // P1017 is "Server has closed the connection"
-          if (
-            error.code === 'P1017' ||
-            error.message?.includes('closed the connection')
-          ) {
-            console.warn(
-              'DB connection reset detected, attempting reconnect and retry...',
-            );
-            try {
-              await this.$connect();
-              return await next(params);
-            } catch (retryError) {
-              throw retryError;
-            }
-          }
-          throw error;
-        }
-      },
-    );
-
     // Keepalive ping every 30 seconds to prevent idle timeout
     setInterval(async () => {
       try {
