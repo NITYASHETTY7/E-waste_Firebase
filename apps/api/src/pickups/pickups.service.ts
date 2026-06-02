@@ -32,7 +32,13 @@ export class PickupsService {
         signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket),
       })),
     );
-    return { ...pickup, pickupDocs: docs };
+    const auctionDocs = await Promise.all(
+      (pickup.auction?.auctionDocs ?? []).map(async (doc) => ({
+        ...doc,
+        signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
+      })),
+    );
+    return { ...pickup, pickupDocs: docs, auctionDocs };
   }
 
   async issueGatePass(
@@ -367,7 +373,7 @@ export class PickupsService {
     const pickup = await this.prisma.pickup.findUnique({
       where: { id },
       include: {
-        auction: { include: { client: true, winner: true } },
+        auction: { include: { client: true, winner: true, auctionDocs: true } },
         pickupDocs: true,
         payment: true,
       },
@@ -380,7 +386,15 @@ export class PickupsService {
         signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket),
       })),
     );
-    return { ...pickup, pickupDocs: docs };
+
+    const auctionDocs = await Promise.all(
+      (pickup.auction?.auctionDocs ?? []).map(async (doc) => ({
+        ...doc,
+        signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
+      })),
+    );
+
+    return { ...pickup, pickupDocs: docs, auctionDocs };
   }
 
   async schedule(id: string, scheduledDate: string) {

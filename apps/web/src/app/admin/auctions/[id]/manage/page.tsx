@@ -205,6 +205,22 @@ export default function AdminManageAuction() {
       </div>
 
       <div className="max-w-5xl mx-auto p-5 space-y-5">
+        {!data.winnerId && (
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-5 flex items-center gap-4 shadow-sm">
+            <span className="material-symbols-outlined text-amber-600 text-3xl">warning</span>
+            <div className="flex-1">
+              <p className="text-amber-900 dark:text-amber-200 font-black text-sm uppercase tracking-widest">Winner Selection Pending</p>
+              <p className="text-amber-700 dark:text-amber-400 text-xs mt-1 font-bold">A winner must be approved before you can generate documents or proceed with the post-auction flow.</p>
+            </div>
+            <button 
+              onClick={() => router.push(`/admin/auctions/${auctionId}/live`)}
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors shadow-lg shadow-amber-200 dark:shadow-none"
+            >
+              Go to Selection Page
+            </button>
+          </div>
+        )}
+
         {/* Overview */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
@@ -236,7 +252,7 @@ export default function AdminManageAuction() {
             {(!hasPO || !hasAgreement) && (
               <button
                 onClick={() => action("Generate Documents", () => api.post(`/auctions/${auctionId}/generate-docs`))}
-                disabled={busy === "Generate Documents"}
+                disabled={busy === "Generate Documents" || !data.winnerId}
                 className="mt-2 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs uppercase tracking-widest disabled:opacity-50 transition-all"
               >
                 <span className="material-symbols-outlined text-sm">{busy === "Generate Documents" ? "progress_activity" : "auto_awesome"}</span>

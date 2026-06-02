@@ -104,12 +104,14 @@ export class DocumentsService {
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'domcontentloaded' });
       const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' } });
+      
+      const customKey = `${folder}/${fileName}`;
       const file: Express.Multer.File = {
         fieldname: 'file', originalname: fileName, encoding: '7bit', mimetype: 'application/pdf',
         size: pdfBuffer.length, buffer: Buffer.from(pdfBuffer), stream: null as any,
         destination: '', filename: '', path: '',
       };
-      const { key } = await this.s3.upload(file, folder);
+      const { key } = await this.s3.upload(file, folder, false, customKey);
       return key;
     } finally {
       if (browser) await browser.close();
@@ -412,8 +414,6 @@ export class DocumentsService {
         margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
       });
 
-      const s3Key = `work-orders/${auctionId}/WO-${Date.now()}.pdf`;
-      
       const file: Express.Multer.File = {
         fieldname: 'file',
         originalname: `WO-${auctionId}.pdf`,
@@ -427,7 +427,7 @@ export class DocumentsService {
         path: '',
       };
 
-      const { key } = await this.s3.upload(file, `work-orders/${auctionId}`);
+      const { key } = await this.s3.upload(file, `work-orders/${auctionId}`, false, s3Key);
       
       this.logger.log(`Successfully generated and uploaded Work Order: ${key}`);
       return key;

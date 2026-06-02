@@ -429,7 +429,17 @@ export default function AdminLiveObserver() {
             </span>
           </div>
 
-          <button onClick={() => router.push("/admin/listings")}
+          {!isActive && (
+            <Link
+              href={`/admin/auctions/${listing.auctionId || listingId}/manage`}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-100 text-purple-700 text-[10px] font-black uppercase hover:bg-purple-200 transition-all border border-purple-200"
+            >
+              <span className="material-symbols-outlined text-sm">manage_accounts</span>
+              Go to Management
+            </Link>
+          )}
+
+          <button onClick={() => router.push("/admin/auctions")}
             className="shrink-0 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold uppercase tracking-widest border border-slate-200 transition-colors flex items-center gap-1 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700">
             <span className="material-symbols-outlined text-sm">arrow_back</span> Back
           </button>

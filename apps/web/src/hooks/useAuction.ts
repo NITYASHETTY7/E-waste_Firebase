@@ -7,7 +7,7 @@ import { useAuctionSocket } from './useAuctionSocket';
 
 export function useAuction(listingId: string, options: { forceConnect?: boolean } = {}) {
   const { listings, bids, addBid, editListing, currentUser, addNotification } = useApp();
-  const listing = listings.find(l => l.id === listingId);
+  const listing = listings.find(l => l.id === listingId || l.auctionId === listingId);
   const auctionBids = bids.filter(b =>
     b.listingId === listingId ||
     (listing?.auctionId && b.auctionId === listing.auctionId) ||

@@ -587,57 +587,74 @@ export class AuctionsService {
     });
     if (!auction) throw new NotFoundException('Auction not found');
 
-    const winningAmount = auction.bids[0]?.amount ?? auction.basePrice;
+    if (!auction.winnerId) {
+      throw new BadRequestException('Winner must be selected and approved before generating documents.');
+    }
+
+    const winningBid = auction.bids.find(b => b.vendorId === auction.winnerId) || auction.bids[0];
+    const winningAmount = winningBid?.amount ?? auction.basePrice;
     const commissionAmount = Math.round(winningAmount * 0.05);
     const totalWeight = auction.requirement?.totalWeight ?? 0;
     const vendorName = auction.winner?.name ?? 'Vendor';
     const clientName = auction.client.name;
     const poNumber = `PO-${new Date().getFullYear()}-${id.substring(0, 8).toUpperCase()}`;
     const date = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-    const bucket = process.env.AWS_S3_BUCKET_NAME ?? 'ecoloop-docs';
+    const bucket = this.s3.getPrivateBucket();
 
     const results: { type: string; s3Key: string; fileName: string }[] = [];
 
     // Generate Purchase Order PDF
-    try {
-      const poKey = await this.documents.generatePoPdf({
-        auctionId: id, poNumber,
-        clientName, clientAddress: auction.client.address ?? '',
-        clientGst: auction.client.gstNumber ?? '',
-        vendorName, vendorAddress: auction.winner?.address ?? '',
-        vendorGst: auction.winner?.gstNumber ?? '',
-        auctionTitle: auction.title,
-        category: auction.category,
-        totalWeight, winningAmount, commissionAmount,
-        date,
-      });
-      await this.prisma.auctionDocument.create({
-        data: {
-          auctionId: id, type: DocumentType.PURCHASE_ORDER,
-          s3Key: poKey, s3Bucket: bucket,
-          fileName: `${poNumber}.pdf`, mimeType: 'application/pdf',
-        },
-      });
-      results.push({ type: 'PURCHASE_ORDER', s3Key: poKey, fileName: `${poNumber}.pdf` });
-    } catch (e) { console.error('PO generation failed', e); }
+    const hasPO = auction.auctionDocs.some(d => d.type === DocumentType.PURCHASE_ORDER);
+    if (!hasPO) {
+      try {
+        const poKey = await this.documents.generatePoPdf({
+          auctionId: id, poNumber,
+          clientName, clientAddress: auction.client.address ?? '',
+          clientGst: auction.client.gstNumber ?? '',
+          vendorName, vendorAddress: auction.winner?.address ?? '',
+          vendorGst: auction.winner?.gstNumber ?? '',
+          auctionTitle: auction.title,
+          category: auction.category,
+          totalWeight, winningAmount, commissionAmount,
+          date,
+        });
+        await this.prisma.auctionDocument.create({
+          data: {
+            auctionId: id, type: DocumentType.PURCHASE_ORDER,
+            s3Key: poKey, s3Bucket: bucket,
+            fileName: `${poNumber}.pdf`, mimeType: 'application/pdf',
+          },
+        });
+        results.push({ type: 'PURCHASE_ORDER', s3Key: poKey, fileName: `${poNumber}.pdf` });
+      } catch (e) { 
+        console.error('PO generation failed', e);
+        throw new BadRequestException(`Failed to generate Purchase Order: ${e.message}`);
+      }
+    }
 
     // Generate Agreement PDF
-    try {
-      const agrKey = await this.documents.generateAgreementPdf({
-        auctionId: id,
-        clientName, vendorName,
-        auctionTitle: auction.title,
-        totalWeight, winningAmount, date,
-      });
-      await this.prisma.auctionDocument.create({
-        data: {
-          auctionId: id, type: DocumentType.AGREEMENT,
-          s3Key: agrKey, s3Bucket: bucket,
-          fileName: `AGR-${poNumber}.pdf`, mimeType: 'application/pdf',
-        },
-      });
-      results.push({ type: 'AGREEMENT', s3Key: agrKey, fileName: `AGR-${poNumber}.pdf` });
-    } catch (e) { console.error('Agreement generation failed', e); }
+    const hasAgr = auction.auctionDocs.some(d => d.type === DocumentType.AGREEMENT);
+    if (!hasAgr) {
+      try {
+        const agrKey = await this.documents.generateAgreementPdf({
+          auctionId: id,
+          clientName, vendorName,
+          auctionTitle: auction.title,
+          totalWeight, winningAmount, date,
+        });
+        await this.prisma.auctionDocument.create({
+          data: {
+            auctionId: id, type: DocumentType.AGREEMENT,
+            s3Key: agrKey, s3Bucket: bucket,
+            fileName: `AGR-${poNumber}.pdf`, mimeType: 'application/pdf',
+          },
+        });
+        results.push({ type: 'AGREEMENT', s3Key: agrKey, fileName: `AGR-${poNumber}.pdf` });
+      } catch (e) { 
+        console.error('Agreement generation failed', e);
+        throw new BadRequestException(`Failed to generate Agreement: ${e.message}`);
+      }
+    }
 
     // Ensure Work Order exists — generate if missing
     const hasWO = auction.auctionDocs.some(d => d.type === DocumentType.WORK_ORDER);
@@ -655,14 +672,17 @@ export class AuctionsService {
           },
         });
         results.push({ type: 'WORK_ORDER', s3Key: woKey, fileName: `WO-${id.substring(0, 8).toUpperCase()}.pdf` });
-      } catch (e) { console.error('WO generation failed', e); }
+      } catch (e) { 
+        console.error('WO generation failed', e);
+        throw new BadRequestException(`Failed to generate Work Order: ${e.message}`);
+      }
     }
 
     // Upsert payment record
     await this.prisma.payment.upsert({
       where: { auctionId: id },
       create: { auctionId: id, clientAmount: winningAmount, commissionAmount, totalAmount: winningAmount + commissionAmount },
-      update: {},
+      update: { clientAmount: winningAmount, commissionAmount, totalAmount: winningAmount + commissionAmount },
     });
 
     // Upsert pickup record

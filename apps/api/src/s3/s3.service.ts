@@ -32,12 +32,13 @@ export class S3Service {
     file: Express.Multer.File,
     folder: string,
     isPublic = false,
+    customKey?: string,
   ): Promise<{ key: string; bucket: string; url?: string }> {
     if (!file) throw new BadRequestException('No file provided');
 
     const bucket = isPublic ? this.publicBucket : this.privateBucket;
     const ext = file.originalname.split('.').pop();
-    const key = `${folder}/${randomUUID()}.${ext}`;
+    const key = customKey || `${folder}/${randomUUID()}.${ext}`;
 
     await this.s3.send(
       new PutObjectCommand({
