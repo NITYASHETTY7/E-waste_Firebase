@@ -1,16 +1,24 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { FirebaseService } from '../firebase/firebase.service';
 import { S3Service } from '../s3/s3.service';
-import { CompanyStatus, CompanyType, DocumentType } from '@prisma/client';
 import { NotificationService } from '../notifications/notification.service';
+import { CompanyType, CompanyStatus, DocumentType, CompanyDoc, S3Document } from '../firebase/firestore-types';
 
 @Injectable()
 export class CompaniesService {
   constructor(
-    private prisma: PrismaService,
+    private firebaseService: FirebaseService,
     private s3: S3Service,
     private notifications: NotificationService,
   ) {}
+
+  private get db() {
+    return this.firebaseService.db;
+  }
+
+  private get auth() {
+    return this.firebaseService.auth;
+  }
 
   async create(
     data: {
@@ -25,115 +33,179 @@ export class CompaniesService {
     },
     userId?: string,
   ) {
-    const company = await this.prisma.company.create({ data });
+    const companyId = this.db.collection('companies').doc().id;
+    const companyData: CompanyDoc = {
+      id: companyId,
+      name: data.name,
+      type: data.type,
+      status: CompanyStatus.PENDING,
+      gstNumber: data.gstNumber || null,
+      panNumber: data.panNumber || null,
+      address: data.address || null,
+      city: data.city || null,
+      state: data.state || null,
+      pincode: data.pincode || null,
+      rating: 0,
+      ratingCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isLocked: false,
+    };
+
+    await this.db.collection('companies').doc(companyId).set(companyData);
 
     if (userId) {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { companyId: company.id },
+      await this.db.collection('users').doc(userId).update({
+        companyId,
+        updatedAt: new Date(),
       });
+      
+      // Update custom claims in Firebase Auth for user
+      const userSnap = await this.db.collection('users').doc(userId).get();
+      if (userSnap.exists) {
+        const user = userSnap.data() as any;
+        await this.auth.setCustomUserClaims(userId, {
+          role: user.role,
+          companyId,
+        });
+      }
     }
 
-    return company;
+    return companyData;
   }
 
   async findAll(type?: CompanyType, status?: CompanyStatus) {
-    const where: any = {};
-    if (type) where.type = type;
-    if (status) where.status = status;
+    let query: any = this.db.collection('companies');
+    if (type) query = query.where('type', '==', type);
+    if (status) query = query.where('status', '==', status);
 
-    const companies = await this.prisma.company.findMany({
-      where,
-      include: {
-        users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            phone: true,
-          },
-        },
-        kycDocuments: true,
-      },
-    });
+    const snapshot = await query.get();
+    const companies: any[] = [];
 
-    return Promise.all(
-      companies.map(async (company) => {
-        const docs = await Promise.all(
-          company.kycDocuments.map(async (doc) => ({
-            ...doc,
-            signedUrl: await this.s3
-              .getSignedUrl(doc.s3Key, doc.s3Bucket)
-              .catch(() => null),
-          })),
-        );
-        return { ...company, kycDocuments: docs };
-      }),
-    );
+    for (const doc of snapshot.docs) {
+      const company = doc.data() as CompanyDoc;
+      
+      // Resolve users for this company
+      const usersSnap = await this.db.collection('users').where('companyId', '==', company.id).get();
+      const users: any[] = [];
+      usersSnap.forEach((uDoc: any) => {
+        const u = uDoc.data();
+        users.push({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          phone: u.phone,
+        });
+      });
+
+      // Resolve KYC Documents
+      const kycSnap = await this.db.collection('companies').doc(company.id).collection('kycDocuments').get();
+      const kycDocuments: any[] = [];
+      kycSnap.forEach((kDoc: any) => kycDocuments.push(kDoc.data()));
+
+      const docsWithUrls = await Promise.all(
+        kycDocuments.map(async (kDoc) => ({
+          ...kDoc,
+          uploadedAt: kDoc.uploadedAt?.toDate ? kDoc.uploadedAt.toDate() : kDoc.uploadedAt,
+          signedUrl: await this.s3
+            .getSignedUrl(kDoc.s3Key, kDoc.s3Bucket)
+            .catch(() => null),
+        }))
+      );
+
+      companies.push({
+        ...company,
+        createdAt: (company.createdAt as any)?.toDate ? (company.createdAt as any).toDate() : company.createdAt,
+        updatedAt: (company.updatedAt as any)?.toDate ? (company.updatedAt as any).toDate() : company.updatedAt,
+        users,
+        kycDocuments: docsWithUrls,
+      });
+    }
+
+    return companies;
   }
 
   async findOne(id: string) {
-    const company = await this.prisma.company.findUnique({
-      where: { id },
-      include: {
-        users: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            phone: true,
-          },
-        },
-        kycDocuments: true,
-      },
+    const docSnap = await this.db.collection('companies').doc(id).get();
+    if (!docSnap.exists) throw new NotFoundException('Company not found');
+
+    const company = docSnap.data() as CompanyDoc;
+
+    // Resolve users
+    const usersSnap = await this.db.collection('users').where('companyId', '==', id).get();
+    const users: any[] = [];
+    usersSnap.forEach((uDoc: any) => {
+      const u = uDoc.data();
+      users.push({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        phone: u.phone,
+      });
     });
-    if (!company) throw new NotFoundException('Company not found');
 
-    let kycDocuments = company.kycDocuments;
+    // Resolve KYC documents
+    const kycSnap = await this.db.collection('companies').doc(id).collection('kycDocuments').get();
+    let kycDocuments: any[] = [];
+    kycSnap.forEach((kDoc: any) => kycDocuments.push(kDoc.data()));
 
-    // If no DB records exist, fall back to listing S3 directly under kyc/{companyId}/
+    // Fallback: If no DB records exist, list from S3 directly
     if (kycDocuments.length === 0) {
       try {
         const s3Files = await this.s3.listObjects(`kyc/${id}/`);
         if (s3Files.length > 0) {
-          // Sync found files back into the DB so they persist for next time
           const created = await Promise.all(
-            s3Files.map((file) => {
+            s3Files.map(async (file) => {
               const fileName = file.key.split('/').pop() || file.key;
-              const type = this.inferDocType(fileName);
-              return this.prisma.kycDocument.upsert({
-                where: { s3Key: file.key },
-                update: {},
-                create: {
-                  type: type as DocumentType,
-                  s3Key: file.key,
-                  s3Bucket: this.s3.getPrivateBucket(),
-                  fileName,
-                  mimeType: this.inferMimeType(fileName),
-                  companyId: id,
-                },
-              });
-            }),
+              const docType = this.inferDocType(fileName);
+              const subDocId = this.db.collection('companies').doc(id).collection('kycDocuments').doc().id;
+              
+              const kycDocData: S3Document = {
+                id: subDocId,
+                type: docType as DocumentType,
+                s3Key: file.key,
+                s3Bucket: this.s3.getPrivateBucket(),
+                fileName,
+                mimeType: this.inferMimeType(fileName),
+                uploadedAt: new Date(),
+              };
+
+              await this.db
+                .collection('companies')
+                .doc(id)
+                .collection('kycDocuments')
+                .doc(subDocId)
+                .set(kycDocData);
+
+              return kycDocData;
+            })
           );
           kycDocuments = created;
         }
       } catch {
-        // S3 listing failed — leave docs empty
+        // S3 listing failed — leave empty
       }
     }
 
-    const docs = await Promise.all(
-      kycDocuments.map(async (doc) => ({
-        ...doc,
+    const docsWithUrls = await Promise.all(
+      kycDocuments.map(async (kDoc) => ({
+        ...kDoc,
+        uploadedAt: kDoc.uploadedAt?.toDate ? kDoc.uploadedAt.toDate() : kDoc.uploadedAt,
         signedUrl: await this.s3
-          .getSignedUrl(doc.s3Key, doc.s3Bucket)
+          .getSignedUrl(kDoc.s3Key, kDoc.s3Bucket)
           .catch(() => null),
-      })),
+      }))
     );
 
-    return { ...company, kycDocuments: docs };
+    return {
+      ...company,
+      createdAt: (company.createdAt as any)?.toDate ? (company.createdAt as any).toDate() : company.createdAt,
+      updatedAt: (company.updatedAt as any)?.toDate ? (company.updatedAt as any).toDate() : company.updatedAt,
+      users,
+      kycDocuments: docsWithUrls,
+    };
   }
 
   private inferDocType(fileName: string): string {
@@ -158,11 +230,14 @@ export class CompaniesService {
   }
 
   async updateStatus(id: string, status: CompanyStatus) {
-    return this.prisma.company.update({ where: { id }, data: { status } });
+    await this.db.collection('companies').doc(id).update({
+      status,
+      updatedAt: new Date(),
+    });
+    return { success: true };
   }
 
   async update(id: string, data: any) {
-    // Strip relations and read-only fields that Prisma rejects
     const {
       id: _id,
       users: _users,
@@ -175,7 +250,13 @@ export class CompaniesService {
       updatedAt: _updatedAt,
       ...safeData
     } = data;
-    return this.prisma.company.update({ where: { id }, data: safeData });
+
+    await this.db.collection('companies').doc(id).update({
+      ...safeData,
+      updatedAt: new Date(),
+    });
+
+    return this.findOne(id);
   }
 
   async uploadKycDocument(
@@ -184,16 +265,26 @@ export class CompaniesService {
     type: DocumentType,
   ) {
     const { key, bucket } = await this.s3.upload(file, `kyc/${companyId}`);
-    return this.prisma.kycDocument.create({
-      data: {
-        type,
-        s3Key: key,
-        s3Bucket: bucket,
-        fileName: file.originalname,
-        mimeType: file.mimetype,
-        companyId,
-      },
-    });
+    const docId = this.db.collection('companies').doc(companyId).collection('kycDocuments').doc().id;
+    
+    const docData: S3Document = {
+      id: docId,
+      type,
+      s3Key: key,
+      s3Bucket: bucket,
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      uploadedAt: new Date(),
+    };
+
+    await this.db
+      .collection('companies')
+      .doc(companyId)
+      .collection('kycDocuments')
+      .doc(docId)
+      .set(docData);
+
+    return docData;
   }
 
   async getSignedUrl(s3Key: string, s3Bucket?: string) {
@@ -202,41 +293,46 @@ export class CompaniesService {
   }
 
   async updateRating(vendorId: string, newRating: number) {
-    const company = await this.prisma.company.findUnique({
-      where: { id: vendorId },
-    });
-    if (!company) throw new NotFoundException('Vendor not found');
+    const companySnap = await this.db.collection('companies').doc(vendorId).get();
+    if (!companySnap.exists) throw new NotFoundException('Vendor not found');
 
+    const company = companySnap.data() as CompanyDoc;
     const totalRatings = company.ratingCount + 1;
     const avgRating =
       ((company.rating || 0) * company.ratingCount + newRating) / totalRatings;
 
-    return this.prisma.company.update({
-      where: { id: vendorId },
-      data: { rating: avgRating, ratingCount: totalRatings },
+    await this.db.collection('companies').doc(vendorId).update({
+      rating: avgRating,
+      ratingCount: totalRatings,
+      updatedAt: new Date(),
     });
+
+    return { success: true };
   }
 
   // --- Admin Approval / Hold / Reject ---
 
   async approveCompany(id: string) {
-    const company = await this.prisma.company.findUnique({
-      where: { id },
-      include: { users: true },
-    });
-    if (!company) throw new NotFoundException('Company not found');
+    const companySnap = await this.db.collection('companies').doc(id).get();
+    if (!companySnap.exists) throw new NotFoundException('Company not found');
 
-    await this.prisma.company.update({
-      where: { id },
-      data: { status: 'APPROVED' },
+    await this.db.collection('companies').doc(id).update({
+      status: CompanyStatus.APPROVED,
+      updatedAt: new Date(),
     });
 
-    const primaryUser = company.users[0];
-    if (primaryUser) {
-      await this.prisma.user.update({
-        where: { id: primaryUser.id },
-        data: { isActive: true },
+    // Find primary user linked to this company
+    const usersSnap = await this.db.collection('users').where('companyId', '==', id).limit(1).get();
+    if (!usersSnap.empty) {
+      const primaryUser = usersSnap.docs[0].data();
+      
+      // Enable in Firebase Auth & set active in Firestore
+      await this.auth.updateUser(primaryUser.id, { disabled: false });
+      await this.db.collection('users').doc(primaryUser.id).update({
+        isActive: true,
+        updatedAt: new Date(),
       });
+
       await this.notifications
         .notifyAccountApproved(
           primaryUser.email,
@@ -249,38 +345,35 @@ export class CompaniesService {
           userId: primaryUser.id,
           type: 'account_approved',
           title: 'Company Application Approved',
-          message: `Your company ${company.name} has been approved. Welcome to Ecoloop!`,
+          message: `Your company has been approved. Welcome to Ecoloop!`,
           link: '/vendor/dashboard',
         })
         .catch(() => {});
     }
 
-    return this.prisma.company.findUnique({
-      where: { id },
-      include: {
-        users: { select: { id: true, name: true, email: true, role: true } },
-      },
-    });
+    return this.findOne(id);
   }
 
   async holdCompany(id: string, reason?: string) {
-    const company = await this.prisma.company.findUnique({
-      where: { id },
-      include: { users: true },
-    });
-    if (!company) throw new NotFoundException('Company not found');
+    const companySnap = await this.db.collection('companies').doc(id).get();
+    if (!companySnap.exists) throw new NotFoundException('Company not found');
 
-    await this.prisma.company.update({
-      where: { id },
-      data: { status: 'BLOCKED' },
+    await this.db.collection('companies').doc(id).update({
+      status: CompanyStatus.BLOCKED,
+      updatedAt: new Date(),
     });
 
-    const primaryUser = company.users[0];
-    if (primaryUser) {
-      await this.prisma.user.update({
-        where: { id: primaryUser.id },
-        data: { isActive: false },
+    const usersSnap = await this.db.collection('users').where('companyId', '==', id).limit(1).get();
+    if (!usersSnap.empty) {
+      const primaryUser = usersSnap.docs[0].data();
+      
+      // Disable in Firebase Auth and deactivate in Firestore
+      await this.auth.updateUser(primaryUser.id, { disabled: true });
+      await this.db.collection('users').doc(primaryUser.id).update({
+        isActive: false,
+        updatedAt: new Date(),
       });
+
       await this.notifications
         .notifyAccountOnHold(
           primaryUser.email,
@@ -299,32 +392,28 @@ export class CompaniesService {
         .catch(() => {});
     }
 
-    return this.prisma.company.findUnique({
-      where: { id },
-      include: {
-        users: { select: { id: true, name: true, email: true, role: true } },
-      },
-    });
+    return this.findOne(id);
   }
 
   async rejectCompany(id: string, reason?: string) {
-    const company = await this.prisma.company.findUnique({
-      where: { id },
-      include: { users: true },
-    });
-    if (!company) throw new NotFoundException('Company not found');
+    const companySnap = await this.db.collection('companies').doc(id).get();
+    if (!companySnap.exists) throw new NotFoundException('Company not found');
 
-    await this.prisma.company.update({
-      where: { id },
-      data: { status: 'REJECTED' },
+    await this.db.collection('companies').doc(id).update({
+      status: CompanyStatus.REJECTED,
+      updatedAt: new Date(),
     });
 
-    const primaryUser = company.users[0];
-    if (primaryUser) {
-      await this.prisma.user.update({
-        where: { id: primaryUser.id },
-        data: { isActive: false },
+    const usersSnap = await this.db.collection('users').where('companyId', '==', id).limit(1).get();
+    if (!usersSnap.empty) {
+      const primaryUser = usersSnap.docs[0].data();
+      
+      await this.auth.updateUser(primaryUser.id, { disabled: true });
+      await this.db.collection('users').doc(primaryUser.id).update({
+        isActive: false,
+        updatedAt: new Date(),
       });
+
       await this.notifications
         .notifyAccountRejected(
           primaryUser.email,
@@ -343,21 +432,16 @@ export class CompaniesService {
         .catch(() => {});
     }
 
-    return this.prisma.company.findUnique({
-      where: { id },
-      include: {
-        users: { select: { id: true, name: true, email: true, role: true } },
-      },
-    });
+    return this.findOne(id);
   }
 
   // --- Admin Risk Control ---
 
   async lockCompany(id: string, reason: string) {
-    const company = await this.prisma.company.update({
-      where: { id },
-      data: { isLocked: true, lockReason: reason },
-      include: { users: true },
+    await this.db.collection('companies').doc(id).update({
+      isLocked: true,
+      lockReason: reason,
+      updatedAt: new Date(),
     });
 
     await this.notifications
@@ -368,15 +452,17 @@ export class CompaniesService {
       })
       .catch(() => {});
 
-    const primaryUser = company.users[0];
-    if (primaryUser?.email) {
+    // Send email to primary user
+    const usersSnap = await this.db.collection('users').where('companyId', '==', id).limit(1).get();
+    if (!usersSnap.empty) {
+      const primaryUser = usersSnap.docs[0].data();
       await this.notifications
         .sendEmail({
           to: primaryUser.email,
           subject: `[WeConnect] Urgent: Your account has been locked`,
           body: `
           <h2>Account Locked</h2>
-          <p>Hello ${primaryUser.name || company.name},</p>
+          <p>Hello ${primaryUser.name},</p>
           <p>Your company account on WeConnect has been locked by an administrator.</p>
           <p><strong>Reason:</strong> ${reason}</p>
           <p>You will not be able to place bids or participate in auctions until this issue is resolved. Please contact support immediately.</p>
@@ -385,54 +471,54 @@ export class CompaniesService {
         .catch(() => {});
     }
 
-    return company;
+    return this.findOne(id);
   }
 
   async unlockCompany(id: string) {
-    const company = await this.prisma.company.update({
-      where: { id },
-      data: { isLocked: false, lockReason: null },
-      include: { users: true },
+    await this.db.collection('companies').doc(id).update({
+      isLocked: false,
+      lockReason: null,
+      updatedAt: new Date(),
     });
 
     await this.notifications
       .notifyCompanyUsers(id, {
         type: 'company_unlocked',
         title: 'Company Account Unlocked',
-        message:
-          'Your company account has been unlocked. Full platform services restored.',
+        message: 'Your company account has been unlocked. Full platform services restored.',
         link: '/vendor/dashboard',
       })
       .catch(() => {});
 
-    const primaryUser = company.users[0];
-    if (primaryUser?.email) {
+    const usersSnap = await this.db.collection('users').where('companyId', '==', id).limit(1).get();
+    if (!usersSnap.empty) {
+      const primaryUser = usersSnap.docs[0].data();
       await this.notifications
         .sendEmail({
           to: primaryUser.email,
           subject: `[WeConnect] Your account has been unlocked`,
           body: `
           <h2>Account Unlocked</h2>
-          <p>Hello ${primaryUser.name || company.name},</p>
+          <p>Hello ${primaryUser.name},</p>
           <p>Your company account has been unlocked. You may now resume full platform activity.</p>
         `,
         })
         .catch(() => {});
     }
 
-    return company;
+    return this.findOne(id);
   }
 
   async applyPenalty(id: string, amount: number, reason: string) {
-    const company = await this.prisma.company.findUnique({ where: { id } });
-    if (!company) throw new NotFoundException('Company not found');
+    const companySnap = await this.db.collection('companies').doc(id).get();
+    if (!companySnap.exists) throw new NotFoundException('Company not found');
 
+    const company = companySnap.data() as CompanyDoc;
     const currentPenalty = company.penaltyAmount || 0;
 
-    const updated = await this.prisma.company.update({
-      where: { id },
-      data: { penaltyAmount: currentPenalty + amount },
-      include: { users: true },
+    await this.db.collection('companies').doc(id).update({
+      penaltyAmount: currentPenalty + amount,
+      updatedAt: new Date(),
     });
 
     await this.notifications
@@ -443,15 +529,16 @@ export class CompaniesService {
       })
       .catch(() => {});
 
-    const primaryUser = updated.users[0];
-    if (primaryUser?.email) {
+    const usersSnap = await this.db.collection('users').where('companyId', '==', id).limit(1).get();
+    if (!usersSnap.empty) {
+      const primaryUser = usersSnap.docs[0].data();
       await this.notifications
         .sendEmail({
           to: primaryUser.email,
           subject: `[WeConnect] Penalty Applied to Account`,
           body: `
           <h2>Penalty Notice</h2>
-          <p>Hello ${primaryUser.name || company.name},</p>
+          <p>Hello ${primaryUser.name},</p>
           <p>A financial penalty has been applied to your account.</p>
           <p><strong>Amount:</strong> ₹${amount.toLocaleString('en-IN')}</p>
           <p><strong>Reason:</strong> ${reason}</p>
@@ -461,6 +548,6 @@ export class CompaniesService {
         .catch(() => {});
     }
 
-    return updated;
+    return this.findOne(id);
   }
 }

@@ -3,17 +3,42 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { S3Service } from '../s3/s3.service';
 import { NotificationService } from '../notifications/notification.service';
 import { DocumentsService } from '../documents/documents.service';
 import { RedisService } from '../redis/redis.service';
-import { AuctionStatus, BidPhase, DocumentType, Prisma } from '@prisma/client';
+import { FirebaseService } from '../firebase/firebase.service';
+import * as admin from 'firebase-admin';
+import {
+  AuctionStatus,
+  BidPhase,
+  DocumentType,
+  PaymentStatus,
+  PickupStatus,
+  S3Document,
+  PaymentDoc,
+  PickupDoc,
+  AuctionDoc,
+  UserDoc,
+} from '../firebase/firestore-types';
+
+const convertDate = (field: any): Date | null => {
+  if (!field) return null;
+  return typeof field.toDate === 'function' ? field.toDate() : new Date(field);
+};
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
+}
 
 @Injectable()
 export class AuctionsService {
   constructor(
-    private prisma: PrismaService,
+    private firebaseService: FirebaseService,
     private s3: S3Service,
     private notifications: NotificationService,
     private documents: DocumentsService,
@@ -27,6 +52,7 @@ export class AuctionsService {
     idempotencyKey?: string;
   }) {
     const { auctionId, vendorId, amount, idempotencyKey } = data;
+    const db = this.firebaseService.db;
 
     // 1. Idempotency Check
     if (idempotencyKey) {
@@ -44,11 +70,13 @@ export class AuctionsService {
 
     // Pre-check helper to avoid lock contention for duplicate or lower bids
     const checkPriceAlreadyBid = async () => {
-      const highestBid = await this.prisma.bid.findFirst({
-        where: { auctionId, phase: BidPhase.OPEN },
-        orderBy: { amount: 'desc' },
-        select: { amount: true },
-      });
+      const bidsSnap = await db.collection('auctions').doc(auctionId).collection('bids')
+        .where('phase', '==', BidPhase.OPEN)
+        .orderBy('amount', 'desc')
+        .limit(1)
+        .get();
+      
+      const highestBid = bidsSnap.empty ? null : bidsSnap.docs[0].data();
       if (highestBid && amount <= highestBid.amount) {
         throw new BadRequestException(
           'The price is already bid. Try the next highest bid.',
@@ -81,138 +109,162 @@ export class AuctionsService {
 
     try {
       // 3. Database Transaction (Optimistic + Double-Check)
-      return await this.prisma.$transaction(
-        async (tx) => {
-          const auction = await tx.auction.findUnique({
-            where: { id: auctionId },
-            include: {
-              bids: {
-                where: { phase: BidPhase.OPEN },
-                orderBy: { amount: 'desc' },
-                take: 1,
-              },
-            },
-          });
+      return await db.runTransaction(async (transaction) => {
+        const auctionRef = db.collection('auctions').doc(auctionId);
+        const auctionDoc = await transaction.get(auctionRef);
+        if (!auctionDoc.exists) throw new NotFoundException('Auction not found');
+        const auctionData = auctionDoc.data() as AuctionDoc;
 
-          if (!auction) throw new NotFoundException('Auction not found');
+        // Validation
+        if (auctionData.status !== AuctionStatus.OPEN_PHASE) {
+          throw new BadRequestException('Auction is not in open phase');
+        }
 
-          // Validation
-          if (auction.status !== AuctionStatus.OPEN_PHASE) {
-            throw new BadRequestException('Auction is not in open phase');
-          }
+        const now = new Date();
+        const openPhaseStart = convertDate(auctionData.openPhaseStart);
+        const openPhaseEnd = convertDate(auctionData.openPhaseEnd);
 
-          const now = new Date();
-          if (auction.openPhaseStart && now < auction.openPhaseStart) {
-            throw new BadRequestException('Auction has not started yet');
-          }
-          if (auction.openPhaseEnd && now > auction.openPhaseEnd) {
-            throw new BadRequestException('Auction has already ended');
-          }
+        if (openPhaseStart && now < openPhaseStart) {
+          throw new BadRequestException('Auction has not started yet');
+        }
+        if (openPhaseEnd && now > openPhaseEnd) {
+          throw new BadRequestException('Auction has already ended');
+        }
 
-          const vendorUser = await tx.user.findUnique({
-            where: { id: vendorId },
-            include: { company: true },
-          });
-          if (vendorUser?.company?.isLocked) {
-            throw new BadRequestException('Your account is locked');
-          }
+        const vendorUserRef = db.collection('users').doc(vendorId);
+        const vendorUserDoc = await transaction.get(vendorUserRef);
+        const vendorUserData = vendorUserDoc.exists ? (vendorUserDoc.data() as UserDoc) : null;
 
-          if (!vendorUser?.companyId) {
-            throw new BadRequestException('Vendor company not found');
-          }
+        let companyData: any = null;
+        if (vendorUserData?.companyId) {
+          const companyRef = db.collection('companies').doc(vendorUserData.companyId);
+          const companyDoc = await transaction.get(companyRef);
+          companyData = companyDoc.exists ? companyDoc.data() : null;
+        }
 
-          // 3b. Shortlist Check
-          const isShortlisted = await tx.bid.findFirst({
-            where: {
-              auctionId,
-              phase: BidPhase.SEALED,
-              isShortlisted: true,
-              vendor: {
-                companyId: vendorUser.companyId,
-              },
-            },
-          });
+        if (companyData?.isLocked) {
+          throw new BadRequestException('Your account is locked');
+        }
 
-          if (!isShortlisted) {
-            throw new BadRequestException(
-              'Your company is not shortlisted for the live auction',
-            );
-          }
+        if (!vendorUserData?.companyId) {
+          throw new BadRequestException('Vendor company not found');
+        }
 
-          const highestBid = auction.bids[0]?.amount || auction.basePrice;
-          const minRequired = highestBid + auction.tickSize;
+        // 3b. Shortlist Check (check if any user of the vendor's company has a shortlisted sealed bid)
+        const companyUsersSnap = await transaction.get(
+          db.collection('users').where('companyId', '==', vendorUserData.companyId)
+        );
+        const companyUserIds = companyUsersSnap.docs.map(doc => doc.id);
 
-          if (auction.bids[0] && amount <= auction.bids[0].amount) {
-            throw new BadRequestException(
-              'The price is already bid. Try the next highest bid.',
-            );
-          }
+        const sealedBidsQuery = auctionRef.collection('bids')
+          .where('phase', '==', BidPhase.SEALED)
+          .where('isShortlisted', '==', true);
+        const sealedBidsSnap = await transaction.get(sealedBidsQuery);
+        const isShortlisted = sealedBidsSnap.docs.some(doc => {
+          const bidData = doc.data();
+          return companyUserIds.includes(bidData.vendorId);
+        });
 
-          if (amount < minRequired) {
-            throw new BadRequestException(`Minimum bid is ₹${minRequired}`);
-          }
+        if (!isShortlisted) {
+          throw new BadRequestException(
+            'Your company is not shortlisted for the live auction',
+          );
+        }
 
-          // Create Bid
-          const bid = await tx.bid.create({
-            data: {
-              auctionId,
-              vendorId,
-              amount,
-              phase: BidPhase.OPEN,
-            },
-            include: { vendor: { select: { id: true, name: true } } },
-          });
+        // Fetch highest bid in OPEN phase inside transaction
+        const bidsQueryRef = auctionRef.collection('bids')
+          .where('phase', '==', BidPhase.OPEN)
+          .orderBy('amount', 'desc')
+          .limit(1);
+        const bidsQuerySnap = await transaction.get(bidsQueryRef);
+        const highestBidData = bidsQuerySnap.empty ? null : bidsQuerySnap.docs[0].data();
+        const highestBidAmount = highestBidData ? highestBidData.amount : null;
 
-          // 4. Update Auction (Optimistic Lock)
-          let updatedAuction = await tx.auction.update({
-            where: {
-              id: auctionId,
-              version: auction.version,
-            },
-            data: {
-              version: { increment: 1 },
-            },
-          });
+        const baseHighest = highestBidAmount || auctionData.basePrice;
+        const minRequired = baseHighest + auctionData.tickSize;
 
-          // 5. Timer Extension (Anti-sniping)
-          const endTime = updatedAuction.openPhaseEnd!;
-          const msToEnd = endTime.getTime() - now.getTime();
-          const extMinutes = updatedAuction.extensionMinutes ?? 3;
+        if (highestBidAmount !== null && amount <= highestBidAmount) {
+          throw new BadRequestException(
+            'The price is already bid. Try the next highest bid.',
+          );
+        }
 
+        if (amount < minRequired) {
+          throw new BadRequestException(`Minimum bid is ₹${minRequired}`);
+        }
+
+        // Create Bid
+        const newBidRef = auctionRef.collection('bids').doc();
+        const bidData = {
+          id: newBidRef.id,
+          auctionId,
+          vendorId,
+          amount: Number(amount),
+          phase: BidPhase.OPEN,
+          createdAt: admin.firestore.Timestamp.now(),
+          isShortlisted: false,
+          clientStatus: 'pending',
+        };
+        transaction.set(newBidRef, bidData);
+
+        // 4. Update Auction (Optimistic Lock)
+        const newVersion = (auctionData.version || 0) + 1;
+        const updateData: any = {
+          version: newVersion,
+          updatedAt: admin.firestore.Timestamp.now(),
+        };
+
+        // 5. Timer Extension (Anti-sniping)
+        let finalEndTime = openPhaseEnd;
+        let extensionCount = auctionData.extensionCount || 0;
+        const extMinutes = auctionData.extensionMinutes ?? 3;
+
+        if (openPhaseEnd) {
+          const msToEnd = openPhaseEnd.getTime() - now.getTime();
           if (
             extMinutes > 0 &&
             msToEnd > 0 &&
             msToEnd < extMinutes * 60 * 1000 &&
-            updatedAuction.extensionCount < updatedAuction.maxTicks
+            extensionCount < (auctionData.maxTicks || 0)
           ) {
-            const newEnd = new Date(endTime.getTime() + extMinutes * 60 * 1000);
-            updatedAuction = await tx.auction.update({
-              where: { id: auctionId, version: updatedAuction.version },
-              data: {
-                openPhaseEnd: newEnd,
-                extensionCount: { increment: 1 },
-                version: { increment: 1 },
-              },
-            });
+            finalEndTime = new Date(openPhaseEnd.getTime() + extMinutes * 60 * 1000);
+            extensionCount += 1;
+            updateData.openPhaseEnd = admin.firestore.Timestamp.fromDate(finalEndTime);
+            updateData.extensionCount = extensionCount;
           }
+        }
 
-          // 6. Update Leaderboard in Redis (Async-ish)
-          await this.redis.updateLeaderboard(auctionId, vendorId, amount);
+        transaction.update(auctionRef, updateData);
 
-          const leaderboard = await this.getLeaderboard(auctionId);
+        // 6. Update Leaderboard in Redis (Async-ish)
+        await this.redis.updateLeaderboard(auctionId, vendorId, amount);
 
-          return { bid, auction: updatedAuction, leaderboard };
-        },
-        {
-          maxWait: 15000,
-          timeout: 15000,
-        },
-      );
+        const leaderboard = await this.getLeaderboard(auctionId);
+
+        const returnedBid = {
+          ...bidData,
+          createdAt: bidData.createdAt.toDate(),
+          vendor: {
+            id: vendorUserData.id,
+            name: vendorUserData.name,
+          },
+        };
+
+        const updatedAuction = {
+          ...auctionData,
+          ...updateData,
+          openPhaseEnd: finalEndTime,
+          sealedPhaseStart: convertDate(auctionData.sealedPhaseStart),
+          sealedPhaseEnd: convertDate(auctionData.sealedPhaseEnd),
+          openPhaseStart: convertDate(auctionData.openPhaseStart),
+          createdAt: convertDate(auctionData.createdAt),
+          updatedAt: new Date(),
+        };
+
+        return { bid: returnedBid, auction: updatedAuction, leaderboard };
+      });
     } catch (e) {
-      if (
-        e instanceof Prisma.PrismaClientKnownRequestError &&
-        e.code === 'P2025'
-      ) {
+      if (e.code === 'aborted') {
         throw new BadRequestException(
           'Concurrent update detected, please retry.',
         );
@@ -225,58 +277,113 @@ export class AuctionsService {
 
   async getLeaderboard(auctionId: string) {
     const raw = await this.redis.getLeaderboard(auctionId);
-    // raw is [id1, score1, id2, score2, ...]
     const result = [];
     for (let i = 0; i < raw.length; i += 2) {
       const vendorId = raw[i];
       const amount = parseFloat(raw[i + 1]);
 
-      // We could fetch vendor names from DB here or just return IDs
-      // For efficiency, let's just return IDs and amounts
       result.push({ vendorId, amount, rank: i / 2 + 1 });
     }
 
     if (result.length === 0) {
-      // Fallback to DB if Redis is empty
-      const bids = await this.prisma.bid.findMany({
-        where: { auctionId, phase: BidPhase.OPEN },
-        orderBy: { amount: 'desc' },
-        include: { vendor: { select: { id: true, name: true } } },
-      });
+      const db = this.firebaseService.db;
+      const bidsSnap = await db.collection('auctions').doc(auctionId).collection('bids')
+        .where('phase', '==', BidPhase.OPEN)
+        .orderBy('amount', 'desc')
+        .get();
+
       const seen = new Set<string>();
-      return bids
-        .filter((b) => {
-          if (seen.has(b.vendorId)) return false;
-          seen.add(b.vendorId);
-          return true;
+      const uniqueBids: any[] = [];
+      const vendorIds = Array.from(new Set(bidsSnap.docs.map(doc => (doc.data() as any)?.vendorId)));
+
+      const vendorUsers = await Promise.all(
+        vendorIds.map(async (vid) => {
+          const uDoc = await db.collection('users').doc(vid).get();
+          return uDoc.exists ? { id: vid, name: (uDoc.data() as any)?.name } : { id: vid, name: 'Unknown' };
         })
-        .map((b, idx) => ({
+      );
+      const vendorMap = new Map(vendorUsers.map(u => [u.id, u]));
+
+      for (const doc of bidsSnap.docs) {
+        const b = doc.data();
+        if (seen.has(b.vendorId)) continue;
+        seen.add(b.vendorId);
+        uniqueBids.push({
           vendorId: b.vendorId,
           amount: b.amount,
-          rank: idx + 1,
-          vendor: b.vendor,
-        }));
+          vendor: vendorMap.get(b.vendorId),
+        });
+      }
+
+      return uniqueBids.map((b, idx) => ({
+        vendorId: b.vendorId,
+        amount: b.amount,
+        rank: idx + 1,
+        vendor: b.vendor,
+      }));
     }
 
     return result;
   }
 
   async findAllBids(auctionId?: string) {
-    return this.prisma.bid.findMany({
-      where: auctionId ? { auctionId } : {},
-      include: {
-        vendor: { select: { id: true, name: true, companyId: true } },
-        auction: {
-          select: {
-            id: true,
-            status: true,
-            winnerId: true,
-            requirementId: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
+    const db = this.firebaseService.db;
+    let bidsSnap: admin.firestore.QuerySnapshot;
+    if (auctionId) {
+      bidsSnap = await db.collection('auctions').doc(auctionId).collection('bids').orderBy('createdAt', 'desc').get();
+    } else {
+      bidsSnap = await db.collectionGroup('bids').orderBy('createdAt', 'desc').get();
+    }
+
+    const bids = bidsSnap.docs.map(doc => {
+      const data = doc.data();
+      const pathParts = doc.ref.path.split('/');
+      const docAuctionId = pathParts[1] || auctionId;
+      return {
+        ...data,
+        id: doc.id,
+        auctionId: docAuctionId,
+        createdAt: convertDate(data.createdAt),
+      } as any;
     });
+
+    const uniqueVendorIds = Array.from(new Set(bids.map(b => b.vendorId))).filter(Boolean) as string[];
+    const uniqueAuctionIds = Array.from(new Set(bids.map(b => b.auctionId))).filter(Boolean) as string[];
+
+    const vendorsMap = new Map<string, any>();
+    if (uniqueVendorIds.length > 0) {
+      const chunks = chunkArray(uniqueVendorIds, 10);
+      await Promise.all(chunks.map(async (chunk) => {
+        const snap = await db.collection('users').where(admin.firestore.FieldPath.documentId(), 'in', chunk).get();
+        snap.docs.forEach(doc => {
+          const u = doc.data();
+          vendorsMap.set(doc.id, { id: doc.id, name: u.name, companyId: u.companyId });
+        });
+      }));
+    }
+
+    const auctionsMap = new Map<string, any>();
+    if (uniqueAuctionIds.length > 0) {
+      const chunks = chunkArray(uniqueAuctionIds, 10);
+      await Promise.all(chunks.map(async (chunk) => {
+        const snap = await db.collection('auctions').where(admin.firestore.FieldPath.documentId(), 'in', chunk).get();
+        snap.docs.forEach(doc => {
+          const a = doc.data();
+          auctionsMap.set(doc.id, {
+            id: doc.id,
+            status: a.status,
+            winnerId: a.winnerId,
+            requirementId: a.requirementId,
+          });
+        });
+      }));
+    }
+
+    return bids.map(b => ({
+      ...b,
+      vendor: vendorsMap.get(b.vendorId) || null,
+      auction: auctionsMap.get(b.auctionId) || null,
+    }));
   }
 
   async create(data: {
@@ -291,40 +398,172 @@ export class AuctionsService {
     clientId: string;
     requirementId?: string;
   }) {
-    return this.prisma.auction.create({ data });
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc();
+    const auctionDoc: AuctionDoc = {
+      id: auctionRef.id,
+      title: data.title,
+      category: data.category,
+      description: data.description || null,
+      status: AuctionStatus.DRAFT,
+      basePrice: Number(data.basePrice),
+      targetPrice: data.targetPrice !== undefined ? Number(data.targetPrice) : null,
+      tickSize: data.tickSize !== undefined ? Number(data.tickSize) : 50,
+      maxTicks: data.maxTicks !== undefined ? Number(data.maxTicks) : 5,
+      extensionMinutes: data.extensionMinutes !== undefined ? Number(data.extensionMinutes) : 3,
+      extensionCount: 0,
+      liveApprovalStatus: 'pending',
+      liveApprovalRemarks: null,
+      clientId: data.clientId,
+      winnerId: null,
+      requirementId: data.requirementId || null,
+      quoteApproved: null,
+      quoteRemarks: null,
+      version: 1,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      auctionDocs: [],
+    };
+
+    await auctionRef.set(auctionDoc);
+    return auctionDoc;
   }
 
   async findAll(status?: AuctionStatus, clientId?: string) {
-    return this.prisma.auction.findMany({
-      where: {
-        ...(status && { status }),
-        ...(clientId && { clientId }),
-      },
-      include: {
-        client: true,
-        winner: true,
-        bids: { orderBy: { amount: 'desc' }, take: 1 },
-      },
-      orderBy: { createdAt: 'desc' },
+    const db = this.firebaseService.db;
+    let query: admin.firestore.Query = db.collection('auctions');
+    if (status) {
+      query = query.where('status', '==', status);
+    }
+    if (clientId) {
+      query = query.where('clientId', '==', clientId);
+    }
+
+    const snap = await query.get();
+    const auctions = snap.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: doc.id,
+        createdAt: convertDate(data.createdAt),
+        updatedAt: convertDate(data.updatedAt),
+        sealedPhaseStart: convertDate(data.sealedPhaseStart),
+        sealedPhaseEnd: convertDate(data.sealedPhaseEnd),
+        openPhaseStart: convertDate(data.openPhaseStart),
+        openPhaseEnd: convertDate(data.openPhaseEnd),
+      };
+    }).sort((a: any, b: any) => {
+      const dateA = a.createdAt ? a.createdAt.getTime() : 0;
+      const dateB = b.createdAt ? b.createdAt.getTime() : 0;
+      return dateB - dateA;
     });
+
+    const clientIds = Array.from(new Set(auctions.map((a: any) => a.clientId).filter(Boolean)));
+    const winnerIds = Array.from(new Set(auctions.map((a: any) => a.winnerId).filter(Boolean)));
+    const companyIds = Array.from(new Set([...clientIds, ...winnerIds]));
+
+    const companiesMap = new Map<string, any>();
+    if (companyIds.length > 0) {
+      const chunks = chunkArray(companyIds, 10);
+      await Promise.all(chunks.map(async (chunk) => {
+        const cSnap = await db.collection('companies').where(admin.firestore.FieldPath.documentId(), 'in', chunk).get();
+        cSnap.docs.forEach(doc => {
+          companiesMap.set(doc.id, { id: doc.id, ...doc.data() });
+        });
+      }));
+    }
+
+    const resolvedAuctions = await Promise.all(auctions.map(async (a: any) => {
+      const bidsSnap = await db.collection('auctions').doc(a.id).collection('bids')
+        .orderBy('amount', 'desc')
+        .limit(1)
+        .get();
+      
+      const bids = bidsSnap.docs.map(doc => {
+        const b = doc.data();
+        return {
+          ...b,
+          id: doc.id,
+          createdAt: convertDate(b.createdAt),
+        };
+      });
+
+      return {
+        ...a,
+        client: companiesMap.get(a.clientId) || null,
+        winner: a.winnerId ? (companiesMap.get(a.winnerId) || null) : null,
+        bids,
+      };
+    }));
+
+    return resolvedAuctions;
   }
 
   async findOne(id: string) {
-    const auction = await this.prisma.auction.findUnique({
-      where: { id },
-      include: {
-        client: true,
-        winner: true,
-        bids: {
-          orderBy: { amount: 'desc' },
-          include: { vendor: { select: { id: true, name: true } } },
-        },
-        auctionDocs: true,
-        pickup: true,
-      },
-    });
-    if (!auction) throw new NotFoundException('Auction not found');
-    return auction;
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(id);
+    const auctionDoc = await auctionRef.get();
+    if (!auctionDoc.exists) throw new NotFoundException('Auction not found');
+    
+    const a = auctionDoc.data()!;
+    const auction = {
+      ...a,
+      id,
+      createdAt: convertDate(a.createdAt),
+      updatedAt: convertDate(a.updatedAt),
+      sealedPhaseStart: convertDate(a.sealedPhaseStart),
+      sealedPhaseEnd: convertDate(a.sealedPhaseEnd),
+      openPhaseStart: convertDate(a.openPhaseStart),
+      openPhaseEnd: convertDate(a.openPhaseEnd),
+    } as any;
+
+    const companyIds = [auction.clientId, auction.winnerId].filter(Boolean) as string[];
+    const companiesMap = new Map<string, any>();
+    if (companyIds.length > 0) {
+      const cSnap = await db.collection('companies').where(admin.firestore.FieldPath.documentId(), 'in', companyIds).get();
+      cSnap.docs.forEach(doc => {
+        companiesMap.set(doc.id, { id: doc.id, ...doc.data() });
+      });
+    }
+
+    const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').get();
+    const bidsWithVendors = await Promise.all(bidsSnap.docs.map(async (doc) => {
+      const b = doc.data() as any;
+      const vendorId = b.vendorId;
+      const vendorDoc = await db.collection('users').doc(vendorId).get();
+      const vendor = vendorDoc.exists
+        ? { id: vendorId, name: (vendorDoc.data() as any)?.name }
+        : { id: vendorId, name: 'Unknown' };
+
+      return {
+        ...b,
+        id: doc.id,
+        createdAt: convertDate(b.createdAt),
+        vendor,
+      } as any;
+    }));
+
+    const pickupSnap = await auctionRef.collection('pickup').limit(1).get();
+    const pickup = pickupSnap.empty ? null : {
+      id: pickupSnap.docs[0].id,
+      ...pickupSnap.docs[0].data(),
+      createdAt: convertDate(pickupSnap.docs[0].data().createdAt),
+      updatedAt: convertDate(pickupSnap.docs[0].data().updatedAt),
+      scheduledDate: convertDate(pickupSnap.docs[0].data().scheduledDate),
+      gatePassIssuedAt: convertDate(pickupSnap.docs[0].data().gatePassIssuedAt),
+      vendorAcknowledgedAt: convertDate(pickupSnap.docs[0].data().vendorAcknowledgedAt),
+      invoiceGeneratedAt: convertDate(pickupSnap.docs[0].data().invoiceGeneratedAt),
+      vendorPreferredDate: convertDate(pickupSnap.docs[0].data().vendorPreferredDate),
+      clientVerifiedAt: convertDate(pickupSnap.docs[0].data().clientVerifiedAt),
+    };
+
+    return {
+      ...auction,
+      client: companiesMap.get(auction.clientId) || null,
+      winner: auction.winnerId ? (companiesMap.get(auction.winnerId) || null) : null,
+      bids: bidsWithVendors,
+      pickup,
+    };
   }
 
   async schedule(
@@ -339,36 +578,58 @@ export class AuctionsService {
       extensionMinutes?: number;
     },
   ) {
-    const existing = await this.prisma.auction.findUnique({
-      where: { id },
-      select: { status: true },
-    });
-    if (!existing) throw new NotFoundException('Auction not found');
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(id);
+    const auctionDoc = await auctionRef.get();
+    if (!auctionDoc.exists) throw new NotFoundException('Auction not found');
+    const existing = auctionDoc.data()!;
 
-    // Preserve current status if already in an active phase; only set UPCOMING for DRAFT
     const nextStatus =
       existing.status === AuctionStatus.DRAFT
         ? AuctionStatus.UPCOMING
         : existing.status;
 
-    const updated = await this.prisma.auction.update({
-      where: { id },
-      data: {
-        sealedPhaseStart: new Date(data.sealedPhaseStart),
-        sealedPhaseEnd: new Date(data.sealedPhaseEnd),
-        openPhaseStart: new Date(data.openPhaseStart),
-        openPhaseEnd: new Date(data.openPhaseEnd),
-        ...(data.tickSize && { tickSize: data.tickSize }),
-        ...(data.maxTicks && { maxTicks: data.maxTicks }),
-        ...(data.extensionMinutes && {
-          extensionMinutes: data.extensionMinutes,
-        }),
-        status: nextStatus,
-      },
-      include: { client: { include: { users: true } } },
-    });
+    const updateData: any = {
+      sealedPhaseStart: admin.firestore.Timestamp.fromDate(new Date(data.sealedPhaseStart)),
+      sealedPhaseEnd: admin.firestore.Timestamp.fromDate(new Date(data.sealedPhaseEnd)),
+      openPhaseStart: admin.firestore.Timestamp.fromDate(new Date(data.openPhaseStart)),
+      openPhaseEnd: admin.firestore.Timestamp.fromDate(new Date(data.openPhaseEnd)),
+      ...(data.tickSize && { tickSize: Number(data.tickSize) }),
+      ...(data.maxTicks && { maxTicks: Number(data.maxTicks) }),
+      ...(data.extensionMinutes && {
+        extensionMinutes: Number(data.extensionMinutes),
+      }),
+      status: nextStatus,
+      updatedAt: admin.firestore.Timestamp.now(),
+    };
 
-    const clientUser = updated.client?.users?.[0];
+    await auctionRef.update(updateData);
+
+    const updatedDoc = await auctionRef.get();
+    const updated = {
+      ...updatedDoc.data(),
+      id,
+      createdAt: convertDate(updatedDoc.data()?.createdAt),
+      updatedAt: convertDate(updatedDoc.data()?.updatedAt),
+      sealedPhaseStart: convertDate(updatedDoc.data()?.sealedPhaseStart),
+      sealedPhaseEnd: convertDate(updatedDoc.data()?.sealedPhaseEnd),
+      openPhaseStart: convertDate(updatedDoc.data()?.openPhaseStart),
+      openPhaseEnd: convertDate(updatedDoc.data()?.openPhaseEnd),
+    } as any;
+
+    const clientCompanyDoc = await db.collection('companies').doc(updated.clientId).get();
+    const clientCompany = clientCompanyDoc.exists ? { id: clientCompanyDoc.id, ...clientCompanyDoc.data() } : null;
+
+    let clientUsers: any[] = [];
+    if (clientCompany) {
+      const usersSnap = await db.collection('users').where('companyId', '==', clientCompany.id).get();
+      clientUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    const clientWithUsers = clientCompany ? { ...clientCompany, users: clientUsers } : null;
+    updated.client = clientWithUsers;
+
+    const clientUser = clientUsers[0];
     if (clientUser) {
       if (clientUser.email) {
         const configureUrl = `${process.env.WEB_URL || 'http://localhost:3000'}/client/listings/${updated.requirementId || id}/configure-live`;
@@ -396,22 +657,37 @@ export class AuctionsService {
   }
 
   async approveLiveAuction(id: string) {
-    const auction = await this.prisma.auction.update({
-      where: { id },
-      data: { status: AuctionStatus.OPEN_PHASE }, // Optionally set state to OPEN_PHASE or just UPCOMING.
-      include: {
-        client: true,
-        bids: {
-          include: {
-            vendor: { select: { id: true, name: true, email: true } },
-          },
-        },
-      },
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(id);
+    
+    await auctionRef.update({
+      status: AuctionStatus.OPEN_PHASE,
+      updatedAt: admin.firestore.Timestamp.now(),
     });
 
-    if (!auction) throw new NotFoundException('Auction not found');
+    const auctionDoc = await auctionRef.get();
+    if (!auctionDoc.exists) throw new NotFoundException('Auction not found');
+    const a = auctionDoc.data()!;
 
-    const approvedBids = auction.bids.filter(
+    const bidsSnap = await auctionRef.collection('bids').get();
+    const bidsWithVendors = await Promise.all(bidsSnap.docs.map(async (doc) => {
+      const b = doc.data() as any;
+      const vendorUserDoc = await db.collection('users').doc(b.vendorId).get();
+      const vendor = vendorUserDoc.exists ? { id: b.vendorId, name: (vendorUserDoc.data() as any)?.name, email: (vendorUserDoc.data() as any)?.email } : null;
+      return {
+        ...b,
+        id: doc.id,
+        vendor,
+      } as any;
+    }));
+
+    const auction = {
+      ...a,
+      id,
+      bids: bidsWithVendors,
+    } as any;
+
+    const approvedBids = bidsWithVendors.filter(
       (b) => b.phase === BidPhase.SEALED && b.clientStatus === 'approved',
     );
 
@@ -450,17 +726,22 @@ export class AuctionsService {
     file?: Express.Multer.File,
     remarks?: string,
   ) {
-    const auction = await this.prisma.auction.findUnique({
-      where: { id: auctionId },
-    });
-    if (!auction) throw new NotFoundException('Auction not found');
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(auctionId);
+    const auctionDoc = await auctionRef.get();
+    if (!auctionDoc.exists) throw new NotFoundException('Auction not found');
+    const auction = auctionDoc.data()!;
 
-    const vendorUser = await this.prisma.user.findUnique({
-      where: { id: vendorId },
-      include: { company: true },
-    });
+    const vendorUserDoc = await db.collection('users').doc(vendorId).get();
+    const vendorUser = vendorUserDoc.exists ? vendorUserDoc.data()! : null;
 
-    if (vendorUser?.company?.isLocked) {
+    let companyData: any = null;
+    if (vendorUser?.companyId) {
+      const companyDoc = await db.collection('companies').doc(vendorUser.companyId).get();
+      companyData = companyDoc.exists ? companyDoc.data() : null;
+    }
+
+    if (companyData?.isLocked) {
       throw new BadRequestException(
         'Your account is locked. Please contact admin.',
       );
@@ -483,32 +764,36 @@ export class AuctionsService {
       priceSheetFileName = file.originalname;
     }
 
-    const bid = await this.prisma.bid.create({
-      data: {
-        auctionId,
-        vendorId,
-        amount,
-        phase: BidPhase.SEALED,
-        remarks,
-        priceSheetS3Key,
-        priceSheetS3Bucket,
-        priceSheetFileName,
-      },
-    });
+    const bidId = db.collection('auctions').doc(auctionId).collection('bids').doc().id;
+    const bidData = {
+      id: bidId,
+      auctionId,
+      vendorId,
+      amount: Number(amount),
+      phase: BidPhase.SEALED,
+      remarks: remarks || null,
+      priceSheetS3Key: priceSheetS3Key || null,
+      priceSheetS3Bucket: priceSheetS3Bucket || null,
+      priceSheetFileName: priceSheetFileName || null,
+      isShortlisted: false,
+      clientStatus: 'pending',
+      createdAt: admin.firestore.Timestamp.now(),
+    };
 
-    // Notify client and admins in-app
+    await db.collection('auctions').doc(auctionId).collection('bids').doc(bidId).set(bidData);
+
     await this.notifications
       .notifyAdmins({
         type: 'sealed_bid_submitted',
         title: 'Sealed Bid Submitted',
-        message: `Vendor "${vendorUser?.company?.name || vendorUser?.name || 'A vendor'}" submitted a sealed bid of ₹${amount.toLocaleString('en-IN')} for "${auction.title}".`,
+        message: `Vendor "${companyData?.name || vendorUser?.name || 'A vendor'}" submitted a sealed bid of ₹${Number(amount).toLocaleString('en-IN')} for "${auction.title}".`,
         link: `/admin/listings/${auction.requirementId || auctionId}`,
       })
       .catch(() => {});
 
-    const clientUsers = await this.prisma.user.findMany({
-      where: { companyId: auction.clientId },
-    });
+    const clientUsersSnap = await db.collection('users').where('companyId', '==', auction.clientId).get();
+    const clientUsers = clientUsersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
     await Promise.all(
       clientUsers.map((clientUser) =>
         this.notifications
@@ -516,7 +801,7 @@ export class AuctionsService {
             userId: clientUser.id,
             type: 'sealed_bid_submitted',
             title: 'Sealed Bid Submitted',
-            message: `Vendor "${vendorUser?.company?.name || vendorUser?.name || 'A vendor'}" submitted a sealed bid of ₹${amount.toLocaleString('en-IN')} for "${auction.title}".`,
+            message: `Vendor "${companyData?.name || vendorUser?.name || 'A vendor'}" submitted a sealed bid of ₹${Number(amount).toLocaleString('en-IN')} for "${auction.title}".`,
             link: `/client/listings/${auction.requirementId || auctionId}`,
           })
           .catch(() => {}),
@@ -528,49 +813,82 @@ export class AuctionsService {
         userId: vendorId,
         type: 'sealed_bid_submitted',
         title: 'Sealed Bid Submitted',
-        message: `Your sealed bid of ₹${amount.toLocaleString('en-IN')} for "${auction.title}" has been successfully submitted.`,
+        message: `Your sealed bid of ₹${Number(amount).toLocaleString('en-IN')} for "${auction.title}" has been successfully submitted.`,
         link: `/vendor/marketplace/${auction.requirementId || auctionId}`,
       })
       .catch(() => {});
 
-    return bid;
+    return {
+      ...bidData,
+      createdAt: bidData.createdAt.toDate(),
+    };
   }
 
   async selectWinner(id: string, vendorUserId: string) {
-    // vendorId from bids is a User ID; winnerId on Auction is a Company ID
-    const vendorUser = await this.prisma.user.findUnique({
-      where: { id: vendorUserId },
-      select: { companyId: true, name: true, email: true },
-    });
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(id);
+
+    const vendorUserDoc = await db.collection('users').doc(vendorUserId).get();
+    const vendorUser = vendorUserDoc.exists ? vendorUserDoc.data() : null;
     const winnerCompanyId = vendorUser?.companyId ?? null;
 
-    const auction = await this.prisma.auction.update({
-      where: { id },
-      data: {
-        ...(winnerCompanyId ? { winnerId: winnerCompanyId } : {}),
-        status: AuctionStatus.COMPLETED,
-      },
-      include: {
-        client: true,
-        requirement: true,
-        bids: {
-          where: { vendorId: vendorUserId },
-          orderBy: { amount: 'desc' },
-          take: 1,
-          include: {
-            vendor: { select: { id: true, name: true, email: true } },
-          },
-        },
-      },
-    });
+    const updateData: any = {
+      status: AuctionStatus.COMPLETED,
+      updatedAt: admin.firestore.Timestamp.now(),
+    };
+    if (winnerCompanyId) {
+      updateData.winnerId = winnerCompanyId;
+    }
 
-    const winningBid = auction.bids[0];
+    await auctionRef.update(updateData);
+
+    const auctionDoc = await auctionRef.get();
+    const a = auctionDoc.data()!;
+    const auction = {
+      ...a,
+      id,
+      createdAt: convertDate(a.createdAt),
+      updatedAt: convertDate(a.updatedAt),
+      sealedPhaseStart: convertDate(a.sealedPhaseStart),
+      sealedPhaseEnd: convertDate(a.sealedPhaseEnd),
+      openPhaseStart: convertDate(a.openPhaseStart),
+      openPhaseEnd: convertDate(a.openPhaseEnd),
+    } as any;
+
+    const clientCompanyDoc = await db.collection('companies').doc(auction.clientId).get();
+    auction.client = clientCompanyDoc.exists ? { id: clientCompanyDoc.id, ...clientCompanyDoc.data() } : null;
+
+    if (auction.requirementId) {
+      const reqDoc = await db.collection('requirements').doc(auction.requirementId).get();
+      auction.requirement = reqDoc.exists ? { id: reqDoc.id, ...reqDoc.data() } : null;
+    } else {
+      auction.requirement = null;
+    }
+
+    const bidsSnap = await auctionRef.collection('bids')
+      .where('vendorId', '==', vendorUserId)
+      .orderBy('amount', 'desc')
+      .limit(1)
+      .get();
+
+    const winningBid = bidsSnap.empty ? null : {
+      id: bidsSnap.docs[0].id,
+      ...bidsSnap.docs[0].data(),
+      vendor: {
+        id: vendorUserId,
+        name: vendorUser?.name || 'Vendor',
+        email: vendorUser?.email || '',
+      }
+    } as any;
+
+    auction.bids = winningBid ? [winningBid] : [];
+
     const vendorAddress = 'Address on file';
 
     try {
       const workOrderS3Key = await this.documents.generateWorkOrderPdf(
         auction.id,
-        auction.client.name,
+        auction.client?.name || 'Client',
         winningBid?.vendor?.name || 'Vendor',
         vendorAddress,
         auction.title,
@@ -578,16 +896,21 @@ export class AuctionsService {
         winningBid?.amount || 0,
       );
 
-      await this.prisma.auctionDocument.create({
-        data: {
-          auctionId: auction.id,
-          type: DocumentType.WORK_ORDER,
-          s3Key: workOrderS3Key,
-          s3Bucket: process.env.AWS_S3_BUCKET_NAME || 'ecoloop-docs',
-          fileName: `WO-${auction.id.substring(0, 8).toUpperCase()}.pdf`,
-          mimeType: 'application/pdf',
-        },
+      const newDoc: S3Document = {
+        id: db.collection('auctions').doc().id,
+        type: DocumentType.WORK_ORDER,
+        s3Key: workOrderS3Key,
+        s3Bucket: process.env.AWS_S3_BUCKET_NAME || 'ecoloop-docs',
+        fileName: `WO-${auction.id.substring(0, 8).toUpperCase()}.pdf`,
+        mimeType: 'application/pdf',
+        uploadedAt: new Date(),
+      };
+
+      await auctionRef.update({
+        auctionDocs: admin.firestore.FieldValue.arrayUnion(newDoc),
+        updatedAt: admin.firestore.Timestamp.now(),
       });
+      auction.auctionDocs = [...(auction.auctionDocs || []), newDoc];
     } catch (e) {
       console.error('Failed to generate work order', e);
     }
@@ -599,13 +922,12 @@ export class AuctionsService {
           winningBid.vendor.name,
           auction.title,
           winningBid.amount,
-          auction.client.name,
+          auction.client?.name || 'Client',
           auction.id,
         )
         .catch(() => {});
     }
 
-    // In-app notification for the winner
     await this.notifications
       .createInAppNotification({
         userId: vendorUserId,
@@ -616,10 +938,9 @@ export class AuctionsService {
       })
       .catch(() => {});
 
-    // In-app notifications for client users
-    const clientUsers = await this.prisma.user.findMany({
-      where: { companyId: auction.clientId },
-    });
+    const clientUsersSnap = await db.collection('users').where('companyId', '==', auction.clientId).get();
+    const clientUsers = clientUsersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
     await Promise.all(
       clientUsers.map((clientUser) =>
         this.notifications
@@ -634,17 +955,16 @@ export class AuctionsService {
       ),
     );
 
-    // In-app notifications for other participants
-    const otherBids = await this.prisma.bid.findMany({
-      where: { auctionId: id, vendorId: { not: vendorUserId } },
-      select: { vendorId: true },
-      distinct: ['vendorId'],
-    });
+    const otherBidsSnap = await auctionRef.collection('bids').get();
+    const otherVendorIds = Array.from(new Set(
+      otherBidsSnap.docs.map(doc => doc.data().vendorId).filter(vid => vid !== vendorUserId)
+    ));
+
     await Promise.all(
-      otherBids.map((ob) =>
+      otherVendorIds.map((vid) =>
         this.notifications
           .createInAppNotification({
-            userId: ob.vendorId,
+            userId: vid,
             type: 'auction_lost',
             title: 'Auction Concluded',
             message: `The auction for "${auction.title}" has concluded. Thank you for participating.`,
@@ -657,32 +977,50 @@ export class AuctionsService {
   }
 
   async generatePostAuctionDocs(id: string) {
-    const auction = await this.prisma.auction.findUnique({
-      where: { id },
-      include: {
-        client: true,
-        winner: true,
-        requirement: true,
-        bids: { orderBy: { amount: 'desc' }, take: 1 },
-        auctionDocs: true,
-      },
-    });
-    if (!auction) throw new NotFoundException('Auction not found');
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(id);
+    const auctionDoc = await auctionRef.get();
+    if (!auctionDoc.exists) throw new NotFoundException('Auction not found');
+    const a = auctionDoc.data()!;
 
-    if (!auction.winnerId) {
+    if (!a.winnerId) {
       throw new BadRequestException(
         'Winner must be selected and approved before generating documents.',
       );
     }
 
+    const auction = {
+      ...a,
+      id,
+      createdAt: convertDate(a.createdAt),
+      updatedAt: convertDate(a.updatedAt),
+    } as any;
+
+    const clientCompanyDoc = await db.collection('companies').doc(auction.clientId).get();
+    auction.client = clientCompanyDoc.exists ? clientCompanyDoc.data() : null;
+
+    const winnerCompanyDoc = await db.collection('companies').doc(auction.winnerId).get();
+    auction.winner = winnerCompanyDoc.exists ? winnerCompanyDoc.data() : null;
+
+    if (auction.requirementId) {
+      const reqDoc = await db.collection('requirements').doc(auction.requirementId).get();
+      auction.requirement = reqDoc.exists ? reqDoc.data() : null;
+    } else {
+      auction.requirement = null;
+    }
+
+    const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').get();
+    const bids = bidsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    auction.bids = bids;
+
     const winningBid =
-      auction.bids.find((b) => b.vendorId === auction.winnerId) ||
-      auction.bids[0];
+      bids.find((b) => b.vendorId === auction.winnerId) ||
+      bids[0];
     const winningAmount = winningBid?.amount ?? auction.basePrice;
     const commissionAmount = Math.round(winningAmount * 0.05);
     const totalWeight = auction.requirement?.totalWeight ?? 0;
     const vendorName = auction.winner?.name ?? 'Vendor';
-    const clientName = auction.client.name;
+    const clientName = auction.client?.name ?? 'Client';
     const poNumber = `PO-${new Date().getFullYear()}-${id.substring(0, 8).toUpperCase()}`;
     const date = new Date().toLocaleDateString('en-IN', {
       day: '2-digit',
@@ -692,10 +1030,10 @@ export class AuctionsService {
     const bucket = this.s3.getPrivateBucket();
 
     const results: { type: string; s3Key: string; fileName: string }[] = [];
+    const newDocsToUnion: S3Document[] = [];
 
-    // Generate Purchase Order PDF
-    const hasPO = auction.auctionDocs.some(
-      (d) => d.type === DocumentType.PURCHASE_ORDER,
+    const hasPO = (auction.auctionDocs || []).some(
+      (d: any) => d.type === DocumentType.PURCHASE_ORDER,
     );
     if (!hasPO) {
       try {
@@ -703,8 +1041,8 @@ export class AuctionsService {
           auctionId: id,
           poNumber,
           clientName,
-          clientAddress: auction.client.address ?? '',
-          clientGst: auction.client.gstNumber ?? '',
+          clientAddress: auction.client?.address ?? '',
+          clientGst: auction.client?.gstNumber ?? '',
           vendorName,
           vendorAddress: auction.winner?.address ?? '',
           vendorGst: auction.winner?.gstNumber ?? '',
@@ -715,16 +1053,17 @@ export class AuctionsService {
           commissionAmount,
           date,
         });
-        await this.prisma.auctionDocument.create({
-          data: {
-            auctionId: id,
-            type: DocumentType.PURCHASE_ORDER,
-            s3Key: poKey,
-            s3Bucket: bucket,
-            fileName: `${poNumber}.pdf`,
-            mimeType: 'application/pdf',
-          },
-        });
+
+        const newDoc: S3Document = {
+          id: db.collection('auctions').doc().id,
+          type: DocumentType.PURCHASE_ORDER,
+          s3Key: poKey,
+          s3Bucket: bucket,
+          fileName: `${poNumber}.pdf`,
+          mimeType: 'application/pdf',
+          uploadedAt: new Date(),
+        };
+        newDocsToUnion.push(newDoc);
         results.push({
           type: 'PURCHASE_ORDER',
           s3Key: poKey,
@@ -738,9 +1077,8 @@ export class AuctionsService {
       }
     }
 
-    // Generate Agreement PDF
-    const hasAgr = auction.auctionDocs.some(
-      (d) => d.type === DocumentType.AGREEMENT,
+    const hasAgr = (auction.auctionDocs || []).some(
+      (d: any) => d.type === DocumentType.AGREEMENT,
     );
     if (!hasAgr) {
       try {
@@ -753,16 +1091,17 @@ export class AuctionsService {
           winningAmount,
           date,
         });
-        await this.prisma.auctionDocument.create({
-          data: {
-            auctionId: id,
-            type: DocumentType.AGREEMENT,
-            s3Key: agrKey,
-            s3Bucket: bucket,
-            fileName: `AGR-${poNumber}.pdf`,
-            mimeType: 'application/pdf',
-          },
-        });
+
+        const newDoc: S3Document = {
+          id: db.collection('auctions').doc().id,
+          type: DocumentType.AGREEMENT,
+          s3Key: agrKey,
+          s3Bucket: bucket,
+          fileName: `AGR-${poNumber}.pdf`,
+          mimeType: 'application/pdf',
+          uploadedAt: new Date(),
+        };
+        newDocsToUnion.push(newDoc);
         results.push({
           type: 'AGREEMENT',
           s3Key: agrKey,
@@ -776,9 +1115,8 @@ export class AuctionsService {
       }
     }
 
-    // Ensure Work Order exists — generate if missing
-    const hasWO = auction.auctionDocs.some(
-      (d) => d.type === DocumentType.WORK_ORDER,
+    const hasWO = (auction.auctionDocs || []).some(
+      (d: any) => d.type === DocumentType.WORK_ORDER,
     );
     if (!hasWO) {
       try {
@@ -791,16 +1129,17 @@ export class AuctionsService {
           totalWeight,
           winningAmount,
         );
-        await this.prisma.auctionDocument.create({
-          data: {
-            auctionId: id,
-            type: DocumentType.WORK_ORDER,
-            s3Key: woKey,
-            s3Bucket: bucket,
-            fileName: `WO-${id.substring(0, 8).toUpperCase()}.pdf`,
-            mimeType: 'application/pdf',
-          },
-        });
+
+        const newDoc: S3Document = {
+          id: db.collection('auctions').doc().id,
+          type: DocumentType.WORK_ORDER,
+          s3Key: woKey,
+          s3Bucket: bucket,
+          fileName: `WO-${id.substring(0, 8).toUpperCase()}.pdf`,
+          mimeType: 'application/pdf',
+          uploadedAt: new Date(),
+        };
+        newDocsToUnion.push(newDoc);
         results.push({
           type: 'WORK_ORDER',
           s3Key: woKey,
@@ -814,47 +1153,144 @@ export class AuctionsService {
       }
     }
 
-    // Upsert payment record
-    await this.prisma.payment.upsert({
-      where: { auctionId: id },
-      create: {
-        auctionId: id,
-        clientAmount: winningAmount,
-        commissionAmount,
-        totalAmount: winningAmount + commissionAmount,
-      },
-      update: {
-        clientAmount: winningAmount,
-        commissionAmount,
-        totalAmount: winningAmount + commissionAmount,
-      },
-    });
+    if (newDocsToUnion.length > 0) {
+      await auctionRef.update({
+        auctionDocs: admin.firestore.FieldValue.arrayUnion(...newDocsToUnion),
+        updatedAt: admin.firestore.Timestamp.now(),
+      });
+    }
 
-    // Upsert pickup record
-    await this.prisma.pickup.upsert({
-      where: { auctionId: id },
-      create: { auctionId: id },
-      update: {},
-    });
+    const paymentCol = auctionRef.collection('payment');
+    const paymentSnap = await paymentCol.get();
+    if (paymentSnap.empty) {
+      const paymentId = paymentCol.doc().id;
+      const paymentDoc: PaymentDoc = {
+        id: paymentId,
+        status: PaymentStatus.PENDING,
+        clientAmount: winningAmount,
+        commissionAmount,
+        totalAmount: winningAmount + commissionAmount,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await paymentCol.doc(paymentId).set(paymentDoc);
+    } else {
+      const paymentId = paymentSnap.docs[0].id;
+      await paymentCol.doc(paymentId).update({
+        clientAmount: winningAmount,
+        commissionAmount,
+        totalAmount: winningAmount + commissionAmount,
+        updatedAt: admin.firestore.Timestamp.now(),
+      });
+    }
+
+    const pickupCol = auctionRef.collection('pickup');
+    const pickupSnap = await pickupCol.get();
+    if (pickupSnap.empty) {
+      const pickupId = pickupCol.doc().id;
+      const pickupDoc: PickupDoc = {
+        id: pickupId,
+        status: PickupStatus.PENDING,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        pickupDocs: [],
+      };
+      await pickupCol.doc(pickupId).set(pickupDoc);
+    }
 
     return { success: true, documents: results, poNumber };
   }
 
   async getAuctionWithPostDocs(id: string) {
-    const auction = await this.prisma.auction.findUnique({
-      where: { id },
-      include: {
-        client: true,
-        winner: true,
-        requirement: true,
-        auctionDocs: true,
-        bids: { orderBy: { amount: 'desc' }, take: 1 },
-        pickup: { include: { pickupDocs: true, payment: true } },
-        payment: true,
-        ratings: true,
-      },
-    });
-    if (!auction) throw new NotFoundException('Auction not found');
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(id);
+    const auctionDoc = await auctionRef.get();
+    if (!auctionDoc.exists) throw new NotFoundException('Auction not found');
+    const a = auctionDoc.data()!;
+
+    const auction = {
+      ...a,
+      id,
+      createdAt: convertDate(a.createdAt),
+      updatedAt: convertDate(a.updatedAt),
+      sealedPhaseStart: convertDate(a.sealedPhaseStart),
+      sealedPhaseEnd: convertDate(a.sealedPhaseEnd),
+      openPhaseStart: convertDate(a.openPhaseStart),
+      openPhaseEnd: convertDate(a.openPhaseEnd),
+    } as any;
+
+    const clientCompanyDoc = await db.collection('companies').doc(auction.clientId).get();
+    auction.client = clientCompanyDoc.exists ? clientCompanyDoc.data() : null;
+
+    if (auction.winnerId) {
+      const winnerCompanyDoc = await db.collection('companies').doc(auction.winnerId).get();
+      auction.winner = winnerCompanyDoc.exists ? winnerCompanyDoc.data() : null;
+    } else {
+      auction.winner = null;
+    }
+
+    if (auction.requirementId) {
+      const reqDoc = await db.collection('requirements').doc(auction.requirementId).get();
+      auction.requirement = reqDoc.exists ? reqDoc.data() : null;
+    } else {
+      auction.requirement = null;
+    }
+
+    const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').limit(1).get();
+    auction.bids = bidsSnap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: convertDate(doc.data().createdAt),
+    }));
+
+    const pickupCol = auctionRef.collection('pickup');
+    const pickupSnap = await pickupCol.limit(1).get();
+    if (!pickupSnap.empty) {
+      const pData = pickupSnap.docs[0].data();
+      const pickupDocId = pickupSnap.docs[0].id;
+
+      const paymentCol = auctionRef.collection('payment');
+      const paymentSnap = await paymentCol.limit(1).get();
+      const paymentData = paymentSnap.empty ? null : {
+        id: paymentSnap.docs[0].id,
+        ...paymentSnap.docs[0].data(),
+        createdAt: convertDate(paymentSnap.docs[0].data().createdAt),
+        updatedAt: convertDate(paymentSnap.docs[0].data().updatedAt),
+      };
+
+      auction.pickup = {
+        id: pickupDocId,
+        ...pData,
+        createdAt: convertDate(pData.createdAt),
+        updatedAt: convertDate(pData.updatedAt),
+        scheduledDate: convertDate(pData.scheduledDate),
+        gatePassIssuedAt: convertDate(pData.gatePassIssuedAt),
+        vendorAcknowledgedAt: convertDate(pData.vendorAcknowledgedAt),
+        invoiceGeneratedAt: convertDate(pData.invoiceGeneratedAt),
+        vendorPreferredDate: convertDate(pData.vendorPreferredDate),
+        clientVerifiedAt: convertDate(pData.clientVerifiedAt),
+        payment: paymentData,
+      };
+    } else {
+      auction.pickup = null;
+    }
+
+    const paymentCol = auctionRef.collection('payment');
+    const paymentSnap = await paymentCol.limit(1).get();
+    auction.payment = paymentSnap.empty ? null : {
+      id: paymentSnap.docs[0].id,
+      ...paymentSnap.docs[0].data(),
+      createdAt: convertDate(paymentSnap.docs[0].data().createdAt),
+      updatedAt: convertDate(paymentSnap.docs[0].data().updatedAt),
+    };
+
+    const ratingsSnap = await db.collection('ratings').where('auctionId', '==', id).get();
+    auction.ratings = ratingsSnap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      createdAt: convertDate(doc.data().createdAt),
+    }));
+
     return auction;
   }
 
@@ -863,39 +1299,53 @@ export class AuctionsService {
     file: Express.Multer.File,
     type: 'FINAL_QUOTE' | 'LETTERHEAD_QUOTATION',
   ) {
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(auctionId);
+    
     const { key, bucket } = await this.s3.upload(
       file,
       `final-quotes/${auctionId}`,
     );
-    const doc = await this.prisma.auctionDocument.create({
-      data: {
-        type: type as DocumentType,
-        s3Key: key,
-        s3Bucket: bucket,
-        fileName: file.originalname,
-        mimeType: file.mimetype,
-        auctionId,
-      },
+
+    const docId = db.collection('auctions').doc().id;
+    const newDoc: S3Document = {
+      id: docId,
+      type: type as DocumentType,
+      s3Key: key,
+      s3Bucket: bucket,
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      uploadedAt: new Date(),
+    };
+
+    await auctionRef.update({
+      auctionDocs: admin.firestore.FieldValue.arrayUnion(newDoc),
+      updatedAt: admin.firestore.Timestamp.now(),
     });
 
-    // In-app notifications
-    const auction = await this.prisma.auction.findUnique({
-      where: { id: auctionId },
-      include: { winner: true },
-    });
-    if (auction) {
+    const auctionDoc = await auctionRef.get();
+    if (auctionDoc.exists) {
+      const auction = auctionDoc.data()!;
+      let vendorName = 'Winner';
+      if (auction.winnerId) {
+        const winnerCompanyDoc = await db.collection('companies').doc(auction.winnerId).get();
+        if (winnerCompanyDoc.exists) {
+          vendorName = winnerCompanyDoc.data()!.name;
+        }
+      }
+
       await this.notifications
         .notifyAdmins({
           type: 'final_quote_uploaded',
           title: 'Final Quote Uploaded',
-          message: `Vendor "${auction.winner?.name || 'Winner'}" uploaded the final quote for "${auction.title}".`,
+          message: `Vendor "${vendorName}" uploaded the final quote for "${auction.title}".`,
           link: `/admin/auctions`,
         })
         .catch(() => {});
 
-      const clientUsers = await this.prisma.user.findMany({
-        where: { companyId: auction.clientId },
-      });
+      const clientUsersSnap = await db.collection('users').where('companyId', '==', auction.clientId).get();
+      const clientUsers = clientUsersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
       await Promise.all(
         clientUsers.map((clientUser) =>
           this.notifications
@@ -903,7 +1353,7 @@ export class AuctionsService {
               userId: clientUser.id,
               type: 'final_quote_uploaded',
               title: 'Final Quote Uploaded',
-              message: `Vendor "${auction.winner?.name || 'Winner'}" uploaded the final quote for "${auction.title}". Please review.`,
+              message: `Vendor "${vendorName}" uploaded the final quote for "${auction.title}". Please review.`,
               link: `/client/purchase-order`,
             })
             .catch(() => {}),
@@ -911,29 +1361,28 @@ export class AuctionsService {
       );
     }
 
-    return doc;
+    return newDoc;
   }
 
   async approveQuote(auctionId: string) {
-    const auction = await this.prisma.auction.findUnique({
-      where: { id: auctionId },
-      include: { bids: { orderBy: { amount: 'desc' }, take: 1 } },
-    });
-    if (!auction) throw new NotFoundException('Auction not found');
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(auctionId);
+    const auctionDoc = await auctionRef.get();
+    if (!auctionDoc.exists) throw new NotFoundException('Auction not found');
+    const auction = auctionDoc.data()!;
 
-    // Calculate commission (5%) and client amount
-    const winningBid = auction.bids[0];
+    const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').limit(1).get();
+    const winningBid = bidsSnap.empty ? null : bidsSnap.docs[0].data();
+
     const totalAmount = winningBid?.amount || auction.basePrice;
     const commissionAmount = Math.round(totalAmount * 0.05);
     const clientAmount = totalAmount - commissionAmount;
 
-    // Update auction
-    await this.prisma.auction.update({
-      where: { id: auctionId },
-      data: { quoteApproved: true },
+    await auctionRef.update({
+      quoteApproved: true,
+      updatedAt: admin.firestore.Timestamp.now(),
     });
 
-    // Notify vendor user
     if (winningBid?.vendorId) {
       await this.notifications
         .createInAppNotification({
@@ -946,24 +1395,58 @@ export class AuctionsService {
         .catch(() => {});
     }
 
-    // Upsert payment record — safe to call multiple times
-    const payment = await this.prisma.payment.upsert({
-      where: { auctionId },
-      create: { auctionId, clientAmount, commissionAmount, totalAmount },
-      update: { clientAmount, commissionAmount, totalAmount },
-    });
+    const paymentCol = auctionRef.collection('payment');
+    const paymentSnap = await paymentCol.get();
+    let payment: any = null;
+    if (paymentSnap.empty) {
+      const paymentId = paymentCol.doc().id;
+      payment = {
+        id: paymentId,
+        status: PaymentStatus.PENDING,
+        clientAmount,
+        commissionAmount,
+        totalAmount,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      await paymentCol.doc(paymentId).set(payment);
+    } else {
+      const paymentId = paymentSnap.docs[0].id;
+      payment = {
+        id: paymentId,
+        ...paymentSnap.docs[0].data(),
+        clientAmount,
+        commissionAmount,
+        totalAmount,
+        updatedAt: new Date(),
+      };
+      await paymentCol.doc(paymentId).update({
+        clientAmount,
+        commissionAmount,
+        totalAmount,
+        updatedAt: admin.firestore.Timestamp.now(),
+      });
+    }
 
     return { auction: { ...auction, quoteApproved: true }, payment };
   }
 
   async rejectQuote(auctionId: string, remarks: string) {
-    const auction = await this.prisma.auction.update({
-      where: { id: auctionId },
-      data: { quoteApproved: false, quoteRemarks: remarks },
-      include: { bids: { orderBy: { amount: 'desc' }, take: 1 } },
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(auctionId);
+    
+    await auctionRef.update({
+      quoteApproved: false,
+      quoteRemarks: remarks,
+      updatedAt: admin.firestore.Timestamp.now(),
     });
 
-    const winningBid = auction.bids[0];
+    const auctionDoc = await auctionRef.get();
+    const auction = auctionDoc.data()!;
+
+    const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').limit(1).get();
+    const winningBid = bidsSnap.empty ? null : bidsSnap.docs[0].data();
+
     if (winningBid?.vendorId) {
       await this.notifications
         .createInAppNotification({
@@ -980,63 +1463,89 @@ export class AuctionsService {
   }
 
   async shareSealedBids(auctionId: string, bidIds: string[]) {
-    const auction = await this.prisma.auction.findUnique({
-      where: { id: auctionId },
-    });
-    if (!auction) throw new NotFoundException('Auction not found');
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(auctionId);
+    const auctionDoc = await auctionRef.get();
+    if (!auctionDoc.exists) throw new NotFoundException('Auction not found');
 
-    // Reset all bids to false
-    await this.prisma.bid.updateMany({
-      where: { auctionId },
-      data: { isShortlisted: false },
-    });
+    const bidsCol = auctionRef.collection('bids');
+    const bidsSnap = await bidsCol.get();
 
-    // Set selected bids to true
-    if (bidIds.length > 0) {
-      await this.prisma.bid.updateMany({
-        where: { id: { in: bidIds } },
-        data: { isShortlisted: true },
+    const batch = db.batch();
+    for (const doc of bidsSnap.docs) {
+      const isShortlisted = bidIds.includes(doc.id);
+      batch.update(doc.ref, {
+        isShortlisted,
       });
     }
+    await batch.commit();
 
     return { success: true, message: 'Bids shared with client' };
   }
 
   async updateStatus(id: string, status: AuctionStatus) {
-    return this.prisma.auction.update({ where: { id }, data: { status } });
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(id);
+    await auctionRef.update({
+      status,
+      updatedAt: admin.firestore.Timestamp.now(),
+    });
+    const updated = await auctionRef.get();
+    return { id, ...updated.data() };
   }
 
   async transitionPhases(): Promise<{ endedAuctionIds: string[] }> {
+    const db = this.firebaseService.db;
     const now = new Date();
 
-    await this.prisma.auction.updateMany({
-      where: { status: AuctionStatus.UPCOMING, sealedPhaseStart: { lte: now } },
-      data: { status: AuctionStatus.SEALED_PHASE },
-    });
-
-    await this.prisma.auction.updateMany({
-      where: {
+    const upcomingSnap = await db.collection('auctions')
+      .where('status', '==', AuctionStatus.UPCOMING)
+      .where('sealedPhaseStart', '<=', now)
+      .get();
+    
+    const batch1 = db.batch();
+    upcomingSnap.docs.forEach((doc) => {
+      batch1.update(doc.ref, {
         status: AuctionStatus.SEALED_PHASE,
-        openPhaseStart: { lte: now },
-        liveApprovalStatus: 'approved',
-      },
-      data: { status: AuctionStatus.OPEN_PHASE },
-    });
-
-    // Capture which live auctions are expiring before updating them
-    const endingAuctions = await this.prisma.auction.findMany({
-      where: { status: AuctionStatus.OPEN_PHASE, openPhaseEnd: { lte: now } },
-      select: { id: true },
-    });
-
-    if (endingAuctions.length > 0) {
-      await this.prisma.auction.updateMany({
-        where: { id: { in: endingAuctions.map((a) => a.id) } },
-        data: { status: AuctionStatus.PENDING_SELECTION },
+        updatedAt: admin.firestore.Timestamp.now(),
       });
+    });
+    await batch1.commit();
+
+    const sealedSnap = await db.collection('auctions')
+      .where('status', '==', AuctionStatus.SEALED_PHASE)
+      .where('openPhaseStart', '<=', now)
+      .where('liveApprovalStatus', '==', 'approved')
+      .get();
+
+    const batch2 = db.batch();
+    sealedSnap.docs.forEach((doc) => {
+      batch2.update(doc.ref, {
+        status: AuctionStatus.OPEN_PHASE,
+        updatedAt: admin.firestore.Timestamp.now(),
+      });
+    });
+    await batch2.commit();
+
+    const endingSnap = await db.collection('auctions')
+      .where('status', '==', AuctionStatus.OPEN_PHASE)
+      .where('openPhaseEnd', '<=', now)
+      .get();
+
+    const endedAuctionIds: string[] = [];
+    if (!endingSnap.empty) {
+      const batch3 = db.batch();
+      endingSnap.docs.forEach((doc) => {
+        endedAuctionIds.push(doc.id);
+        batch3.update(doc.ref, {
+          status: AuctionStatus.PENDING_SELECTION,
+          updatedAt: admin.firestore.Timestamp.now(),
+        });
+      });
+      await batch3.commit();
     }
 
-    return { endedAuctionIds: endingAuctions.map((a) => a.id) };
+    return { endedAuctionIds };
   }
 
   async disqualifyWinner(
@@ -1045,36 +1554,47 @@ export class AuctionsService {
     reason: string,
     fineAmount: number,
   ) {
-    // 1. Load the auction with all bids ordered by highest amount
-    const auction = await this.prisma.auction.findUnique({
-      where: { id: auctionId },
-      include: {
-        client: true,
-        bids: {
-          orderBy: { amount: 'desc' },
-          include: {
-            vendor: { select: { id: true, name: true, email: true } },
-          },
-        },
-      },
-    });
-    if (!auction) throw new NotFoundException('Auction not found');
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(auctionId);
+    
+    const auctionDoc = await auctionRef.get();
+    if (!auctionDoc.exists) throw new NotFoundException('Auction not found');
+    const a = auctionDoc.data()!;
 
-    // 2. Get the disqualified vendor's user and company info
-    const disqualifiedUser = await this.prisma.user.findUnique({
-      where: { id: disqualifiedVendorUserId },
-      select: { id: true, name: true, email: true, companyId: true },
-    });
-    if (!disqualifiedUser)
+    const clientCompanyDoc = await db.collection('companies').doc(a.clientId).get();
+    const client = clientCompanyDoc.exists ? clientCompanyDoc.data() : null;
+
+    const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').get();
+    const bidsWithVendors = await Promise.all(bidsSnap.docs.map(async (doc) => {
+      const b = doc.data();
+      const vendorUserDoc = await db.collection('users').doc(b.vendorId).get();
+      const vendor = vendorUserDoc.exists ? { id: b.vendorId, name: (vendorUserDoc.data() as any)?.name, email: (vendorUserDoc.data() as any)?.email } : null;
+      return {
+        ...b,
+        id: doc.id,
+        createdAt: convertDate(b.createdAt),
+        vendor,
+      };
+    })) as any[];
+
+    const auction: any = {
+      ...a,
+      id: auctionId,
+      client,
+      bids: bidsWithVendors,
+    };
+
+    const disqualifiedUserDoc = await db.collection('users').doc(disqualifiedVendorUserId).get();
+    if (!disqualifiedUserDoc.exists)
       throw new NotFoundException('Disqualified vendor not found');
+    const disqualifiedUser = disqualifiedUserDoc.data()!;
 
-    // 3. Find the next highest unique bidder (excluding the disqualified one)
     const seenVendors = new Set<string>();
-    let nextWinnerBid: (typeof auction.bids)[0] | null = null;
-    for (const bid of auction.bids) {
-      if (bid.vendorId === disqualifiedVendorUserId) continue;
-      if (!seenVendors.has(bid.vendorId)) {
-        seenVendors.add(bid.vendorId);
+    let nextWinnerBid: any = null;
+    for (const bid of bidsWithVendors) {
+      if ((bid as any).vendorId === disqualifiedVendorUserId) continue;
+      if (!seenVendors.has((bid as any).vendorId)) {
+        seenVendors.add((bid as any).vendorId);
         if (!nextWinnerBid) nextWinnerBid = bid;
       }
     }
@@ -1085,13 +1605,12 @@ export class AuctionsService {
       );
     }
 
-    // 4. Remove current winner & reset auction status back to allow re-selection
-    await this.prisma.auction.update({
-      where: { id: auctionId },
-      data: { winnerId: null, status: AuctionStatus.PENDING_SELECTION },
+    await auctionRef.update({
+      winnerId: null,
+      status: AuctionStatus.PENDING_SELECTION,
+      updatedAt: admin.firestore.Timestamp.now(),
     });
 
-    // 5. Send disqualification email to the rejected vendor
     if (disqualifiedUser.email) {
       await this.notifications
         .notifyVendorDisqualified(
@@ -1104,10 +1623,9 @@ export class AuctionsService {
         .catch(() => {});
     }
 
-    // 6. In-app notification to the disqualified vendor
     await this.notifications
       .createInAppNotification({
-        userId: disqualifiedUser.id,
+        userId: disqualifiedVendorUserId,
         type: 'auction_disqualified',
         title: 'You Have Been Disqualified',
         message: `Your auction win for "${auction.title}" has been revoked by the admin. Reason: ${reason}${fineAmount > 0 ? `. A fine of ₹${fineAmount.toLocaleString('en-IN')} has been levied.` : ''}`,
@@ -1115,22 +1633,44 @@ export class AuctionsService {
       })
       .catch(() => {});
 
-    // 7. Now select the next winner using the existing logic
     return this.selectWinner(auctionId, nextWinnerBid.vendorId);
   }
 
   async extendTimer(id: string) {
-    const auction = await this.prisma.auction.findUnique({ where: { id } });
-    if (!auction || !auction.openPhaseEnd)
+    const db = this.firebaseService.db;
+    const auctionRef = db.collection('auctions').doc(id);
+    const auctionDoc = await auctionRef.get();
+    if (!auctionDoc.exists || !auctionDoc.data()?.openPhaseEnd)
       throw new NotFoundException('Auction not found');
-    if (auction.extensionCount >= auction.maxTicks) return auction;
+    
+    const auction = auctionDoc.data()!;
+    const openPhaseEnd = convertDate(auction.openPhaseEnd)!;
+    const extensionCount = auction.extensionCount || 0;
+    const maxTicks = auction.maxTicks || 0;
+    const extensionMinutes = auction.extensionMinutes || 0;
 
-    const newEnd = new Date(
-      auction.openPhaseEnd.getTime() + auction.extensionMinutes * 60 * 1000,
-    );
-    return this.prisma.auction.update({
-      where: { id },
-      data: { openPhaseEnd: newEnd, extensionCount: { increment: 1 } },
-    });
+    if (extensionCount >= maxTicks) {
+      return {
+        ...auction,
+        id,
+        openPhaseEnd,
+      };
+    }
+
+    const newEnd = new Date(openPhaseEnd.getTime() + extensionMinutes * 60 * 1000);
+    const updatedData = {
+      openPhaseEnd: admin.firestore.Timestamp.fromDate(newEnd),
+      extensionCount: extensionCount + 1,
+      updatedAt: admin.firestore.Timestamp.now(),
+    };
+
+    await auctionRef.update(updatedData);
+
+    return {
+      ...auction,
+      ...updatedData,
+      id,
+      openPhaseEnd: newEnd,
+    };
   }
 }

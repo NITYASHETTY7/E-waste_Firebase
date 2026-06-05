@@ -21,7 +21,7 @@ import {
   CompanyType,
   DocumentType,
   UserRole,
-} from '@prisma/client';
+} from '../firebase/firestore-types';
 
 @UseGuards(JwtAuthGuard)
 @Controller('companies')

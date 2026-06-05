@@ -2,9 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { AuctionsService } from './auctions.service';
 import { AuctionGateway } from './auction.gateway';
-import { PrismaService } from '../prisma/prisma.service';
+import { FirebaseService } from '../firebase/firebase.service';
 import { NotificationService } from '../notifications/notification.service';
-import { PickupStatus } from '@prisma/client';
+import { PickupStatus } from '../firebase/firestore-types';
+
+const convertDate = (field: any): Date | null => {
+  if (!field) return null;
+  return typeof field.toDate === 'function' ? field.toDate() : new Date(field);
+};
 
 @Injectable()
 export class AuctionScheduler {
@@ -13,7 +18,7 @@ export class AuctionScheduler {
   constructor(
     private auctionsService: AuctionsService,
     private gateway: AuctionGateway,
-    private prisma: PrismaService,
+    private firebaseService: FirebaseService,
     private notifications: NotificationService,
   ) {}
 
@@ -32,19 +37,60 @@ export class AuctionScheduler {
   async sendComplianceReminders() {
     this.logger.log('Running daily compliance reminders check');
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const db = this.firebaseService.db;
 
-    const pendingPickups = await this.prisma.pickup.findMany({
-      where: {
-        status: { not: PickupStatus.COMPLETED },
-        createdAt: { lt: twentyFourHoursAgo },
-      },
-      include: {
-        pickupDocs: true,
-        auction: {
-          include: { winner: { include: { users: { take: 1 } } } },
-        },
-      },
-    });
+    // Fetch all pickups from the subcollection 'pickup' across all auctions
+    const pickupGroupSnap = await db.collectionGroup('pickup').get();
+    const pendingPickups: any[] = [];
+
+    for (const doc of pickupGroupSnap.docs) {
+      const pData = doc.data();
+      const status = pData.status;
+      const createdAt = convertDate(pData.createdAt);
+
+      if (status !== PickupStatus.COMPLETED && createdAt && createdAt < twentyFourHoursAgo) {
+        // Path structure: /auctions/{auctionId}/pickup/{pickupId}
+        const pathParts = doc.ref.path.split('/');
+        const auctionId = pathParts[1];
+
+        const auctionRef = db.collection('auctions').doc(auctionId);
+        const auctionDoc = await auctionRef.get();
+        if (auctionDoc.exists) {
+          const aData = auctionDoc.data()!;
+          const auction: any = {
+            id: auctionId,
+            title: aData.title,
+            winnerId: aData.winnerId,
+          };
+
+          // Fetch winner users (take 1)
+          if (aData.winnerId) {
+            const usersSnap = await db.collection('users')
+              .where('companyId', '==', aData.winnerId)
+              .limit(1)
+              .get();
+            if (!usersSnap.empty) {
+              const uData = usersSnap.docs[0].data();
+              auction.winner = {
+                users: [{
+                  id: usersSnap.docs[0].id,
+                  name: uData.name,
+                  email: uData.email,
+                }],
+              };
+            }
+          }
+
+          pendingPickups.push({
+            id: doc.id,
+            ...pData,
+            createdAt,
+            pickupDocs: pData.pickupDocs || [],
+            auction,
+          });
+        }
+      }
+    }
 
     for (const pickup of pendingPickups) {
       const requiredTypes = [
@@ -55,7 +101,7 @@ export class AuctionScheduler {
         'DISPOSAL_CERTIFICATE',
       ];
 
-      const uploadedTypes = pickup.pickupDocs.map((d) => d.type);
+      const uploadedTypes = (pickup.pickupDocs || []).map((d: any) => d.type);
       const missingTypes = requiredTypes.filter(
         (t) => !uploadedTypes.includes(t as any),
       );

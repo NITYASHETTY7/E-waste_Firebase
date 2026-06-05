@@ -1,39 +1,138 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { FirebaseService } from '../firebase/firebase.service';
 import { S3Service } from '../s3/s3.service';
 import { NotificationService } from '../notifications/notification.service';
-import { AuditStatus } from '@prisma/client';
+import { AuditStatus } from '../firebase/firestore-types';
+import * as admin from 'firebase-admin';
+
+const convertDate = (field: any): Date | null => {
+  if (!field) return null;
+  return typeof field.toDate === 'function' ? field.toDate() : new Date(field);
+};
+
+async function populateInvitation(invDoc: any, firebaseService: FirebaseService) {
+  const data = invDoc.data();
+  const invitationId = invDoc.id;
+  
+  // Get parent requirement
+  const reqId = data.requirementId || invDoc.ref.parent.parent?.id;
+  let requirement: any = null;
+  let client: any = null;
+  if (reqId) {
+    const reqSnap = await firebaseService.db.collection('requirements').doc(reqId).get();
+    if (reqSnap.exists) {
+      requirement = { id: reqSnap.id, ...reqSnap.data() };
+      if (requirement.createdAt) requirement.createdAt = convertDate(requirement.createdAt);
+      if (requirement.updatedAt) requirement.updatedAt = convertDate(requirement.updatedAt);
+      if (requirement.adminApprovedAt) requirement.adminApprovedAt = convertDate(requirement.adminApprovedAt);
+      if (requirement.sealedPhaseStart) requirement.sealedPhaseStart = convertDate(requirement.sealedPhaseStart);
+      if (requirement.sealedPhaseEnd) requirement.sealedPhaseEnd = convertDate(requirement.sealedPhaseEnd);
+      if (requirement.sealedBidDeadline) requirement.sealedBidDeadline = convertDate(requirement.sealedBidDeadline);
+      if (requirement.sealedBidEventCreatedAt) requirement.sealedBidEventCreatedAt = convertDate(requirement.sealedBidEventCreatedAt);
+      
+      const clientId = requirement.clientId;
+      if (clientId) {
+        const clientSnap = await firebaseService.db.collection('companies').doc(clientId).get();
+        if (clientSnap.exists) {
+          client = { id: clientSnap.id, ...clientSnap.data() };
+        }
+      }
+      requirement.client = client;
+    }
+  }
+
+  // Get vendor
+  let vendor: any = null;
+  if (data.vendorId) {
+    const vendorSnap = await firebaseService.db.collection('companies').doc(data.vendorId).get();
+    if (vendorSnap.exists) {
+      const vendorData = vendorSnap.data();
+      const usersSnap = await firebaseService.db.collection('users').where('companyId', '==', vendorSnap.id).limit(1).get();
+      const users = usersSnap.docs.map(u => ({ id: u.id, ...u.data() }));
+      vendor = { id: vendorSnap.id, ...vendorData, users };
+    }
+  }
+
+  const report = data.report ? {
+    ...data.report,
+    createdAt: convertDate(data.report.createdAt),
+    updatedAt: convertDate(data.report.updatedAt),
+    completedAt: convertDate(data.report.completedAt),
+    photos: (data.report.photos || []).map((p: any) => ({
+      ...p,
+      uploadedAt: convertDate(p.uploadedAt),
+      capturedAt: convertDate(p.capturedAt),
+    })),
+  } : null;
+
+  return {
+    id: invitationId,
+    ...data,
+    createdAt: convertDate(data.createdAt),
+    updatedAt: convertDate(data.updatedAt),
+    scheduledAt: convertDate(data.scheduledAt),
+    respondedAt: convertDate(data.respondedAt),
+    requirement,
+    vendor,
+    report,
+  };
+}
 
 @Injectable()
 export class AuditsService {
   constructor(
-    private prisma: PrismaService,
+    private firebaseService: FirebaseService,
     private s3: S3Service,
     private notifications: NotificationService,
   ) {}
 
   async inviteVendors(requirementId: string, vendorIds: string[]) {
-    const requirement = await this.prisma.requirement.findUnique({
-      where: { id: requirementId },
-    });
+    const reqSnap = await this.firebaseService.db.collection('requirements').doc(requirementId).get();
+    const requirement = reqSnap.exists ? reqSnap.data() : null;
 
     const invitations = await Promise.all(
-      vendorIds.map((vendorId) =>
-        this.prisma.auditInvitation.upsert({
-          where: { requirementId_vendorId: { requirementId, vendorId } },
-          create: { requirementId, vendorId },
-          update: { status: AuditStatus.INVITED },
-        }),
-      ),
+      vendorIds.map(async (vendorId) => {
+        const invRef = this.firebaseService.db
+          .collection('requirements')
+          .doc(requirementId)
+          .collection('auditInvitations')
+          .doc(vendorId);
+
+        const invSnap = await invRef.get();
+        if (invSnap.exists) {
+          await invRef.update({
+            status: AuditStatus.INVITED,
+            updatedAt: new Date(),
+          });
+        } else {
+          await invRef.set({
+            id: vendorId,
+            requirementId,
+            vendorId,
+            status: AuditStatus.INVITED,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+        const finalSnap = await invRef.get();
+        return { id: finalSnap.id, ...finalSnap.data() };
+      }),
     );
 
     // Send email notifications and in-app notifications to all invited vendors
-    const vendors = await this.prisma.company.findMany({
-      where: { id: { in: vendorIds } },
-      include: { users: { select: { email: true, name: true }, take: 1 } },
-    });
+    const vendors = await Promise.all(
+      vendorIds.map(async (vendorId) => {
+        const compSnap = await this.firebaseService.db.collection('companies').doc(vendorId).get();
+        if (!compSnap.exists) return null;
+        const usersSnap = await this.firebaseService.db.collection('users').where('companyId', '==', vendorId).limit(1).get();
+        const users = usersSnap.docs.map(u => ({ id: u.id, ...u.data() }));
+        return { id: compSnap.id, ...compSnap.data(), users };
+      })
+    );
 
-    for (const vendor of vendors) {
+    const validVendors = vendors.filter(Boolean) as any[];
+
+    for (const vendor of validVendors) {
       const user = vendor.users[0];
       if (user?.email) {
         await this.notifications
@@ -58,50 +157,79 @@ export class AuditsService {
   }
 
   async findAllInvitations(vendorId?: string, requirementId?: string) {
-    return this.prisma.auditInvitation.findMany({
-      where: {
-        ...(vendorId && { vendorId }),
-        ...(requirementId && { requirementId }),
-      },
-      include: {
-        requirement: { include: { client: true } },
-        vendor: true,
-        report: true,
-      },
-      orderBy: { createdAt: 'desc' },
+    let snap: admin.firestore.QuerySnapshot;
+
+    if (requirementId) {
+      const collRef = this.firebaseService.db
+        .collection('requirements')
+        .doc(requirementId)
+        .collection('auditInvitations');
+      let query: admin.firestore.Query = collRef;
+      if (vendorId) {
+        query = query.where('vendorId', '==', vendorId);
+      }
+      snap = await query.get();
+    } else {
+      let query: admin.firestore.Query = this.firebaseService.db.collectionGroup('auditInvitations');
+      if (vendorId) {
+        query = query.where('vendorId', '==', vendorId);
+      }
+      snap = await query.get();
+    }
+
+    const invitations = await Promise.all(
+      snap.docs.map(doc => populateInvitation(doc, this.firebaseService))
+    );
+
+    invitations.sort((a: any, b: any) => {
+      const aTime = a.createdAt ? a.createdAt.getTime() : 0;
+      const bTime = b.createdAt ? b.createdAt.getTime() : 0;
+      return bTime - aTime;
     });
+
+    return invitations;
   }
 
   async findOneInvitation(id: string) {
-    const inv = await this.prisma.auditInvitation.findUnique({
-      where: { id },
-      include: {
-        requirement: { include: { client: true } },
-        vendor: true,
-        report: { include: { photos: true } },
-      },
-    });
-    if (!inv) throw new NotFoundException('Audit invitation not found');
-    return inv;
+    const snap = await this.firebaseService.db
+      .collectionGroup('auditInvitations')
+      .where('id', '==', id)
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      throw new NotFoundException('Audit invitation not found');
+    }
+
+    return populateInvitation(snap.docs[0], this.firebaseService);
   }
 
   async acceptAudit(id: string) {
-    const inv = await this.prisma.auditInvitation.update({
-      where: { id },
-      data: { status: AuditStatus.ACCEPTED },
-      include: {
-        vendor: { include: { users: { take: 1 } } },
-        requirement: { include: { client: true } },
-      },
+    const snap = await this.firebaseService.db
+      .collectionGroup('auditInvitations')
+      .where('id', '==', id)
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      throw new NotFoundException('Audit invitation not found');
+    }
+
+    const docRef = snap.docs[0].ref;
+    await docRef.update({
+      status: AuditStatus.ACCEPTED,
+      updatedAt: new Date(),
     });
 
-    const vendorUser = inv.vendor.users[0];
+    const inv = await populateInvitation(await docRef.get(), this.firebaseService);
+
+    const vendorUser = inv.vendor?.users?.[0];
     if (vendorUser?.email && inv.spocName && inv.siteAddress) {
       await this.notifications
         .notifyAuditSpocDetails(
           vendorUser.email,
           vendorUser.name || inv.vendor.name,
-          inv.requirement.client.name,
+          inv.requirement?.client?.name || '',
           inv.spocName,
           inv.spocPhone || '',
           inv.siteAddress,
@@ -114,40 +242,54 @@ export class AuditsService {
       .notifyAdmins({
         type: 'audit_accepted',
         title: 'Audit Invitation Accepted',
-        message: `Vendor "${inv.vendor.name}" accepted the audit invitation for "${inv.requirement.title}".`,
+        message: `Vendor "${inv.vendor?.name || 'Vendor'}" accepted the audit invitation for "${inv.requirement?.title}".`,
         link: '/admin/audits',
       })
       .catch(() => {});
 
-    const clientUsers = await this.prisma.user.findMany({
-      where: { companyId: inv.requirement.client.id },
-    });
-    await Promise.all(
-      clientUsers.map((clientUser) =>
-        this.notifications
-          .createInAppNotification({
-            userId: clientUser.id,
-            type: 'audit_accepted',
-            title: 'Audit Invitation Accepted',
-            message: `Vendor "${inv.vendor.name}" accepted the audit invitation for "${inv.requirement.title}".`,
-            link: `/client/listings/${inv.requirementId}`,
-          })
-          .catch(() => {}),
-      ),
-    );
+    if (inv.requirement?.client?.id) {
+      const clientUsersSnap = await this.firebaseService.db
+        .collection('users')
+        .where('companyId', '==', inv.requirement.client.id)
+        .get();
+
+      await Promise.all(
+        clientUsersSnap.docs.map((doc) =>
+          this.notifications
+            .createInAppNotification({
+              userId: doc.id,
+              type: 'audit_accepted',
+              title: 'Audit Invitation Accepted',
+              message: `Vendor "${inv.vendor?.name || 'Vendor'}" accepted the audit invitation for "${inv.requirement?.title}".`,
+              link: `/client/listings/${inv.requirementId}`,
+            })
+            .catch(() => {}),
+        ),
+      );
+    }
 
     return inv;
   }
 
   async respondToInvitation(id: string, status: 'ACCEPTED' | 'REJECTED') {
-    const inv = await this.prisma.auditInvitation.update({
-      where: { id },
-      data: { status: status as AuditStatus },
-      include: {
-        vendor: true,
-        requirement: { include: { client: true } },
-      },
+    const snap = await this.firebaseService.db
+      .collectionGroup('auditInvitations')
+      .where('id', '==', id)
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      throw new NotFoundException('Audit invitation not found');
+    }
+
+    const docRef = snap.docs[0].ref;
+    await docRef.update({
+      status: status as AuditStatus,
+      updatedAt: new Date(),
+      respondedAt: new Date(),
     });
+
+    const inv = await populateInvitation(await docRef.get(), this.firebaseService);
 
     if (status === 'REJECTED') {
       // In-app notifications
@@ -155,27 +297,31 @@ export class AuditsService {
         .notifyAdmins({
           type: 'audit_rejected',
           title: 'Audit Invitation Declined',
-          message: `Vendor "${inv.vendor.name}" declined the audit invitation for "${inv.requirement.title}".`,
+          message: `Vendor "${inv.vendor?.name || 'Vendor'}" declined the audit invitation for "${inv.requirement?.title}".`,
           link: '/admin/audits',
         })
         .catch(() => {});
 
-      const clientUsers = await this.prisma.user.findMany({
-        where: { companyId: inv.requirement.client.id },
-      });
-      await Promise.all(
-        clientUsers.map((clientUser) =>
-          this.notifications
-            .createInAppNotification({
-              userId: clientUser.id,
-              type: 'audit_rejected',
-              title: 'Audit Invitation Declined',
-              message: `Vendor "${inv.vendor.name}" declined the audit invitation for "${inv.requirement.title}".`,
-              link: `/client/listings/${inv.requirementId}`,
-            })
-            .catch(() => {}),
-        ),
-      );
+      if (inv.requirement?.client?.id) {
+        const clientUsersSnap = await this.firebaseService.db
+          .collection('users')
+          .where('companyId', '==', inv.requirement.client.id)
+          .get();
+
+        await Promise.all(
+          clientUsersSnap.docs.map((doc) =>
+            this.notifications
+              .createInAppNotification({
+                userId: doc.id,
+                type: 'audit_rejected',
+                title: 'Audit Invitation Declined',
+                message: `Vendor "${inv.vendor?.name || 'Vendor'}" declined the audit invitation for "${inv.requirement?.title}".`,
+                link: `/client/listings/${inv.requirementId}`,
+              })
+              .catch(() => {}),
+          ),
+        );
+      }
     }
 
     return inv;
@@ -190,26 +336,34 @@ export class AuditsService {
       scheduledAt: string;
     },
   ) {
-    const inv = await this.prisma.auditInvitation.update({
-      where: { id },
-      data: {
-        siteAddress: data.siteAddress,
-        spocName: data.spocName,
-        spocPhone: data.spocPhone,
-        scheduledAt: new Date(data.scheduledAt),
-        status: AuditStatus.SCHEDULED,
-      },
-      include: {
-        requirement: true,
-      },
+    const snap = await this.firebaseService.db
+      .collectionGroup('auditInvitations')
+      .where('id', '==', id)
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      throw new NotFoundException('Audit invitation not found');
+    }
+
+    const docRef = snap.docs[0].ref;
+    await docRef.update({
+      siteAddress: data.siteAddress,
+      spocName: data.spocName,
+      spocPhone: data.spocPhone,
+      scheduledAt: new Date(data.scheduledAt),
+      status: AuditStatus.SCHEDULED,
+      updatedAt: new Date(),
     });
+
+    const inv = await populateInvitation(await docRef.get(), this.firebaseService);
 
     // In-app notification to all vendor users
     await this.notifications
       .notifyCompanyUsers(inv.vendorId, {
         type: 'audit_scheduled',
         title: 'Site Audit Scheduled',
-        message: `The site audit for "${inv.requirement.title}" has been scheduled. SPOC details are now available.`,
+        message: `The site audit for "${inv.requirement?.title}" has been scheduled. SPOC details are now available.`,
         link: '/vendor/audits',
       })
       .catch(() => {});
@@ -229,85 +383,93 @@ export class AuditsService {
       capturedAt?: Date;
     },
   ) {
-    const report = await this.prisma.auditReport.upsert({
-      where: { invitationId },
-      create: {
-        invitationId,
-        productMatch: data.productMatch,
-        remarks: data.remarks,
-        completedAt: new Date(),
-        vendorUserId: data.vendorUserId,
-      },
-      update: {
-        productMatch: data.productMatch,
-        remarks: data.remarks,
-        completedAt: new Date(),
-      },
-    });
+    const snap = await this.firebaseService.db
+      .collectionGroup('auditInvitations')
+      .where('id', '==', invitationId)
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      throw new NotFoundException('Audit invitation not found');
+    }
+
+    const docRef = snap.docs[0].ref;
+    const currentData = snap.docs[0].data();
+    const currentReport = currentData.report || {};
+
+    const photoDocs: any[] = currentReport.photos || [];
 
     if (data.photos && data.photos.length > 0) {
       await Promise.all(
         data.photos.map((photo) =>
           this.s3
             .upload(photo, `audits/${invitationId}`, false)
-            .then(({ key, bucket }) =>
-              this.prisma.auditPhoto.create({
-                data: {
-                  s3Key: key,
-                  s3Bucket: bucket,
-                  fileName: photo.originalname,
-                  mimeType: photo.mimetype,
-                  latitude: data.latitude,
-                  longitude: data.longitude,
-                  capturedAt: data.capturedAt,
-                  auditReportId: report.id,
-                },
-              }),
-            ),
+            .then(({ key, bucket }) => {
+              photoDocs.push({
+                id: this.firebaseService.db.collection('requirements').doc().id,
+                s3Key: key,
+                s3Bucket: bucket,
+                fileName: photo.originalname,
+                mimeType: photo.mimetype,
+                latitude: data.latitude || null,
+                longitude: data.longitude || null,
+                capturedAt: data.capturedAt || null,
+                uploadedAt: new Date(),
+              });
+            }),
         ),
       );
     }
 
-    await this.prisma.auditInvitation.update({
-      where: { id: invitationId },
-      data: { status: AuditStatus.COMPLETED },
+    const report = {
+      id: currentReport.id || this.firebaseService.db.collection('requirements').doc().id,
+      productMatch: data.productMatch,
+      remarks: data.remarks || null,
+      completedAt: new Date(),
+      vendorUserId: data.vendorUserId,
+      createdAt: currentReport.createdAt || new Date(),
+      updatedAt: new Date(),
+      photos: photoDocs,
+    };
+
+    await docRef.update({
+      status: AuditStatus.COMPLETED,
+      report,
+      updatedAt: new Date(),
     });
 
-    // In-app notifications for report submission
-    const invitation = await this.prisma.auditInvitation.findUnique({
-      where: { id: invitationId },
-      include: {
-        vendor: true,
-        requirement: true,
-      },
-    });
+    const invitation = await populateInvitation(await docRef.get(), this.firebaseService);
 
     if (invitation) {
       await this.notifications
         .notifyAdmins({
           type: 'audit_report_submitted',
           title: 'Audit Report Submitted',
-          message: `Vendor "${invitation.vendor.name}" has submitted the site audit report for "${invitation.requirement.title}".`,
+          message: `Vendor "${invitation.vendor?.name || 'Vendor'}" has submitted the site audit report for "${invitation.requirement?.title}".`,
           link: `/admin/listings/${invitation.requirementId}/audit-docs`,
         })
         .catch(() => {});
 
-      const clientUsers = await this.prisma.user.findMany({
-        where: { companyId: invitation.requirement.clientId },
-      });
-      await Promise.all(
-        clientUsers.map((clientUser) =>
-          this.notifications
-            .createInAppNotification({
-              userId: clientUser.id,
-              type: 'audit_report_submitted',
-              title: 'Audit Report Submitted',
-              message: `Vendor "${invitation.vendor.name}" has submitted the site audit report for "${invitation.requirement.title}".`,
-              link: `/client/listings/${invitation.requirementId}`,
-            })
-            .catch(() => {}),
-        ),
-      );
+      if (invitation.requirement?.clientId) {
+        const clientUsersSnap = await this.firebaseService.db
+          .collection('users')
+          .where('companyId', '==', invitation.requirement.clientId)
+          .get();
+
+        await Promise.all(
+          clientUsersSnap.docs.map((doc) =>
+            this.notifications
+              .createInAppNotification({
+                userId: doc.id,
+                type: 'audit_report_submitted',
+                title: 'Audit Report Submitted',
+                message: `Vendor "${invitation.vendor?.name || 'Vendor'}" has submitted the site audit report for "${invitation.requirement?.title}".`,
+                link: `/client/listings/${invitation.requirementId}`,
+              })
+              .catch(() => {}),
+          ),
+        );
+      }
     }
 
     return report;

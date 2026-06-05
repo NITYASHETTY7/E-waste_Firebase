@@ -18,7 +18,7 @@ import { AuctionGateway } from './auction.gateway';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { AuctionStatus, UserRole } from '@prisma/client';
+import { AuctionStatus, UserRole } from '../firebase/firestore-types';
 import {
   CreateAuctionDto,
   ScheduleAuctionDto,

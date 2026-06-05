@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
 import { PrismaModule } from './prisma/prisma.module';
+import { FirebaseModule } from './firebase/firebase.module';
 import { S3Module } from './s3/s3.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -29,6 +30,7 @@ import { RedisModule } from './redis/redis.module';
 
     // Core infrastructure (global)
     PrismaModule,
+    FirebaseModule,
     S3Module,
     QueueModule,
     RedisModule,

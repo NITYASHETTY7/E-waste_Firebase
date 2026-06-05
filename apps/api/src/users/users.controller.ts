@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../firebase/firestore-types';
 import { CreateAdminDto } from './users.dto';
 import { NotificationService } from '../notifications/notification.service';
 import { Public } from '../auth/decorators/public.decorator';

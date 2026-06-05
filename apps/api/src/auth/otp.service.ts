@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { FirebaseService } from '../firebase/firebase.service';
+import * as admin from 'firebase-admin';
 
 @Injectable()
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(private firebaseService: FirebaseService) {}
 
   private generateCode(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -22,14 +23,22 @@ export class OtpService {
     phoneCode: string,
   ): Promise<void> {
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
-    await this.prisma.user.update({
-      where: { email },
-      data: {
-        otpCode: `${emailCode}|${phoneCode}`,
-        otpExpiresAt: expiresAt,
-        otpType: 'email|phone',
-        otpAttempts: 0,
-      },
+    const userSnap = await this.firebaseService.db
+      .collection('users')
+      .where('email', '==', email)
+      .limit(1)
+      .get();
+
+    if (userSnap.empty) {
+      throw new Error(`User with email ${email} not found`);
+    }
+
+    const userDocRef = userSnap.docs[0].ref;
+    await userDocRef.update({
+      otpCode: `${emailCode}|${phoneCode}`,
+      otpExpiresAt: expiresAt,
+      otpType: 'email|phone',
+      otpAttempts: 0,
     });
   }
 
@@ -187,15 +196,36 @@ export class OtpService {
     code: string,
     type: 'email' | 'phone',
   ): Promise<{ verified: boolean; message: string }> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user || !user.otpCode || !user.otpExpiresAt) {
+    const userSnap = await this.firebaseService.db
+      .collection('users')
+      .where('email', '==', email)
+      .limit(1)
+      .get();
+
+    if (userSnap.empty) {
       return {
         verified: false,
         message: 'No OTP found. Please request a new code.',
       };
     }
 
-    if (new Date() > user.otpExpiresAt) {
+    const userDocRef = userSnap.docs[0].ref;
+    const user = userSnap.docs[0].data();
+
+    const otpExpiresAt = user.otpExpiresAt
+      ? typeof user.otpExpiresAt.toDate === 'function'
+        ? user.otpExpiresAt.toDate()
+        : new Date(user.otpExpiresAt)
+      : null;
+
+    if (!user || !user.otpCode || !otpExpiresAt) {
+      return {
+        verified: false,
+        message: 'No OTP found. Please request a new code.',
+      };
+    }
+
+    if (new Date() > otpExpiresAt) {
       return {
         verified: false,
         message: 'OTP has expired. Please request a new code.',
@@ -215,9 +245,8 @@ export class OtpService {
 
     if (expectedCode !== code) {
       // Increment attempt counter
-      await this.prisma.user.update({
-        where: { email },
-        data: { otpAttempts: { increment: 1 } },
+      await userDocRef.update({
+        otpAttempts: admin.firestore.FieldValue.increment(1),
       });
       return { verified: false, message: 'Incorrect OTP. Please try again.' };
     }
@@ -229,25 +258,22 @@ export class OtpService {
     const newOtpCode = `${newEmailCode}|${newPhoneCode}`;
     const bothConsumed = newEmailCode === '' && newPhoneCode === '';
 
-    await this.prisma.user.update({
-      where: { email },
-      data: {
-        otpCode: bothConsumed ? null : newOtpCode,
-        otpExpiresAt: bothConsumed ? null : user.otpExpiresAt,
-        otpAttempts: 0,
-      },
+    await userDocRef.update({
+      otpCode: bothConsumed ? null : newOtpCode,
+      otpExpiresAt: bothConsumed ? null : user.otpExpiresAt,
+      otpAttempts: 0,
     });
 
     // Persist verification status to DB
     try {
-      const updateData: Record<string, boolean> = {};
+      const updateData: Record<string, any> = {};
       if (type === 'email') {
         updateData.emailVerified = true;
         updateData.isActive = true;
       } else {
         updateData.phoneVerified = true;
       }
-      await this.prisma.user.update({ where: { email }, data: updateData });
+      await userDocRef.update(updateData);
       this.logger.log(`✅ ${type} verified and saved to DB for ${email}`);
     } catch (err) {
       this.logger.error(
