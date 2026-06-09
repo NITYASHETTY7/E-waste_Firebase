@@ -11,9 +11,6 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AuctionsService } from './auctions.service';
-import { PrismaService } from '../prisma/prisma.service';
-import { AuctionStatus, BidPhase } from '@prisma/client';
-
 import { RedisService } from '../redis/redis.service';
 
 @WebSocketGateway({
@@ -27,7 +24,6 @@ export class AuctionGateway
 
   constructor(
     private auctionsService: AuctionsService,
-    private prisma: PrismaService,
     private redis: RedisService,
   ) {}
 

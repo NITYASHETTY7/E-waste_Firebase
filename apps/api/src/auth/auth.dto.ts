@@ -6,7 +6,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../firebase/firestore-types';
 
 export class RegisterDto {
   @IsString()

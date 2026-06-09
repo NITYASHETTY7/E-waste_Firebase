@@ -23,7 +23,7 @@ export class AuctionScheduler {
   ) {}
 
   // Runs every minute to transition auction phases automatically
-  @Cron(CronExpression.EVERY_MINUTE)
+  // @Cron(CronExpression.EVERY_MINUTE)
   async handlePhaseTransitions() {
     const { endedAuctionIds } = await this.auctionsService.transitionPhases();
     // Notify all WebSocket clients in ended auction rooms so the UI updates immediately

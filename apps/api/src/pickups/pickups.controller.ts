@@ -10,12 +10,11 @@ import {
   UploadedFile,
   UseInterceptors,
   Res,
-  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PickupsService } from './pickups.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { DocumentType, PickupStatus } from '@prisma/client';
+import { DocumentType, PickupStatus } from '../firebase/firestore-types';
 import type { Response } from 'express';
 
 @UseGuards(JwtAuthGuard)

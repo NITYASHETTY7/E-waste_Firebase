@@ -131,6 +131,7 @@ export class OtpService {
       if (accessKeyId && accessKeyId !== 'your_aws_access_key') {
         try {
           const { SNSClient, PublishCommand } =
+            // @ts-ignore
             await import('@aws-sdk/client-sns');
           const sns = new SNSClient({
             region,

@@ -48,7 +48,7 @@ async function populateInvitation(invDoc: any, firebaseService: FirebaseService)
     if (vendorSnap.exists) {
       const vendorData = vendorSnap.data();
       const usersSnap = await firebaseService.db.collection('users').where('companyId', '==', vendorSnap.id).limit(1).get();
-      const users = usersSnap.docs.map(u => ({ id: u.id, ...u.data() }));
+      const users = usersSnap.docs.map((u: any) => ({ id: u.id, ...u.data() }));
       vendor = { id: vendorSnap.id, ...vendorData, users };
     }
   }
@@ -125,7 +125,7 @@ export class AuditsService {
         const compSnap = await this.firebaseService.db.collection('companies').doc(vendorId).get();
         if (!compSnap.exists) return null;
         const usersSnap = await this.firebaseService.db.collection('users').where('companyId', '==', vendorId).limit(1).get();
-        const users = usersSnap.docs.map(u => ({ id: u.id, ...u.data() }));
+        const users = usersSnap.docs.map((u: any) => ({ id: u.id, ...u.data() }));
         return { id: compSnap.id, ...compSnap.data(), users };
       })
     );
@@ -178,7 +178,7 @@ export class AuditsService {
     }
 
     const invitations = await Promise.all(
-      snap.docs.map(doc => populateInvitation(doc, this.firebaseService))
+      snap.docs.map((doc: any) => populateInvitation(doc, this.firebaseService))
     );
 
     invitations.sort((a: any, b: any) => {
@@ -254,7 +254,7 @@ export class AuditsService {
         .get();
 
       await Promise.all(
-        clientUsersSnap.docs.map((doc) =>
+        clientUsersSnap.docs.map((doc: any) =>
           this.notifications
             .createInAppNotification({
               userId: doc.id,
@@ -309,7 +309,7 @@ export class AuditsService {
           .get();
 
         await Promise.all(
-          clientUsersSnap.docs.map((doc) =>
+          clientUsersSnap.docs.map((doc: any) =>
             this.notifications
               .createInAppNotification({
                 userId: doc.id,
@@ -457,7 +457,7 @@ export class AuditsService {
           .get();
 
         await Promise.all(
-          clientUsersSnap.docs.map((doc) =>
+          clientUsersSnap.docs.map((doc: any) =>
             this.notifications
               .createInAppNotification({
                 userId: doc.id,

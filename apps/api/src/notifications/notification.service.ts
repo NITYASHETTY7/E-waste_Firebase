@@ -1,7 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import type { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';
-import { PrismaService } from '../prisma/prisma.service';
+import { FirebaseService } from '../firebase/firebase.service';
 
 export interface EmailPayload {
   to: string;
@@ -142,7 +142,7 @@ export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
   constructor(
-    private prisma: PrismaService,
+    private firebaseService: FirebaseService,
     @Optional() @InjectQueue('email') private emailQueue?: Queue,
   ) {}
 
@@ -221,6 +221,7 @@ export class NotificationService {
     }
 
     try {
+      // @ts-ignore
       const { SNSClient, PublishCommand } = await import('@aws-sdk/client-sns');
       const sns = new SNSClient({
         region,
@@ -1033,15 +1034,24 @@ export class NotificationService {
     link?: string;
   }) {
     try {
-      return await this.prisma.inAppNotification.create({
-        data: {
-          userId: data.userId,
-          type: data.type,
-          title: data.title,
-          message: data.message,
-          link: data.link || null,
-        },
-      });
+      const db = this.firebaseService.db;
+      const notifRef = db
+        .collection('users')
+        .doc(data.userId)
+        .collection('notifications')
+        .doc();
+      const notif = {
+        id: notifRef.id,
+        userId: data.userId,
+        type: data.type,
+        title: data.title,
+        message: data.message,
+        link: data.link || null,
+        read: false,
+        createdAt: new Date(),
+      };
+      await notifRef.set(notif);
+      return notif;
     } catch (error) {
       this.logger.error(
         `Failed to create in-app notification for user ${data.userId}`,
@@ -1055,9 +1065,13 @@ export class NotificationService {
     data: { type: string; title: string; message: string; link?: string },
   ) {
     try {
-      const users = await this.prisma.user.findMany({ where: { companyId } });
+      const db = this.firebaseService.db;
+      const usersSnap = await db
+        .collection('users')
+        .where('companyId', '==', companyId)
+        .get();
       await Promise.all(
-        users.map((u) =>
+        usersSnap.docs.map((u: any) =>
           this.createInAppNotification({
             userId: u.id,
             type: data.type,
@@ -1079,11 +1093,14 @@ export class NotificationService {
     link?: string;
   }) {
     try {
-      const admins = await this.prisma.user.findMany({
-        where: { role: 'ADMIN', isActive: true },
-      });
+      const db = this.firebaseService.db;
+      const adminsSnap = await db
+        .collection('users')
+        .where('role', '==', 'ADMIN')
+        .where('isActive', '==', true)
+        .get();
       await Promise.all(
-        admins.map((admin) =>
+        adminsSnap.docs.map((admin: any) =>
           this.createInAppNotification({
             userId: admin.id,
             type: data.type,

@@ -15,7 +15,7 @@ import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { PaymentStatus, UserRole } from '@prisma/client';
+import { PaymentStatus, UserRole } from '../firebase/firestore-types';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()

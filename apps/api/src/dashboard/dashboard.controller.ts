@@ -3,7 +3,7 @@ import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../firebase/firestore-types';
 
 @UseGuards(JwtAuthGuard)
 @Controller('dashboard')

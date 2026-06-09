@@ -109,7 +109,7 @@ export class AuctionsService {
 
     try {
       // 3. Database Transaction (Optimistic + Double-Check)
-      return await db.runTransaction(async (transaction) => {
+      return await db.runTransaction(async (transaction: any) => {
         const auctionRef = db.collection('auctions').doc(auctionId);
         const auctionDoc = await transaction.get(auctionRef);
         if (!auctionDoc.exists) throw new NotFoundException('Auction not found');
@@ -154,13 +154,13 @@ export class AuctionsService {
         const companyUsersSnap = await transaction.get(
           db.collection('users').where('companyId', '==', vendorUserData.companyId)
         );
-        const companyUserIds = companyUsersSnap.docs.map(doc => doc.id);
+        const companyUserIds = companyUsersSnap.docs.map((doc: any) => doc.id);
 
         const sealedBidsQuery = auctionRef.collection('bids')
           .where('phase', '==', BidPhase.SEALED)
           .where('isShortlisted', '==', true);
         const sealedBidsSnap = await transaction.get(sealedBidsQuery);
-        const isShortlisted = sealedBidsSnap.docs.some(doc => {
+        const isShortlisted = sealedBidsSnap.docs.some((doc: any) => {
           const bidData = doc.data();
           return companyUserIds.includes(bidData.vendorId);
         });
@@ -294,7 +294,7 @@ export class AuctionsService {
 
       const seen = new Set<string>();
       const uniqueBids: any[] = [];
-      const vendorIds = Array.from(new Set(bidsSnap.docs.map(doc => (doc.data() as any)?.vendorId)));
+      const vendorIds = Array.from(new Set(bidsSnap.docs.map((doc: any) => (doc.data() as any)?.vendorId)));
 
       const vendorUsers = await Promise.all(
         vendorIds.map(async (vid) => {
@@ -302,7 +302,7 @@ export class AuctionsService {
           return uDoc.exists ? { id: vid, name: (uDoc.data() as any)?.name } : { id: vid, name: 'Unknown' };
         })
       );
-      const vendorMap = new Map(vendorUsers.map(u => [u.id, u]));
+      const vendorMap = new Map(vendorUsers.map((u: any) => [u.id, u]));
 
       for (const doc of bidsSnap.docs) {
         const b = doc.data();
@@ -315,7 +315,7 @@ export class AuctionsService {
         });
       }
 
-      return uniqueBids.map((b, idx) => ({
+      return uniqueBids.map((b: any, idx: any) => ({
         vendorId: b.vendorId,
         amount: b.amount,
         rank: idx + 1,
@@ -335,7 +335,7 @@ export class AuctionsService {
       bidsSnap = await db.collectionGroup('bids').orderBy('createdAt', 'desc').get();
     }
 
-    const bids = bidsSnap.docs.map(doc => {
+    const bids = bidsSnap.docs.map((doc: any) => {
       const data = doc.data();
       const pathParts = doc.ref.path.split('/');
       const docAuctionId = pathParts[1] || auctionId;
@@ -347,15 +347,15 @@ export class AuctionsService {
       } as any;
     });
 
-    const uniqueVendorIds = Array.from(new Set(bids.map(b => b.vendorId))).filter(Boolean) as string[];
-    const uniqueAuctionIds = Array.from(new Set(bids.map(b => b.auctionId))).filter(Boolean) as string[];
+    const uniqueVendorIds = Array.from(new Set(bids.map((b: any) => b.vendorId))).filter(Boolean) as string[];
+    const uniqueAuctionIds = Array.from(new Set(bids.map((b: any) => b.auctionId))).filter(Boolean) as string[];
 
     const vendorsMap = new Map<string, any>();
     if (uniqueVendorIds.length > 0) {
       const chunks = chunkArray(uniqueVendorIds, 10);
-      await Promise.all(chunks.map(async (chunk) => {
+      await Promise.all(chunks.map(async (chunk: any) => {
         const snap = await db.collection('users').where(admin.firestore.FieldPath.documentId(), 'in', chunk).get();
-        snap.docs.forEach(doc => {
+        snap.docs.forEach((doc: any) => {
           const u = doc.data();
           vendorsMap.set(doc.id, { id: doc.id, name: u.name, companyId: u.companyId });
         });
@@ -365,9 +365,9 @@ export class AuctionsService {
     const auctionsMap = new Map<string, any>();
     if (uniqueAuctionIds.length > 0) {
       const chunks = chunkArray(uniqueAuctionIds, 10);
-      await Promise.all(chunks.map(async (chunk) => {
+      await Promise.all(chunks.map(async (chunk: any) => {
         const snap = await db.collection('auctions').where(admin.firestore.FieldPath.documentId(), 'in', chunk).get();
-        snap.docs.forEach(doc => {
+        snap.docs.forEach((doc: any) => {
           const a = doc.data();
           auctionsMap.set(doc.id, {
             id: doc.id,
@@ -379,7 +379,7 @@ export class AuctionsService {
       }));
     }
 
-    return bids.map(b => ({
+    return bids.map((b: any) => ({
       ...b,
       vendor: vendorsMap.get(b.vendorId) || null,
       auction: auctionsMap.get(b.auctionId) || null,
@@ -440,7 +440,7 @@ export class AuctionsService {
     }
 
     const snap = await query.get();
-    const auctions = snap.docs.map(doc => {
+    const auctions = snap.docs.map((doc: any) => {
       const data = doc.data();
       return {
         ...data,
@@ -465,9 +465,9 @@ export class AuctionsService {
     const companiesMap = new Map<string, any>();
     if (companyIds.length > 0) {
       const chunks = chunkArray(companyIds, 10);
-      await Promise.all(chunks.map(async (chunk) => {
+      await Promise.all(chunks.map(async (chunk: any) => {
         const cSnap = await db.collection('companies').where(admin.firestore.FieldPath.documentId(), 'in', chunk).get();
-        cSnap.docs.forEach(doc => {
+        cSnap.docs.forEach((doc: any) => {
           companiesMap.set(doc.id, { id: doc.id, ...doc.data() });
         });
       }));
@@ -479,7 +479,7 @@ export class AuctionsService {
         .limit(1)
         .get();
       
-      const bids = bidsSnap.docs.map(doc => {
+      const bids = bidsSnap.docs.map((doc: any) => {
         const b = doc.data();
         return {
           ...b,
@@ -521,13 +521,13 @@ export class AuctionsService {
     const companiesMap = new Map<string, any>();
     if (companyIds.length > 0) {
       const cSnap = await db.collection('companies').where(admin.firestore.FieldPath.documentId(), 'in', companyIds).get();
-      cSnap.docs.forEach(doc => {
+      cSnap.docs.forEach((doc: any) => {
         companiesMap.set(doc.id, { id: doc.id, ...doc.data() });
       });
     }
 
     const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').get();
-    const bidsWithVendors = await Promise.all(bidsSnap.docs.map(async (doc) => {
+    const bidsWithVendors = await Promise.all(bidsSnap.docs.map(async (doc: any) => {
       const b = doc.data() as any;
       const vendorId = b.vendorId;
       const vendorDoc = await db.collection('users').doc(vendorId).get();
@@ -623,7 +623,7 @@ export class AuctionsService {
     let clientUsers: any[] = [];
     if (clientCompany) {
       const usersSnap = await db.collection('users').where('companyId', '==', clientCompany.id).get();
-      clientUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      clientUsers = usersSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
     }
 
     const clientWithUsers = clientCompany ? { ...clientCompany, users: clientUsers } : null;
@@ -670,7 +670,7 @@ export class AuctionsService {
     const a = auctionDoc.data()!;
 
     const bidsSnap = await auctionRef.collection('bids').get();
-    const bidsWithVendors = await Promise.all(bidsSnap.docs.map(async (doc) => {
+    const bidsWithVendors = await Promise.all(bidsSnap.docs.map(async (doc: any) => {
       const b = doc.data() as any;
       const vendorUserDoc = await db.collection('users').doc(b.vendorId).get();
       const vendor = vendorUserDoc.exists ? { id: b.vendorId, name: (vendorUserDoc.data() as any)?.name, email: (vendorUserDoc.data() as any)?.email } : null;
@@ -688,7 +688,7 @@ export class AuctionsService {
     } as any;
 
     const approvedBids = bidsWithVendors.filter(
-      (b) => b.phase === BidPhase.SEALED && b.clientStatus === 'approved',
+      (b: any) => b.phase === BidPhase.SEALED && b.clientStatus === 'approved',
     );
 
     for (const bid of approvedBids) {
@@ -792,10 +792,10 @@ export class AuctionsService {
       .catch(() => {});
 
     const clientUsersSnap = await db.collection('users').where('companyId', '==', auction.clientId).get();
-    const clientUsers = clientUsersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const clientUsers = clientUsersSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     await Promise.all(
-      clientUsers.map((clientUser) =>
+      clientUsers.map((clientUser: any) =>
         this.notifications
           .createInAppNotification({
             userId: clientUser.id,
@@ -939,10 +939,10 @@ export class AuctionsService {
       .catch(() => {});
 
     const clientUsersSnap = await db.collection('users').where('companyId', '==', auction.clientId).get();
-    const clientUsers = clientUsersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const clientUsers = clientUsersSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     await Promise.all(
-      clientUsers.map((clientUser) =>
+      clientUsers.map((clientUser: any) =>
         this.notifications
           .createInAppNotification({
             userId: clientUser.id,
@@ -957,11 +957,11 @@ export class AuctionsService {
 
     const otherBidsSnap = await auctionRef.collection('bids').get();
     const otherVendorIds = Array.from(new Set(
-      otherBidsSnap.docs.map(doc => doc.data().vendorId).filter(vid => vid !== vendorUserId)
+      otherBidsSnap.docs.map((doc: any) => doc.data().vendorId).filter((vid: any) => vid !== vendorUserId)
     ));
 
     await Promise.all(
-      otherVendorIds.map((vid) =>
+      otherVendorIds.map((vid: any) =>
         this.notifications
           .createInAppNotification({
             userId: vid,
@@ -1010,11 +1010,11 @@ export class AuctionsService {
     }
 
     const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').get();
-    const bids = bidsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+    const bids = bidsSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as any));
     auction.bids = bids;
 
     const winningBid =
-      bids.find((b) => b.vendorId === auction.winnerId) ||
+      bids.find((b: any) => b.vendorId === auction.winnerId) ||
       bids[0];
     const winningAmount = winningBid?.amount ?? auction.basePrice;
     const commissionAmount = Math.round(winningAmount * 0.05);
@@ -1237,7 +1237,7 @@ export class AuctionsService {
     }
 
     const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').limit(1).get();
-    auction.bids = bidsSnap.docs.map(doc => ({
+    auction.bids = bidsSnap.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data(),
       createdAt: convertDate(doc.data().createdAt),
@@ -1285,7 +1285,7 @@ export class AuctionsService {
     };
 
     const ratingsSnap = await db.collection('ratings').where('auctionId', '==', id).get();
-    auction.ratings = ratingsSnap.docs.map(doc => ({
+    auction.ratings = ratingsSnap.docs.map((doc: any) => ({
       id: doc.id,
       ...doc.data(),
       createdAt: convertDate(doc.data().createdAt),
@@ -1344,10 +1344,10 @@ export class AuctionsService {
         .catch(() => {});
 
       const clientUsersSnap = await db.collection('users').where('companyId', '==', auction.clientId).get();
-      const clientUsers = clientUsersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const clientUsers = clientUsersSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
       await Promise.all(
-        clientUsers.map((clientUser) =>
+        clientUsers.map((clientUser: any) =>
           this.notifications
             .createInAppNotification({
               userId: clientUser.id,
@@ -1504,7 +1504,7 @@ export class AuctionsService {
       .get();
     
     const batch1 = db.batch();
-    upcomingSnap.docs.forEach((doc) => {
+    upcomingSnap.docs.forEach((doc: any) => {
       batch1.update(doc.ref, {
         status: AuctionStatus.SEALED_PHASE,
         updatedAt: admin.firestore.Timestamp.now(),
@@ -1519,7 +1519,7 @@ export class AuctionsService {
       .get();
 
     const batch2 = db.batch();
-    sealedSnap.docs.forEach((doc) => {
+    sealedSnap.docs.forEach((doc: any) => {
       batch2.update(doc.ref, {
         status: AuctionStatus.OPEN_PHASE,
         updatedAt: admin.firestore.Timestamp.now(),
@@ -1535,7 +1535,7 @@ export class AuctionsService {
     const endedAuctionIds: string[] = [];
     if (!endingSnap.empty) {
       const batch3 = db.batch();
-      endingSnap.docs.forEach((doc) => {
+      endingSnap.docs.forEach((doc: any) => {
         endedAuctionIds.push(doc.id);
         batch3.update(doc.ref, {
           status: AuctionStatus.PENDING_SELECTION,
@@ -1565,7 +1565,7 @@ export class AuctionsService {
     const client = clientCompanyDoc.exists ? clientCompanyDoc.data() : null;
 
     const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').get();
-    const bidsWithVendors = await Promise.all(bidsSnap.docs.map(async (doc) => {
+    const bidsWithVendors = await Promise.all(bidsSnap.docs.map(async (doc: any) => {
       const b = doc.data();
       const vendorUserDoc = await db.collection('users').doc(b.vendorId).get();
       const vendor = vendorUserDoc.exists ? { id: b.vendorId, name: (vendorUserDoc.data() as any)?.name, email: (vendorUserDoc.data() as any)?.email } : null;

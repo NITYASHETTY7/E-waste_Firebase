@@ -7,6 +7,7 @@ import * as fs from 'fs';
 export class FirebaseService implements OnModuleInit {
   private firestoreDb: admin.firestore.Firestore;
   private authAdmin: admin.auth.Auth;
+  private serviceAccountKey: any;
 
   onModuleInit() {
     let credsPath = path.resolve(process.cwd(), 'creds');
@@ -20,6 +21,7 @@ export class FirebaseService implements OnModuleInit {
 
     try {
       const serviceAccount = JSON.parse(fs.readFileSync(credsPath, 'utf8'));
+      this.serviceAccountKey = serviceAccount;
       
       // Initialize Firebase Admin SDK if not already initialized
       if (admin.apps.length === 0) {
@@ -47,5 +49,9 @@ export class FirebaseService implements OnModuleInit {
 
   get auth(): admin.auth.Auth {
     return this.authAdmin;
+  }
+
+  get serviceAccount(): any {
+    return this.serviceAccountKey;
   }
 }

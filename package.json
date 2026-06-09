@@ -27,5 +27,8 @@
     "@tailwindcss/oxide-linux-x64-musl": "4.2.2",
     "lightningcss-linux-x64-gnu": "^1.29.1",
     "lightningcss-linux-x64-musl": "^1.29.1"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.10.0"
   }
 }

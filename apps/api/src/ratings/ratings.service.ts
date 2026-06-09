@@ -1,11 +1,16 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
+import { FirebaseService } from '../firebase/firebase.service';
+
+const convertDate = (field: any): Date | null => {
+  if (!field) return null;
+  return typeof field.toDate === 'function' ? field.toDate() : new Date(field);
+};
 
 @Injectable()
 export class RatingsService {
   constructor(
-    private prisma: PrismaService,
+    private firebaseService: FirebaseService,
     private notifications: NotificationService,
   ) {}
 
@@ -21,28 +26,29 @@ export class RatingsService {
       throw new BadRequestException('Score must be between 1 and 5');
     }
 
-    const [fromCompany, auction] = await Promise.all([
-      this.prisma.company.findUnique({
-        where: { id: data.fromCompanyId },
-        select: { name: true },
-      }),
-      this.prisma.auction.findUnique({
-        where: { id: data.auctionId },
-        select: { title: true },
-      }),
+    const [fromCompanySnap, auctionSnap] = await Promise.all([
+      this.firebaseService.db.collection('companies').doc(data.fromCompanyId).get(),
+      this.firebaseService.db.collection('auctions').doc(data.auctionId).get(),
     ]);
 
-    const result = await this.prisma.rating.upsert({
-      where: {
-        auctionId_fromCompanyId_type: {
-          auctionId: data.auctionId,
-          fromCompanyId: data.fromCompanyId,
-          type: data.type,
-        },
-      },
-      create: data,
-      update: { score: data.score, comment: data.comment },
-    });
+    const fromCompany = fromCompanySnap.exists ? fromCompanySnap.data() : null;
+    const auction = auctionSnap.exists ? auctionSnap.data() : null;
+
+    const docId = `${data.auctionId}_${data.fromCompanyId}_${data.type}`;
+    const docRef = this.firebaseService.db.collection('ratings').doc(docId);
+
+    const ratingDoc = {
+      id: docId,
+      auctionId: data.auctionId,
+      fromCompanyId: data.fromCompanyId,
+      toCompanyId: data.toCompanyId,
+      score: data.score,
+      comment: data.comment || null,
+      type: data.type,
+      createdAt: new Date(),
+    };
+
+    await docRef.set(ratingDoc, { merge: true });
 
     const senderName = fromCompany?.name || 'A partner';
     const auctionTitle = auction?.title || 'an auction';
@@ -59,32 +65,81 @@ export class RatingsService {
       })
       .catch(() => {});
 
-    return result;
+    return ratingDoc;
   }
 
   async getRatingsForAuction(auctionId: string) {
-    return this.prisma.rating.findMany({
-      where: { auctionId },
-      include: {
-        fromCompany: { select: { id: true, name: true } },
-        toCompany: { select: { id: true, name: true } },
-      },
-    });
+    const snap = await this.firebaseService.db
+      .collection('ratings')
+      .where('auctionId', '==', auctionId)
+      .get();
+
+    const ratings = [];
+    for (const doc of snap.docs) {
+      const rData = doc.data();
+      const fromCompanySnap = await this.firebaseService.db
+        .collection('companies')
+        .doc(rData.fromCompanyId)
+        .get();
+      const toCompanySnap = await this.firebaseService.db
+        .collection('companies')
+        .doc(rData.toCompanyId)
+        .get();
+
+      ratings.push({
+        id: doc.id,
+        ...rData,
+        createdAt: convertDate(rData.createdAt),
+        fromCompany: fromCompanySnap.exists
+          ? { id: fromCompanySnap.id, name: fromCompanySnap.data()?.name }
+          : null,
+        toCompany: toCompanySnap.exists
+          ? { id: toCompanySnap.id, name: toCompanySnap.data()?.name }
+          : null,
+      });
+    }
+
+    return ratings;
   }
 
   async getRatingsForCompany(companyId: string) {
-    const received = await this.prisma.rating.findMany({
-      where: { toCompanyId: companyId },
-      include: {
-        fromCompany: { select: { id: true, name: true } },
-        auction: { select: { id: true, title: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const snap = await this.firebaseService.db
+      .collection('ratings')
+      .where('toCompanyId', '==', companyId)
+      .get();
+
+    const received = [];
+    for (const doc of snap.docs) {
+      const rData = doc.data();
+      const fromCompanySnap = await this.firebaseService.db
+        .collection('companies')
+        .doc(rData.fromCompanyId)
+        .get();
+      const auctionSnap = await this.firebaseService.db
+        .collection('auctions')
+        .doc(rData.auctionId)
+        .get();
+
+      received.push({
+        id: doc.id,
+        ...rData,
+        createdAt: convertDate(rData.createdAt),
+        fromCompany: fromCompanySnap.exists
+          ? { id: fromCompanySnap.id, name: fromCompanySnap.data()?.name }
+          : null,
+        auction: auctionSnap.exists
+          ? { id: auctionSnap.id, title: auctionSnap.data()?.title }
+          : null,
+      });
+    }
+
+    received.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
     const avg =
       received.length > 0
         ? received.reduce((s, r) => s + r.score, 0) / received.length
         : 0;
+
     return {
       ratings: received,
       averageScore: Math.round(avg * 10) / 10,

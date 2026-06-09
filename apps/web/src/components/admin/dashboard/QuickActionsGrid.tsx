@@ -11,8 +11,6 @@ const QUICK_ACTIONS = [
   { id: '4', title: 'Create Auction', icon: 'gavel', color: 'rose', route: '/admin/auctions' },
   { id: '5', title: 'Upload Document', icon: 'upload_file', color: 'blue', route: '/admin/documents' },
   { id: '6', title: 'Generate Report', icon: 'description', color: 'blue', route: '/admin/reports' },
-  { id: '7', title: 'Send Notification', icon: 'notifications', color: 'amber', route: '/admin/dashboard' },
-  { id: '8', title: 'View Calendar', icon: 'calendar_month', color: 'amber', route: '/admin/logistics' },
 ];
 
 const COLOR_MAP: Record<string, string> = {

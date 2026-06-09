@@ -20,5 +20,11 @@
     "noImplicitAny": true,
     "strictBindCallApply": true,
     "noFallthroughCasesInSwitch": true
-  }
+  },
+  "exclude": [
+    "prisma",
+    "scripts",
+    "node_modules",
+    "dist"
+  ]
 }

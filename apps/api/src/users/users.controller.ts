@@ -16,7 +16,6 @@ import { UserRole } from '../firebase/firestore-types';
 import { CreateAdminDto } from './users.dto';
 import { NotificationService } from '../notifications/notification.service';
 import { Public } from '../auth/decorators/public.decorator';
-import { PrismaService } from '../prisma/prisma.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('users')
@@ -24,7 +23,6 @@ export class UsersController {
   constructor(
     private usersService: UsersService,
     private notifications: NotificationService,
-    private prisma: PrismaService,
   ) {}
 
   @Public()

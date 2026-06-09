@@ -81,7 +81,7 @@ export class RequirementsService {
       const snap = await this.firebaseService.db.collection('users')
         .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
         .get();
-      snap.docs.forEach(doc => {
+      snap.docs.forEach((doc: any) => {
         users.push({ id: doc.id, ...doc.data() });
       });
     }
@@ -209,7 +209,7 @@ export class RequirementsService {
       query = query.where('clientId', '==', clientId);
     }
     const snapshot = await query.get();
-    const requirements = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const requirements = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     // Sort in memory by createdAt descending to avoid composite indexes requirement
     requirements.sort((a: any, b: any) => {
@@ -228,7 +228,7 @@ export class RequirementsService {
             .where('companyId', '==', req.clientId)
             .limit(1)
             .get();
-          const users = userSnap.docs.map(doc => ({ id: doc.id }));
+          const users = userSnap.docs.map((doc: any) => ({ id: doc.id }));
           client.users = users;
         }
       }
@@ -238,7 +238,7 @@ export class RequirementsService {
         .doc(req.id)
         .collection('auditInvitations')
         .get();
-      const auditInvitations = auditSnap.docs.map(doc => this.mapAuditInvitation(doc.data(), doc.id));
+      const auditInvitations = auditSnap.docs.map((doc: any) => this.mapAuditInvitation(doc.data(), doc.id));
 
       // Fetch auction
       const auctionSnap = await this.firebaseService.db.collection('auctions')
@@ -276,7 +276,7 @@ export class RequirementsService {
     // Fetch audit invitations subcollection and include vendor company details
     const auditSnap = await reqRef.collection('auditInvitations').get();
     const auditInvitations = await Promise.all(
-      auditSnap.docs.map(async (doc) => {
+      auditSnap.docs.map(async (doc: any) => {
         const invData = doc.data();
         let vendor: any = null;
         if (invData.vendorId) {
@@ -626,7 +626,7 @@ export class RequirementsService {
       .get();
 
     await Promise.all(
-      clientUsersSnap.docs.map(clientDoc =>
+      clientUsersSnap.docs.map((clientDoc: any) =>
         this.createInAppNotification(
           clientDoc.id,
           'vendor_invitation_response',
@@ -743,7 +743,7 @@ export class RequirementsService {
       .get();
 
     await Promise.all(
-      clientUsersSnap.docs.map(clientDoc =>
+      clientUsersSnap.docs.map((clientDoc: any) =>
         this.createInAppNotification(
           clientDoc.id,
           'audit_docs_submitted',
@@ -773,7 +773,7 @@ export class RequirementsService {
       .collection('vendorAuditDocs')
       .get();
 
-    const docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const docs = snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     return Promise.all(
       docs.map(async (doc: any) => {
@@ -807,7 +807,7 @@ export class RequirementsService {
   async getAllAuditDocs() {
     const snap = await this.firebaseService.db.collectionGroup('vendorAuditDocs').get();
 
-    const docs = await Promise.all(snap.docs.map(async (doc) => {
+    const docs = await Promise.all(snap.docs.map(async (doc: any) => {
       const docData = doc.data() as any;
       const requirementId = doc.ref.parent.parent?.id;
 
@@ -1073,7 +1073,7 @@ export class RequirementsService {
       .where('phase', '==', 'SEALED')
       .get();
 
-    const bids = bidsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const bids = bidsSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     // Sort descending by amount
     bids.sort((a: any, b: any) => b.amount - a.amount);
@@ -1165,7 +1165,7 @@ export class RequirementsService {
     // Notify shortlisted vendors
     if (bidIds.length > 0) {
       const uniqueVendorIds = new Set<string>();
-      bidsSnap.docs.forEach(doc => {
+      bidsSnap.docs.forEach((doc: any) => {
         if (bidIds.includes(doc.id)) {
           const vId = doc.data()?.vendorId;
           if (vId) uniqueVendorIds.add(vId);
@@ -1253,7 +1253,7 @@ export class RequirementsService {
       .where('role', '==', 'ADMIN')
       .where('isActive', '==', true)
       .get();
-    const admins = adminSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+    const admins = adminSnap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() as any }));
 
     const note = message ? `: "${message}"` : '';
     for (const admin of admins) {
