@@ -579,13 +579,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.theme, state.isSidebarOpen, state.isSidebarCollapsed, state.currentUser, isInitialized]);
 
-  // Poll backend for changes every 30 seconds when logged in
+  // Removed aggressive polling to save Firestore quota
+  // Instead, the app relies on manual refreshes or specific action triggers.
   useEffect(() => {
     if (!isInitialized || !state.currentUser) return;
-    const interval = setInterval(() => {
-      fetchAllData().catch(() => {});
-    }, 30000);
-    return () => clearInterval(interval);
+    // const interval = setInterval(() => {
+    //   fetchAllData().catch(() => {});
+    // }, 30000);
+    // return () => clearInterval(interval);
   }, [isInitialized, state.currentUser?.id]);
 
   const mapRequirementToListing = (req: any): Listing => {
