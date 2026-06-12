@@ -19,7 +19,7 @@ export default function VendorDashboard() {
 
   const myBids = bids.filter(b => b.vendorId === currentUser?.id);
   const wonBids = myBids.filter(b => b.status === "accepted");
-  const activeListings = listings.filter(l => l.status === "active" || l.auctionPhase === "live");
+  const activeListings = listings.filter(l => l.auctionPhase === "live" || l.auctionPhase === "sealed_bid");
   const winRate = myBids.length > 0 ? Math.round((wonBids.length / myBids.length) * 100) : 0;
   const totalCommitted = myBids.reduce((sum, b) => sum + b.amount, 0);
 
@@ -65,6 +65,21 @@ export default function VendorDashboard() {
 
   return (
     <div className="dashboard-container space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {currentUser?.isLocked && (
+        <div className="bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900/50 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <span className="material-symbols-outlined text-red-600 dark:text-red-400 mt-0.5 text-2xl shrink-0">lock</span>
+            <div>
+              <h4 className="text-sm font-black text-red-800 dark:text-red-200 uppercase tracking-wide">Account Locked</h4>
+              <p className="text-xs text-red-700 dark:text-red-400/80 mt-1">Your company account has been restricted by an administrator. Reason: <span className="font-bold">{currentUser.lockReason || "Please contact support for verification."}</span></p>
+            </div>
+          </div>
+          <Link href="/vendor/help" className="px-5 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl uppercase tracking-wider shrink-0" style={{ color: 'white' }}>
+            Get Help
+          </Link>
+        </div>
+      )}
+
       {/* Header */}
       <motion.div 
         initial={{ opacity: 0, x: -20 }}
@@ -78,10 +93,12 @@ export default function VendorDashboard() {
           <p className="text-slate-500 dark:text-slate-400 font-medium">Performance metrics for <span className="text-slate-900 dark:text-white font-bold">{currentUser?.name}</span></p>
         </div>
         <div className="flex gap-3">
-          <Link href="/vendor/marketplace" className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200/20 dark:shadow-blue-900/50" style={{ color: 'white' }}>
-            <span className="material-symbols-outlined text-lg">storefront</span>
-            Browse Marketplace
-          </Link>
+          {!currentUser?.isLocked && (
+            <Link href="/vendor/marketplace" className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-200/20 dark:shadow-blue-900/50" style={{ color: 'white' }}>
+              <span className="material-symbols-outlined text-lg">storefront</span>
+              Browse Marketplace
+            </Link>
+          )}
         </div>
       </motion.div>
 
@@ -115,23 +132,37 @@ export default function VendorDashboard() {
           <div className="bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-950 p-8 rounded-3xl text-white relative overflow-hidden group shadow-xl">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500 rounded-full -mr-16 -mt-16 blur-[80px] opacity-40" />
             <h3 className="text-xl font-bold mb-4 relative z-10 text-white">Available Now</h3>
-            <p className="text-slate-300 text-sm mb-6 relative z-10">There are <span className="text-white font-bold">{activeListings.length}</span> active lots waiting for your bid.</p>
             
-            <div className="space-y-3 relative z-10">
-              {activeListings.slice(0, 3).map((l) => (
-                <Link key={l.id} href={`/vendor/marketplace/${l.id}`} className="flex items-center justify-between p-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 hover:bg-white/10 transition-all group/item">
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-white truncate group-hover/item:text-blue-400 transition-colors">{l.title}</p>
-                    <p className="text-[10px] text-slate-400 uppercase font-black tracking-wider mt-0.5">{l.weight} KG · {(l.location || 'India').split(' ')[0]}</p>
-                  </div>
-                  <span className="material-symbols-outlined text-sm text-slate-400 group-hover/item:text-blue-400 transition-colors">chevron_right</span>
+            {currentUser?.isLocked ? (
+              <div className="relative z-10 py-6 text-center space-y-3">
+                <span className="material-symbols-outlined text-4xl text-red-500 block">lock_open</span>
+                <p className="text-xs text-slate-300">Marketplace is restricted while your account is locked. Please resolve any pending compliance tasks or penalties.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-slate-300 text-sm mb-6 relative z-10">There are <span className="text-white font-bold">{activeListings.length}</span> active lots waiting for your bid.</p>
+                
+                <div className="space-y-3 relative z-10">
+                  {activeListings.slice(0, 3).map((l) => (
+                    <Link key={l.id} href={`/vendor/marketplace/${l.id}`} className="flex items-center justify-between p-3 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 hover:bg-white/10 transition-all group/item">
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-white truncate group-hover/item:text-blue-400 transition-colors">{l.title}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-blue-400 uppercase font-black tracking-wider">{l.auctionPhase?.replace('_', ' ')}</span>
+                          <span className="text-[8px] text-slate-500">•</span>
+                          <p className="text-[10px] text-slate-400 uppercase font-black tracking-wider">{l.weight} KG · {(l.location || 'India').split(' ')[0]}</p>
+                        </div>
+                      </div>
+                      <span className="material-symbols-outlined text-sm text-slate-400 group-hover/item:text-blue-400 transition-colors">chevron_right</span>
+                    </Link>
+                  ))}
+                </div>
+                
+                <Link href="/vendor/marketplace" className="mt-6 block text-center text-xs font-black uppercase tracking-widest text-slate-300 hover:text-white transition-colors hover:underline underline-offset-4">
+                  View All Marketplace
                 </Link>
-              ))}
-            </div>
-            
-            <Link href="/vendor/marketplace" className="mt-6 block text-center text-xs font-black uppercase tracking-widest text-slate-300 hover:text-white transition-colors hover:underline underline-offset-4">
-              View All Marketplace
-            </Link>
+              </>
+            )}
           </div>
         </div>
 

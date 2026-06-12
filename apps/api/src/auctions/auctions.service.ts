@@ -21,6 +21,7 @@ import {
   AuctionDoc,
   UserDoc,
 } from '../firebase/firestore-types';
+import { GenerateDocsDto } from './auctions.dto';
 
 const convertDate = (field: any): Date | null => {
   if (!field) return null;
@@ -532,7 +533,7 @@ export class AuctionsService {
       const vendorId = b.vendorId;
       const vendorDoc = await db.collection('users').doc(vendorId).get();
       const vendor = vendorDoc.exists
-        ? { id: vendorId, name: (vendorDoc.data() as any)?.name }
+        ? { id: vendorId, name: (vendorDoc.data() as any)?.name, email: (vendorDoc.data() as any)?.email }
         : { id: vendorId, name: 'Unknown' };
 
       return {
@@ -976,7 +977,7 @@ export class AuctionsService {
     return auction;
   }
 
-  async generatePostAuctionDocs(id: string) {
+  async generatePostAuctionDocs(id: string, data?: GenerateDocsDto) {
     const db = this.firebaseService.db;
     const auctionRef = db.collection('auctions').doc(id);
     const auctionDoc = await auctionRef.get();
@@ -987,6 +988,16 @@ export class AuctionsService {
       throw new BadRequestException(
         'Winner must be selected and approved before generating documents.',
       );
+    }
+
+    // Save terms if provided
+    if (data) {
+      await auctionRef.update({
+        poPaymentTerms: data.paymentTerms || null,
+        poDeliveryTerms: data.deliveryTerms || null,
+        poPenaltyClause: data.penaltyClause || null,
+        poSpecialConditions: data.specialConditions || null,
+      });
     }
 
     const auction = {
@@ -1030,11 +1041,17 @@ export class AuctionsService {
     const bucket = this.s3.getPrivateBucket();
 
     const results: { type: string; s3Key: string; fileName: string }[] = [];
-    const newDocsToUnion: S3Document[] = [];
+    
+    // In Firestore version, we'll replace the docs in the array if they already exist
+    let currentDocs = (auction.auctionDocs || []) as S3Document[];
+    const typesToGenerate = [DocumentType.PURCHASE_ORDER, DocumentType.AGREEMENT, DocumentType.WORK_ORDER];
+    
+    // Filter out existing docs of these types if we are regenerating
+    if (data) {
+        currentDocs = currentDocs.filter(d => !typesToGenerate.includes(d.type));
+    }
 
-    const hasPO = (auction.auctionDocs || []).some(
-      (d: any) => d.type === DocumentType.PURCHASE_ORDER,
-    );
+    const hasPO = currentDocs.some((d: any) => d.type === DocumentType.PURCHASE_ORDER);
     if (!hasPO) {
       try {
         const poKey = await this.documents.generatePoPdf({
@@ -1052,6 +1069,10 @@ export class AuctionsService {
           winningAmount,
           commissionAmount,
           date,
+          paymentTerms: data?.paymentTerms || auction.poPaymentTerms,
+          deliveryTerms: data?.deliveryTerms || auction.poDeliveryTerms,
+          penaltyClause: data?.penaltyClause || auction.poPenaltyClause,
+          specialConditions: data?.specialConditions || auction.poSpecialConditions,
         });
 
         const newDoc: S3Document = {
@@ -1063,7 +1084,7 @@ export class AuctionsService {
           mimeType: 'application/pdf',
           uploadedAt: new Date(),
         };
-        newDocsToUnion.push(newDoc);
+        currentDocs.push(newDoc);
         results.push({
           type: 'PURCHASE_ORDER',
           s3Key: poKey,
@@ -1077,9 +1098,7 @@ export class AuctionsService {
       }
     }
 
-    const hasAgr = (auction.auctionDocs || []).some(
-      (d: any) => d.type === DocumentType.AGREEMENT,
-    );
+    const hasAgr = currentDocs.some((d: any) => d.type === DocumentType.AGREEMENT);
     if (!hasAgr) {
       try {
         const agrKey = await this.documents.generateAgreementPdf({
@@ -1090,6 +1109,10 @@ export class AuctionsService {
           totalWeight,
           winningAmount,
           date,
+          paymentTerms: data?.paymentTerms || auction.poPaymentTerms,
+          deliveryTerms: data?.deliveryTerms || auction.poDeliveryTerms,
+          penaltyClause: data?.penaltyClause || auction.poPenaltyClause,
+          specialConditions: data?.specialConditions || auction.poSpecialConditions,
         });
 
         const newDoc: S3Document = {
@@ -1101,7 +1124,7 @@ export class AuctionsService {
           mimeType: 'application/pdf',
           uploadedAt: new Date(),
         };
-        newDocsToUnion.push(newDoc);
+        currentDocs.push(newDoc);
         results.push({
           type: 'AGREEMENT',
           s3Key: agrKey,
@@ -1115,9 +1138,7 @@ export class AuctionsService {
       }
     }
 
-    const hasWO = (auction.auctionDocs || []).some(
-      (d: any) => d.type === DocumentType.WORK_ORDER,
-    );
+    const hasWO = currentDocs.some((d: any) => d.type === DocumentType.WORK_ORDER);
     if (!hasWO) {
       try {
         const woKey = await this.documents.generateWorkOrderPdf(
@@ -1128,6 +1149,12 @@ export class AuctionsService {
           auction.title,
           totalWeight,
           winningAmount,
+          data || {
+            paymentTerms: auction.poPaymentTerms,
+            deliveryTerms: auction.poDeliveryTerms,
+            penaltyClause: auction.poPenaltyClause,
+            specialConditions: auction.poSpecialConditions,
+          }
         );
 
         const newDoc: S3Document = {
@@ -1139,7 +1166,7 @@ export class AuctionsService {
           mimeType: 'application/pdf',
           uploadedAt: new Date(),
         };
-        newDocsToUnion.push(newDoc);
+        currentDocs.push(newDoc);
         results.push({
           type: 'WORK_ORDER',
           s3Key: woKey,
@@ -1153,12 +1180,10 @@ export class AuctionsService {
       }
     }
 
-    if (newDocsToUnion.length > 0) {
-      await auctionRef.update({
-        auctionDocs: admin.firestore.FieldValue.arrayUnion(...newDocsToUnion),
-        updatedAt: admin.firestore.Timestamp.now(),
-      });
-    }
+    await auctionRef.update({
+      auctionDocs: currentDocs,
+      updatedAt: admin.firestore.Timestamp.now(),
+    });
 
     const paymentCol = auctionRef.collection('payment');
     const paymentSnap = await paymentCol.get();

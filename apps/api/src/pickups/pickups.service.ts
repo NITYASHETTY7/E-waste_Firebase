@@ -459,7 +459,7 @@ export class PickupsService {
         .catch(() => {});
     }
 
-    return { id, ...pickupDoc.data(), ...updateData };
+    return { id: pickupDoc.id, ...pickupDoc.data(), ...updateData };
   }
 
   async generateInvoice(id: string) {
@@ -591,37 +591,28 @@ export class PickupsService {
     const pickups = [];
     for (const doc of snap.docs) {
       const pickupData = doc.data();
-      const auctionId = doc.ref.parent.parent!.id;
-      const auctionSnap = await this.db.collection('auctions').doc(auctionId).get();
+      const parentRef = doc.ref.parent.parent;
+      if (!parentRef) continue;
 
       let auction = null;
-      if (auctionSnap.exists) {
-        const aData = auctionSnap.data()!;
+      if (parentRef.path.startsWith('auctions/')) {
+        const auctionId = parentRef.id;
+        const auctionSnap = await this.db.collection('auctions').doc(auctionId).get();
 
-        // Fetch client & winner companies
-        let client = null;
-        if (aData.clientId) {
-          const clientSnap = await this.db.collection('companies').doc(aData.clientId).get();
-          if (clientSnap.exists) {
-            client = { id: clientSnap.id, name: clientSnap.data()?.name };
+        if (auctionSnap.exists) {
+          const aData = auctionSnap.data()!;
+          let client = null;
+          if (aData.clientId) {
+            const clientSnap = await this.db.collection('companies').doc(aData.clientId).get();
+            if (clientSnap.exists) client = { id: clientSnap.id, name: clientSnap.data()?.name };
           }
-        }
-
-        let winner = null;
-        if (aData.winnerId) {
-          const winnerSnap = await this.db.collection('companies').doc(aData.winnerId).get();
-          if (winnerSnap.exists) {
-            winner = { id: winnerSnap.id, name: winnerSnap.data()?.name };
+          let winner = null;
+          if (aData.winnerId) {
+            const winnerSnap = await this.db.collection('companies').doc(aData.winnerId).get();
+            if (winnerSnap.exists) winner = { id: winnerSnap.id, name: winnerSnap.data()?.name };
           }
+          auction = { id: auctionSnap.id, ...aData, client, winner, auctionDocs: aData.auctionDocs || [] };
         }
-
-        auction = {
-          id: auctionSnap.id,
-          ...aData,
-          client,
-          winner,
-          auctionDocs: aData.auctionDocs || [],
-        };
       }
 
       pickups.push({
@@ -633,11 +624,8 @@ export class PickupsService {
       });
     }
 
-    // Sort in memory by createdAt descending
-    const sortedPickups = pickups.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
     return Promise.all(
-      sortedPickups.map(async (pickup) => {
+      pickups.map(async (pickup) => {
         const docs = await Promise.all(
           (pickup.pickupDocs ?? []).map(async (doc: any) => ({
             ...doc,
@@ -647,9 +635,7 @@ export class PickupsService {
         const auctionDocs = await Promise.all(
           (pickup.auction?.auctionDocs ?? []).map(async (doc: any) => ({
             ...doc,
-            signedUrl: await this.s3
-              .getSignedUrl(doc.s3Key, doc.s3Bucket)
-              .catch(() => null),
+            signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
           })),
         );
         const mergedAuctionDocs = [
@@ -658,7 +644,7 @@ export class PickupsService {
         ];
         return { ...pickup, pickupDocs: docs, auctionDocs: mergedAuctionDocs };
       }),
-    );
+    ).then(res => res.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)));
   }
 
   async findOne(id: string) {
@@ -666,40 +652,35 @@ export class PickupsService {
     if (!pickupDoc) throw new NotFoundException('Pickup not found');
 
     const pickup = { id: pickupDoc.id, ...pickupDoc.data() } as any;
-    const auctionId = pickupDoc.ref.parent.parent!.id;
-    const auctionSnap = await this.db.collection('auctions').doc(auctionId).get();
+    const parentRef = pickupDoc.ref.parent.parent;
     
     let auction = null;
-    if (auctionSnap.exists) {
-      const aData = auctionSnap.data()!;
-      let client = null;
-      if (aData.clientId) {
-        const clientSnap = await this.db.collection('companies').doc(aData.clientId).get();
-        if (clientSnap.exists) {
-          client = { id: clientSnap.id, ...clientSnap.data() };
+    if (parentRef && parentRef.path.startsWith('auctions/')) {
+      const auctionId = parentRef.id;
+      const auctionSnap = await this.db.collection('auctions').doc(auctionId).get();
+      if (auctionSnap.exists) {
+        const aData = auctionSnap.data()!;
+        let client = null;
+        if (aData.clientId) {
+          const clientSnap = await this.db.collection('companies').doc(aData.clientId).get();
+          if (clientSnap.exists) client = { id: clientSnap.id, ...clientSnap.data() };
         }
-      }
-      let winner = null;
-      if (aData.winnerId) {
-        const winnerSnap = await this.db.collection('companies').doc(aData.winnerId).get();
-        if (winnerSnap.exists) {
-          winner = { id: winnerSnap.id, ...winnerSnap.data() };
+        let winner = null;
+        if (aData.winnerId) {
+          const winnerSnap = await this.db.collection('companies').doc(aData.winnerId).get();
+          if (winnerSnap.exists) winner = { id: winnerSnap.id, ...winnerSnap.data() };
         }
+        auction = { id: auctionSnap.id, ...aData, client, winner, auctionDocs: aData.auctionDocs || [] };
       }
-      auction = {
-        id: auctionSnap.id,
-        ...aData,
-        client,
-        winner,
-        auctionDocs: aData.auctionDocs || [],
-      };
     }
 
     pickup.auction = auction;
 
     // Resolve payment
-    const paymentSnap = await this.db.collection('auctions').doc(auctionId).collection('payment').get();
-    pickup.payment = paymentSnap.empty ? null : { id: paymentSnap.docs[0].id, ...paymentSnap.docs[0].data() };
+    if (parentRef) {
+      const paymentSnap = await parentRef.collection('payment').get();
+      pickup.payment = paymentSnap.empty ? null : { id: paymentSnap.docs[0].id, ...paymentSnap.docs[0].data() };
+    }
 
     const docs = await Promise.all(
       (pickup.pickupDocs ?? []).map(async (doc: any) => ({
@@ -711,9 +692,7 @@ export class PickupsService {
     const auctionDocs = await Promise.all(
       (pickup.auction?.auctionDocs ?? []).map(async (doc: any) => ({
         ...doc,
-        signedUrl: await this.s3
-          .getSignedUrl(doc.s3Key, doc.s3Bucket)
-          .catch(() => null),
+        signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
       })),
     );
 
@@ -754,10 +733,12 @@ export class PickupsService {
     const pickupDoc = await this.findPickupById(id);
     if (!pickupDoc) throw new NotFoundException('Pickup not found');
 
-    const auctionId = pickupDoc.ref.parent.parent!.id;
-    const auctionSnap = await this.db.collection('auctions').doc(auctionId).get();
-    if (!auctionSnap.exists) throw new NotFoundException('Auction not found');
-    const auctionData = auctionSnap.data()!;
+    const parentRef = pickupDoc.ref.parent.parent;
+    let auctionData: any = null;
+    if (parentRef && parentRef.path.startsWith('auctions/')) {
+      const auctionSnap = await parentRef.get();
+      auctionData = auctionSnap.exists ? auctionSnap.data() : null;
+    }
 
     const { key, bucket } = await this.s3.upload(file, `pickups/${id}`);
 
@@ -780,12 +761,8 @@ export class PickupsService {
     const updatedPickup = updatedPickupSnap.data() as any;
     const allDocs = updatedPickup.pickupDocs || [];
 
-    const hasRecycling = allDocs.some(
-      (d: any) => d.type === DocumentType.RECYCLING_CERTIFICATE,
-    );
-    const hasDisposal = allDocs.some(
-      (d: any) => d.type === DocumentType.DISPOSAL_CERTIFICATE,
-    );
+    const hasRecycling = allDocs.some((d: any) => d.type === DocumentType.RECYCLING_CERTIFICATE);
+    const hasDisposal = allDocs.some((d: any) => d.type === DocumentType.DISPOSAL_CERTIFICATE);
     if (hasRecycling && hasDisposal) {
       await pickupDoc.ref.update({
         status: PickupStatus.DOCUMENTS_UPLOADED,
@@ -793,22 +770,13 @@ export class PickupsService {
       });
     }
 
-    const isCompliance =
-      type === DocumentType.RECYCLING_CERTIFICATE ||
-      type === DocumentType.DISPOSAL_CERTIFICATE;
-    if (isCompliance) {
-      // Fetch client users & winner company details
+    const isCompliance = type === DocumentType.RECYCLING_CERTIFICATE || type === DocumentType.DISPOSAL_CERTIFICATE;
+    if (isCompliance && auctionData) {
       let clientUser = null;
       if (auctionData.clientId) {
-        const usersSnap = await this.db.collection('users')
-          .where('companyId', '==', auctionData.clientId)
-          .limit(1)
-          .get();
-        if (!usersSnap.empty) {
-          clientUser = { id: usersSnap.docs[0].id };
-        }
+        const usersSnap = await this.db.collection('users').where('companyId', '==', auctionData.clientId).limit(1).get();
+        if (!usersSnap.empty) clientUser = { id: usersSnap.docs[0].id };
       }
-
       let winnerCompany = null;
       if (auctionData.winnerId) {
         const winnerSnap = await this.db.collection('companies').doc(auctionData.winnerId).get();
@@ -816,25 +784,20 @@ export class PickupsService {
       }
 
       if (clientUser?.id) {
-        await this.notifications
-          .createInAppNotification({
-            userId: clientUser.id,
-            type: 'compliance_uploaded',
-            title: 'Compliance Document Uploaded',
-            message: `Vendor "${winnerCompany?.name || 'Winner'}" uploaded a compliance certificate (${type.replace('_', ' ')}) for "${auctionData.title}".`,
-            link: `/client/handover`,
-          })
-          .catch(() => {});
-      }
-
-      await this.notifications
-        .notifyAdmins({
+        await this.notifications.createInAppNotification({
+          userId: clientUser.id,
           type: 'compliance_uploaded',
           title: 'Compliance Document Uploaded',
-          message: `Vendor "${winnerCompany?.name || 'Winner'}" uploaded ${type.replace('_', ' ')} for "${auctionData.title}".`,
-          link: `/admin/pickups`,
-        })
-        .catch(() => {});
+          message: `Vendor "${winnerCompany?.name || 'Winner'}" uploaded a compliance certificate (${type.replace('_', ' ')}) for "${auctionData.title}".`,
+          link: `/client/handover`,
+        }).catch(() => {});
+      }
+      await this.notifications.notifyAdmins({
+        type: 'compliance_uploaded',
+        title: 'Compliance Document Uploaded',
+        message: `Vendor "${winnerCompany?.name || 'Winner'}" uploaded ${type.replace('_', ' ')} for "${auctionData.title}".`,
+        link: `/admin/pickups`,
+      }).catch(() => {});
     }
 
     return newDoc;
@@ -851,7 +814,6 @@ export class PickupsService {
 
     const archive = archiver('zip', { zlib: { level: 9 } });
     const passThrough = new PassThrough();
-
     archive.pipe(passThrough);
 
     for (const doc of pickup.pickupDocs) {
@@ -881,91 +843,65 @@ export class PickupsService {
     const pickupDoc = await this.findPickupById(id);
     if (!pickupDoc) throw new NotFoundException('Pickup not found');
 
-    const updateData = {
+    const parentRef = pickupDoc.ref.parent.parent;
+    let auctionData: any = null;
+    if (parentRef && parentRef.path.startsWith('auctions/')) {
+      const auctionSnap = await parentRef.get();
+      auctionData = auctionSnap.exists ? { id: auctionSnap.id, ...auctionSnap.data() } : null;
+    }
+
+    await pickupDoc.ref.update({
       status: PickupStatus.COMPLETED,
       updatedAt: new Date(),
-    };
+    });
 
-    await pickupDoc.ref.update(updateData);
-
-    const auctionId = pickupDoc.ref.parent.parent!.id;
-    const auctionSnap = await this.db.collection('auctions').doc(auctionId).get();
-    const auctionData = auctionSnap.data()!;
-
-    let clientUser = null;
-    if (auctionData.clientId) {
-      const usersSnap = await this.db.collection('users')
-        .where('companyId', '==', auctionData.clientId)
-        .limit(1)
-        .get();
-      if (!usersSnap.empty) {
-        clientUser = { id: usersSnap.docs[0].id, ...usersSnap.docs[0].data() };
+    if (auctionData) {
+      let clientUser = null;
+      if (auctionData.clientId) {
+        const usersSnap = await this.db.collection('users').where('companyId', '==', auctionData.clientId).limit(1).get();
+        if (!usersSnap.empty) clientUser = { id: usersSnap.docs[0].id, ...usersSnap.docs[0].data() as any };
       }
-    }
-
-    let vendorUser = null;
-    if (auctionData.winnerId) {
-      const usersSnap = await this.db.collection('users')
-        .where('companyId', '==', auctionData.winnerId)
-        .limit(1)
-        .get();
-      if (!usersSnap.empty) {
-        vendorUser = { id: usersSnap.docs[0].id, ...usersSnap.docs[0].data() };
+      let vendorUser = null;
+      if (auctionData.winnerId) {
+        const usersSnap = await this.db.collection('users').where('companyId', '==', auctionData.winnerId).limit(1).get();
+        if (!usersSnap.empty) vendorUser = { id: usersSnap.docs[0].id, ...usersSnap.docs[0].data() as any };
       }
-    }
 
-    // Retrieve company details for display name fallback
-    let winnerCompany = null;
-    if (auctionData.winnerId) {
-      const winnerSnap = await this.db.collection('companies').doc(auctionData.winnerId).get();
-      if (winnerSnap.exists) {
-        winnerCompany = winnerSnap.data();
+      let winnerCompany = null;
+      if (auctionData.winnerId) {
+        const winnerSnap = await this.db.collection('companies').doc(auctionData.winnerId).get();
+        if (winnerSnap.exists) winnerCompany = winnerSnap.data();
       }
-    }
-
-    let clientCompany = null;
-    if (auctionData.clientId) {
-      const clientSnap = await this.db.collection('companies').doc(auctionData.clientId).get();
-      if (clientSnap.exists) {
-        clientCompany = clientSnap.data();
+      let clientCompany = null;
+      if (auctionData.clientId) {
+        const clientSnap = await this.db.collection('companies').doc(auctionData.clientId).get();
+        if (clientSnap.exists) clientCompany = clientSnap.data();
       }
-    }
 
-    if (clientUser?.email) {
-      await this.notifications
-        .notifyComplianceVerified(
-          clientUser.email,
-          clientUser.name || clientCompany!.name,
-          auctionData.title,
-        )
-        .catch(() => {});
-    }
-
-    if (clientUser?.id) {
-      await this.notifications
-        .createInAppNotification({
+      if (clientUser?.email) {
+        await this.notifications.notifyComplianceVerified(clientUser.email, clientUser.name || clientCompany!.name, auctionData.title).catch(() => {});
+      }
+      if (clientUser?.id) {
+        await this.notifications.createInAppNotification({
           userId: clientUser.id,
           type: 'compliance_verified',
           title: 'Compliance Documents Verified',
-          message: `Compliance documents for "${auctionData.title}" have been verified. The transaction is now complete.`,
+          message: `Compliance documents for "${auctionData.title}" have been verified.`,
           link: `/client/handover`,
-        })
-        .catch(() => {});
-    }
-
-    if (vendorUser?.id) {
-      await this.notifications
-        .createInAppNotification({
+        }).catch(() => {});
+      }
+      if (vendorUser?.id) {
+        await this.notifications.createInAppNotification({
           userId: vendorUser.id,
           type: 'compliance_verified',
           title: 'Compliance Documents Verified',
-          message: `Compliance documents for "${auctionData.title}" have been verified by the client. The transaction is now complete.`,
+          message: `Compliance documents for "${auctionData.title}" have been verified by the client.`,
           link: `/vendor/pickups`,
-        })
-        .catch(() => {});
+        }).catch(() => {});
+      }
     }
 
-    return { id, ...pickupDoc.data(), ...updateData };
+    return { id: pickupDoc.id, ...pickupDoc.data(), status: PickupStatus.COMPLETED };
   }
 
   async completePickup(id: string, adminNotes?: string) {
@@ -976,6 +912,6 @@ export class PickupsService {
       adminNotes: adminNotes || null,
       updatedAt: new Date(),
     });
-    return { id, ...pickupDoc.data(), status: PickupStatus.COMPLETED, adminNotes: adminNotes || null };
+    return { id: pickupDoc.id, ...pickupDoc.data(), status: PickupStatus.COMPLETED, adminNotes: adminNotes || null };
   }
 }

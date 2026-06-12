@@ -19,6 +19,7 @@ import { DocumentsModule } from './documents/documents.module';
 import { QueueModule } from './queue/queue.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { UserProductsModule } from './user-products/user-products.module';
+import { AiModule } from './ai/ai.module';
 
 import { RedisModule } from './redis/redis.module';
 
@@ -47,6 +48,7 @@ import { RedisModule } from './redis/redis.module';
     DocumentsModule,
     RatingsModule,
     UserProductsModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService],

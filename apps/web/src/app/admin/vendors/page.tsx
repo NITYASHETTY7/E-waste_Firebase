@@ -1,15 +1,46 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
 import { motion, AnimatePresence } from "framer-motion";
+
+function exportVendorsCSV(vendors: any[]) {
+  const clean = (val: any) => {
+    if (val === undefined || val === null) return "";
+    return String(val).replace(/,/g, ' ').replace(/[^\x20-\x7E]/g, '').trim();
+  };
+
+  const header = ["Vendor ID", "Company Name", "GST Number", "PAN Number", "City", "State", "Status", "Rating", "Total Penalties (INR)"];
+  const rows = vendors.map(v => [
+    v.id,
+    clean(v.name),
+    clean(v.gstNumber || "—"),
+    clean(v.panNumber || "—"),
+    clean(v.city || "—"),
+    clean(v.state || "—"),
+    v.status,
+    v.rating?.toFixed(1) || "0.0",
+    v.penaltyAmount || 0,
+  ]);
+
+  const csv = [header, ...rows].map(row => row.join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `weconnect_vendors_report_${new Date().toISOString().split("T")[0]}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 export default function AdminVendors() {
   const [vendors, setVendors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "APPROVED" | "PENDING" | "REJECTED">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "APPROVED" | "PENDING" | "REJECTED" | "BLOCKED">("all");
 
   // Detail modal state
   const [selectedVendor, setSelectedVendor] = useState<any | null>(null);
@@ -28,6 +59,8 @@ export default function AdminVendors() {
   const [lockReason, setLockReason] = useState("");
   const [penaltyAmount, setPenaltyAmount] = useState("");
   const [penaltyReason, setPenaltyReason] = useState("");
+  const [applyingPenalty, setApplyingPenalty] = useState(false);
+  const [lockingVendor, setLockingVendor] = useState(false);
 
   const fetchVendors = async () => {
     try {
@@ -116,8 +149,11 @@ export default function AdminVendors() {
     }
   };
 
+  const isLockingRef = useRef(false);
   const handleLock = async () => {
-    if (!lockModal.vendorId || !lockReason.trim()) return;
+    if (!lockModal.vendorId || !lockReason.trim() || isLockingRef.current) return;
+    isLockingRef.current = true;
+    setLockingVendor(true);
     try {
       await api.patch(`/companies/admin/${lockModal.vendorId}/lock`, { reason: lockReason });
       showToast("Vendor locked.");
@@ -126,11 +162,17 @@ export default function AdminVendors() {
       fetchVendors();
     } catch (err: any) {
       showToast(err.response?.data?.message || "Failed to lock.", "error");
+    } finally {
+      setLockingVendor(false);
+      isLockingRef.current = false;
     }
   };
 
+  const isApplyingPenaltyRef = useRef(false);
   const handlePenalty = async () => {
-    if (!penaltyModal.vendorId || !penaltyAmount || !penaltyReason.trim()) return;
+    if (!penaltyModal.vendorId || !penaltyAmount || !penaltyReason.trim() || isApplyingPenaltyRef.current) return;
+    isApplyingPenaltyRef.current = true;
+    setApplyingPenalty(true);
     try {
       await api.post(`/companies/admin/${penaltyModal.vendorId}/penalty`, { amount: Number(penaltyAmount), reason: penaltyReason });
       showToast("Penalty applied.");
@@ -140,6 +182,9 @@ export default function AdminVendors() {
       fetchVendors();
     } catch (err: any) {
       showToast(err.response?.data?.message || "Failed to apply penalty.", "error");
+    } finally {
+      setApplyingPenalty(false);
+      isApplyingPenaltyRef.current = false;
     }
   };
 
@@ -147,12 +192,13 @@ export default function AdminVendors() {
     total: vendors.length,
     active: vendors.filter(v => v.status === "APPROVED" && !v.isLocked).length,
     pending: vendors.filter(v => v.status === "PENDING").length,
+    onHold: vendors.filter(v => v.status === "BLOCKED").length,
     locked: vendors.filter(v => v.isLocked).length,
   };
 
   const filtered = vendors
     .filter(v => statusFilter === "all" || v.status === statusFilter)
-    .filter(v => v.name.toLowerCase().includes(search.toLowerCase()));
+    .filter(v => (v.name?.toLowerCase() || "").includes(search.toLowerCase()));
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto relative pb-20 px-4 sm:px-6 lg:px-8">
@@ -169,9 +215,16 @@ export default function AdminVendors() {
         )}
       </AnimatePresence>
 
-      <div>
-        <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">Vendor Management</h2>
-        <p className="text-[color:var(--color-on-surface-variant)] mt-1">Review vendor applications, monitor performance, and manage risk controls.</p>
+      <div className="flex justify-between items-end">
+        <div>
+          <h2 className="text-3xl font-headline font-extrabold tracking-tight text-[color:var(--color-on-surface)]">Vendor Management</h2>
+          <p className="text-[color:var(--color-on-surface-variant)] mt-1">Review vendor applications, monitor performance, and manage risk controls.</p>
+        </div>
+        <button onClick={() => exportVendorsCSV(vendors)}
+          className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-5 py-2.5 rounded-xl font-bold hover:opacity-80 transition-opacity text-sm border border-slate-200 dark:border-slate-700">
+          <span className="material-symbols-outlined text-lg">download</span>
+          Export CSV
+        </button>
       </div>
 
       {/* Stats */}
@@ -204,10 +257,10 @@ export default function AdminVendors() {
             className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#1E8E3E]/20 focus:border-[#1E8E3E] transition-all" />
         </div>
         <div className="flex gap-1 p-1 bg-slate-100 dark:bg-slate-800/50 rounded-xl w-full sm:w-fit">
-          {(["all", "APPROVED", "PENDING", "REJECTED"] as const).map(f => (
+          {(["all", "APPROVED", "PENDING", "BLOCKED", "REJECTED"] as const).map(f => (
             <button key={f} onClick={() => setStatusFilter(f)}
               className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${statusFilter === f ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}>
-              {f}
+              {f === "BLOCKED" ? "ON HOLD" : f}
             </button>
           ))}
         </div>
@@ -230,8 +283,13 @@ export default function AdminVendors() {
                     {vendor.name.charAt(0)}
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase ${vendor.status === "APPROVED" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : vendor.status === "REJECTED" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"} group-hover:bg-white/20 group-hover:text-white`}>
-                      {vendor.status}
+                    <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase ${
+                      vendor.status === "APPROVED" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" : 
+                      vendor.status === "REJECTED" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" : 
+                      vendor.status === "BLOCKED" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" : 
+                      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+                    } group-hover:bg-white/20 group-hover:text-white`}>
+                      {vendor.status === "BLOCKED" ? "ON HOLD" : vendor.status}
                     </span>
                     {vendor.isLocked && (
                       <span className="text-[10px] px-2.5 py-1 rounded-full font-black uppercase bg-red-600 text-white flex items-center gap-1 shadow-sm">
@@ -338,8 +396,13 @@ export default function AdminVendors() {
                     {detailData?.name || selectedVendor.name}
                   </h3>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase ${selectedVendor.status === "APPROVED" ? "bg-emerald-100 text-emerald-700" : selectedVendor.status === "REJECTED" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
-                      {selectedVendor.status}
+                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase ${
+                      selectedVendor.status === "APPROVED" ? "bg-emerald-100 text-emerald-700" : 
+                      selectedVendor.status === "REJECTED" ? "bg-red-100 text-red-700" : 
+                      selectedVendor.status === "BLOCKED" ? "bg-orange-100 text-orange-700" : 
+                      "bg-amber-100 text-amber-700"
+                    }`}>
+                      {selectedVendor.status === "BLOCKED" ? "ON HOLD" : selectedVendor.status}
                     </span>
                     <span className="text-[10px] text-slate-400 font-bold">#{selectedVendor.id.substring(0, 8)}</span>
                   </div>
@@ -490,21 +553,23 @@ export default function AdminVendors() {
 
             {/* Footer — Decision Actions */}
             <div className="border-t border-slate-100 dark:border-slate-800 px-6 py-4 bg-white dark:bg-slate-900 rounded-b-2xl shrink-0">
-              {selectedVendor.status === "PENDING" && !pendingAction && (
+              {(selectedVendor.status === "PENDING" || selectedVendor.status === "BLOCKED") && !pendingAction && (
                 <div className="space-y-2">
                   <p className="text-xs font-black text-amber-700 uppercase tracking-widest flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-base text-amber-500">pending_actions</span>
-                    Pending Review — Take a Decision
+                    {selectedVendor.status === "PENDING" ? "Pending Review — Take a Decision" : "On Hold — Review Application"}
                   </p>
                   <div className="grid grid-cols-3 gap-3">
                     <button onClick={handleApprove} disabled={actionLoading}
                       className="py-3 rounded-xl bg-emerald-600 text-white font-black text-sm hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-md shadow-emerald-100 disabled:opacity-60">
                       <span className="material-symbols-outlined text-base">check_circle</span> Approve
                     </button>
-                    <button onClick={() => { setPendingAction("hold"); setPendingReason(""); }} disabled={actionLoading}
-                      className="py-3 rounded-xl bg-amber-50 text-amber-700 font-black text-sm hover:bg-amber-100 transition-all border border-amber-200 flex items-center justify-center gap-2 disabled:opacity-60">
-                      <span className="material-symbols-outlined text-base">pause_circle</span> Hold
-                    </button>
+                    {selectedVendor.status !== "BLOCKED" && (
+                      <button onClick={() => { setPendingAction("hold"); setPendingReason(""); }} disabled={actionLoading}
+                        className="py-3 rounded-xl bg-amber-50 text-amber-700 font-black text-sm hover:bg-amber-100 transition-all border border-amber-200 flex items-center justify-center gap-2 disabled:opacity-60">
+                        <span className="material-symbols-outlined text-base">pause_circle</span> Hold
+                      </button>
+                    )}
                     <button onClick={() => { setPendingAction("reject"); setPendingReason(""); }} disabled={actionLoading}
                       className="py-3 rounded-xl bg-red-50 text-red-600 font-black text-sm hover:bg-red-600 hover:text-white transition-all border border-red-200 flex items-center justify-center gap-2 disabled:opacity-60">
                       <span className="material-symbols-outlined text-base">block</span> Reject
@@ -513,7 +578,7 @@ export default function AdminVendors() {
                 </div>
               )}
 
-              {selectedVendor.status === "PENDING" && pendingAction && (
+              {(selectedVendor.status === "PENDING" || selectedVendor.status === "BLOCKED") && pendingAction && (
                 <div className="space-y-3">
                   <p className={`text-xs font-black uppercase tracking-widest flex items-center gap-1.5 ${pendingAction === "hold" ? "text-amber-700" : "text-red-700"}`}>
                     <span className={`material-symbols-outlined text-base ${pendingAction === "hold" ? "text-amber-500" : "text-red-500"}`}>
@@ -541,7 +606,7 @@ export default function AdminVendors() {
                 </div>
               )}
 
-              {selectedVendor.status !== "PENDING" && (
+              {selectedVendor.status !== "PENDING" && selectedVendor.status !== "BLOCKED" && (
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-black uppercase tracking-widest text-slate-400">
                     Status: <span className={selectedVendor.status === "APPROVED" ? "text-emerald-600" : "text-red-600"}>{selectedVendor.status}</span>
@@ -560,7 +625,7 @@ export default function AdminVendors() {
       {/* ── Lock Modal ─────────────────────────────────────────── */}
       {lockModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-xl font-headline font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
               <span className="material-symbols-outlined text-red-600">lock</span> Lock Vendor Account
             </h3>
@@ -572,10 +637,12 @@ export default function AdminVendors() {
                 value={lockReason} onChange={e => setLockReason(e.target.value)} />
             </div>
             <div className="flex justify-end gap-3">
-              <button onClick={() => { setLockModal({ isOpen: false, vendorId: null }); setLockReason(""); }}
-                className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-              <button onClick={handleLock} disabled={!lockReason.trim()}
-                className="px-5 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50">Confirm Lock</button>
+              <button onClick={() => { setLockModal({ isOpen: false, vendorId: null }); setLockReason(""); }} disabled={lockingVendor}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Cancel</button>
+              <button onClick={handleLock} disabled={!lockReason.trim() || lockingVendor}
+                className="px-5 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50">
+                {lockingVendor ? "Locking..." : "Confirm Lock"}
+              </button>
             </div>
           </div>
         </div>
@@ -584,7 +651,7 @@ export default function AdminVendors() {
       {/* ── Penalty Modal ─────────────────────────────────────────── */}
       {penaltyModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-xl font-headline font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
               <span className="material-symbols-outlined text-orange-600">gavel</span> Apply Penalty
             </h3>
@@ -600,9 +667,11 @@ export default function AdminVendors() {
             </div>
             <div className="flex justify-end gap-3">
               <button onClick={() => { setPenaltyModal({ isOpen: false, vendorId: null }); setPenaltyAmount(""); setPenaltyReason(""); }}
-                className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50">Cancel</button>
-              <button onClick={handlePenalty} disabled={!penaltyAmount || !penaltyReason.trim()}
-                className="px-5 py-2.5 rounded-xl bg-orange-600 text-white text-sm font-bold hover:bg-orange-700 disabled:opacity-50">Apply Penalty</button>
+                className="px-5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50" disabled={applyingPenalty}>Cancel</button>
+              <button onClick={handlePenalty} disabled={!penaltyAmount || !penaltyReason.trim() || applyingPenalty}
+                className="px-5 py-2.5 rounded-xl bg-orange-600 text-white text-sm font-bold hover:bg-orange-700 disabled:opacity-50">
+                {applyingPenalty ? "Applying..." : "Apply Penalty"}
+              </button>
             </div>
           </div>
         </div>

@@ -42,7 +42,7 @@ const DOC_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function VendorPayments() {
-  const { currentUser } = useApp();
+  const { currentUser, refreshData } = useApp();
   const [auctions, setAuctions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ auctionId: string; pickupId: string | null; title: string } | null>(null);
@@ -52,6 +52,12 @@ export default function VendorPayments() {
   const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Penalty payment states
+  const [penaltyPayModal, setPenaltyPayModal] = useState<{ open: boolean; amount: number } | null>(null);
+  const [penaltyUtr, setPenaltyUtr] = useState("");
+  const [penaltyFile, setPenaltyFile] = useState<File | null>(null);
+  const [payingPenalty, setPayingPenalty] = useState(false);
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
@@ -130,6 +136,37 @@ export default function VendorPayments() {
     }
   };
 
+  const handlePayPenalty = async () => {
+    if (!penaltyPayModal || !penaltyUtr || !penaltyFile) return;
+    setPayingPenalty(true);
+    try {
+      const fd = new FormData();
+      fd.append("companyId", currentUser.companyId);
+      fd.append("amount", penaltyPayModal.amount.toString());
+      fd.append("utrNumber", penaltyUtr);
+      fd.append("file", penaltyFile);
+
+      await api.post("/payments/penalty", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      // Still clear it locally for immediate UI update
+      await api.patch(`/companies/${currentUser.companyId}`, { penaltyAmount: 0 });
+
+      showToast("Penalty payment submitted for verification. Outstanding balance cleared.");
+      setPenaltyPayModal(null);
+      setPenaltyUtr("");
+      setPenaltyFile(null);
+      
+      // refresh context data
+      await refreshData();
+    } catch (err: any) {
+      showToast(err.response?.data?.message || "Failed to process penalty payment", "error");
+    } finally {
+      setPayingPenalty(false);
+    }
+  };
+
   if (!currentUser) return null;
 
   return (
@@ -144,6 +181,28 @@ export default function VendorPayments() {
         <h2 className="text-2xl font-black text-slate-900 dark:text-white">Payments</h2>
         <p className="text-sm text-slate-500 mt-1">View payment details and upload proof of payment for auctions you have won.</p>
       </div>
+
+      {currentUser.penaltyAmount ? (
+        <div className="bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/50 flex items-center justify-center text-red-700 dark:text-red-400 shrink-0">
+              <span className="material-symbols-outlined text-2xl">warning</span>
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase text-red-600 dark:text-red-400 tracking-wider">Outstanding Penalty Balance</p>
+              <p className="text-2xl font-black text-red-800 dark:text-red-200 mt-0.5">{fmtINR(currentUser.penaltyAmount)}</p>
+              <p className="text-xs text-red-700/80 dark:text-red-400/80 mt-1">Please pay this balance here or it will be added to your next auction transaction.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setPenaltyPayModal({ open: true, amount: currentUser.penaltyAmount || 0 })}
+            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm flex items-center gap-1.5 shrink-0"
+          >
+            <span className="material-symbols-outlined text-sm">payment</span>
+            Pay Penalty Now
+          </button>
+        </div>
+      ) : null}
 
       {loading ? (
         <div className="py-20 text-center text-slate-400">
@@ -163,8 +222,10 @@ export default function VendorPayments() {
             const topBid = auction.bids?.[0];
             const winningAmount = payment?.clientAmount ?? topBid?.amount ?? auction.basePrice ?? 0;
             const commission = payment?.commissionAmount ?? Math.round(winningAmount * 0.05);
-            const total = winningAmount + commission;
             const status = payment?.status ?? "PENDING";
+            const hasPenalty = (status === "PENDING" || status === "REJECTED") && currentUser.penaltyAmount && currentUser.penaltyAmount > 0;
+            const totalWithoutPenalty = winningAmount + commission;
+            const total = totalWithoutPenalty + (hasPenalty ? currentUser.penaltyAmount : 0);
             const meta = PAYMENT_STATUS[status] ?? PAYMENT_STATUS.PENDING;
             const isExpanded = expandedId === auction.id;
 
@@ -248,8 +309,9 @@ export default function VendorPayments() {
                           {[
                             { label: "Amount to Client (Full Bid)", value: winningAmount, color: "text-emerald-700 font-black" },
                             { label: "Platform Commission (5%)", value: commission, color: "text-blue-700 font-bold" },
+                            hasPenalty ? { label: "Outstanding Penalty (Added)", value: currentUser.penaltyAmount || 0, color: "text-red-600 font-bold" } : null,
                             { label: "Total You Pay", value: total, color: "text-slate-900 dark:text-white font-black" },
-                          ].map(row => (
+                          ].filter((row): row is { label: string; value: number; color: string } => row !== null).map(row => (
                             <div key={row.label} className="flex justify-between items-center py-1.5 border-b border-slate-100 dark:border-slate-800 last:border-0">
                               <span className="text-sm text-slate-600 dark:text-slate-400">{row.label}</span>
                               <span className={`text-sm ${row.color}`}>{fmtINR(row.value)}</span>
@@ -440,13 +502,76 @@ export default function VendorPayments() {
               </button>
               <button
                 onClick={handleUpload}
-                disabled={!utr || uploading}
+                disabled={!uttr || uploading}
                 className="px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-black hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
               >
                 {uploading ? (
                   <><span className="material-symbols-outlined text-base animate-spin">progress_activity</span>Submitting...</>
                 ) : (
                   <><span className="material-symbols-outlined text-base">upload</span>Submit</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Penalty Payment Modal */}
+      {penaltyPayModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+            <div>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white">Pay Outstanding Penalty</h3>
+              <p className="text-xs text-slate-500 mt-1">Upload proof of payment to clear your penalty balance of {fmtINR(penaltyPayModal.amount)}.</p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">UTR / Transaction Reference Number <span className="text-red-500">*</span></label>
+                <input
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  placeholder="Enter UTR number"
+                  value={penaltyUtr}
+                  onChange={e => setPenaltyUtr(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Receipt Screenshot (optional)</label>
+                <div
+                  className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer hover:border-primary transition-colors ${penaltyFile ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20" : "border-slate-200 dark:border-slate-700"}`}
+                  onClick={() => document.getElementById("penalty-proof-input")?.click()}
+                >
+                  <input id="penalty-proof-input" type="file" accept="image/*,.pdf" className="hidden"
+                    onChange={e => setPenaltyFile(e.target.files?.[0] ?? null)} />
+                  {penaltyFile ? (
+                    <p className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{penaltyFile.name}</p>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-3xl text-slate-300 block mb-1">receipt</span>
+                      <p className="text-sm text-slate-500">Click to upload screenshot or PDF</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={() => { setPenaltyPayModal(null); setPenaltyUtr(""); setPenaltyFile(null); }}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePayPenalty}
+                disabled={!penaltyUtr || payingPenalty}
+                className="px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-black hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+              >
+                {payingPenalty ? (
+                  <><span className="material-symbols-outlined text-base animate-spin">progress_activity</span>Processing...</>
+                ) : (
+                  <><span className="material-symbols-outlined text-base">check_circle</span>Confirm Payment</>
                 )}
               </button>
             </div>

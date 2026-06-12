@@ -3,6 +3,7 @@ import { FirebaseService } from '../firebase/firebase.service';
 import { S3Service } from '../s3/s3.service';
 import { NotificationService } from '../notifications/notification.service';
 import { CompanyType, CompanyStatus, DocumentType, CompanyDoc, S3Document } from '../firebase/firestore-types';
+import * as admin from 'firebase-admin';
 
 @Injectable()
 export class CompaniesService {
@@ -327,9 +328,10 @@ export class CompaniesService {
       const primaryUser = usersSnap.docs[0].data();
       
       // Enable in Firebase Auth & set active in Firestore
-      await this.auth.updateUser(primaryUser.id, { disabled: false });
+      await this.auth.updateUser(primaryUser.id, { disabled: false }).catch(() => {});
       await this.db.collection('users').doc(primaryUser.id).update({
         isActive: true,
+        status: CompanyStatus.APPROVED,
         updatedAt: new Date(),
       });
 
@@ -368,9 +370,10 @@ export class CompaniesService {
       const primaryUser = usersSnap.docs[0].data();
       
       // Disable in Firebase Auth and deactivate in Firestore
-      await this.auth.updateUser(primaryUser.id, { disabled: true });
+      await this.auth.updateUser(primaryUser.id, { disabled: true }).catch(() => {});
       await this.db.collection('users').doc(primaryUser.id).update({
         isActive: false,
+        status: CompanyStatus.BLOCKED,
         updatedAt: new Date(),
       });
 
@@ -408,9 +411,10 @@ export class CompaniesService {
     if (!usersSnap.empty) {
       const primaryUser = usersSnap.docs[0].data();
       
-      await this.auth.updateUser(primaryUser.id, { disabled: true });
+      await this.auth.updateUser(primaryUser.id, { disabled: true }).catch(() => {});
       await this.db.collection('users').doc(primaryUser.id).update({
         isActive: false,
+        status: CompanyStatus.REJECTED,
         updatedAt: new Date(),
       });
 

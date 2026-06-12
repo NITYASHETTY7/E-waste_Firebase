@@ -97,3 +97,21 @@ export class SubmitSealedBidDto {
   @IsOptional()
   remarks?: string;
 }
+
+export class GenerateDocsDto {
+  @IsString()
+  @IsOptional()
+  paymentTerms?: string;
+
+  @IsString()
+  @IsOptional()
+  deliveryTerms?: string;
+
+  @IsString()
+  @IsOptional()
+  penaltyClause?: string;
+
+  @IsString()
+  @IsOptional()
+  specialConditions?: string;
+}

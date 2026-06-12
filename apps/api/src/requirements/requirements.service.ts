@@ -569,10 +569,35 @@ export class RequirementsService {
 
   // REJECT REQUIREMENT
   async reject(id: string, reason?: string) {
-    await this.firebaseService.db.collection('requirements').doc(id).update({
+    const reqRef = this.firebaseService.db.collection('requirements').doc(id);
+    const reqSnap = await reqRef.get();
+    if (!reqSnap.exists) throw new NotFoundException('Requirement not found');
+    const req = reqSnap.data() as any;
+
+    await reqRef.update({
       status: RequirementStatus.REJECTED,
       updatedAt: new Date(),
     });
+
+    const clientUsersSnap = await this.firebaseService.db.collection('users')
+      .where('companyId', '==', req.clientId)
+      .get();
+    const clientUsers = clientUsersSnap.docs.map((d: any) => ({ id: d.id, ...d.data() as any }));
+
+    const msg = `Your listing "${req.title}" has been rejected.${reason ? ` Reason: ${reason}` : ''}`;
+    await Promise.all(
+      clientUsers.map(async (u: any) => {
+        await this.createInAppNotification(
+          u.id,
+          'listing_rejected',
+          'Listing Rejected',
+          msg,
+          '/client/listings',
+        );
+        await this.notifications.notifyListingRejected(u.email, u.name, req.title, reason).catch(() => {});
+      }),
+    );
+
     return this.findOne(id);
   }
 
@@ -1449,6 +1474,11 @@ export class RequirementsService {
 
     const key = field === 'raw' ? req.rawS3Key : req.processedS3Key;
     if (!key) throw new NotFoundException('File not found');
-    return { url: await this.s3.getSignedUrl(key) };
+
+    const ext = key.split('.').pop();
+    const downloadName = `${req.title.replace(/[^a-z0-9]/gi, '_')}_${field}_list.${ext}`;
+    
+    return { url: await this.s3.getSignedUrl(key, undefined, 3600) };
   }
 }
+

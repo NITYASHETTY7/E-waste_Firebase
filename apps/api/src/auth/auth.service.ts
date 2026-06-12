@@ -11,6 +11,7 @@ import { LoginDto, RegisterDto } from './auth.dto';
 import { OtpService } from './otp.service';
 import { NotificationService } from '../notifications/notification.service';
 import { CompanyType, CompanyStatus } from '../firebase/firestore-types';
+import * as admin from 'firebase-admin';
 
 @Injectable()
 export class AuthService {
@@ -49,7 +50,10 @@ export class AuthService {
     // Check for an incomplete registration to resume
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) {
-      if (existing.isActive)
+      if ((existing as any).status === 'REJECTED') {
+         throw new ConflictException('Your previous account application was rejected. You cannot register again with this email.');
+      }
+      if (existing.isActive || (existing as any).status === 'APPROVED')
         throw new ConflictException('Email already registered');
 
       // Resuming incomplete registration
@@ -169,8 +173,6 @@ export class AuthService {
 
     if (!hasBasicDetails) return 1;
 
-    // We can query KYC subcollection or check fields if any
-    // Note: For now we'll assume they have upload if company is linked and resumeStep handles it
     return 2;
   }
 
@@ -180,13 +182,20 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // In Firebase Auth, clients authenticate directly with Firebase Client SDK,
-    // which generates the secure idToken. The backend `/auth/login` serves as a generator 
-    // for Custom Login Tokens which clients can use to log in!
+    if ((user as any).status === 'REJECTED' || user.company?.status === CompanyStatus.REJECTED) {
+      throw new UnauthorizedException('Your account application has been rejected. You cannot sign in or register again with this email.');
+    }
+
+    if (user.role === 'ADMIN' && user.isActive) {
+      return this.buildResponse(user);
+    }
+
     if (user.isActive === false || user.company?.status === CompanyStatus.PENDING) {
-      throw new UnauthorizedException(
-        'Your account is pending admin approval. Check your email for updates.',
-      );
+      const isBlocked = (user as any).status === 'BLOCKED' || user.company?.status === CompanyStatus.BLOCKED;
+      const msg = isBlocked 
+        ? 'Your account has been placed on hold. Check your email for updates.' 
+        : 'Your account is pending admin approval. Check your email for updates.';
+      throw new UnauthorizedException(msg);
     }
 
     return this.buildResponse(user);
@@ -206,18 +215,7 @@ export class AuthService {
 
     await this.db.collection('users').doc(user.id).update(updateData);
 
-    // Activate account once both email and phone are verified
-    const freshDoc = await this.db.collection('users').doc(user.id).get();
-    const fresh = freshDoc.data() as any;
-
-    if (fresh?.emailVerified && fresh?.phoneVerified) {
-      if (fresh.role !== 'USER') {
-        await this.db.collection('users').doc(user.id).update({
-          isActive: true,
-          updatedAt: new Date(),
-        });
-      }
-    }
+    // Account activation is now manual
   }
 
   async forgotPassword(

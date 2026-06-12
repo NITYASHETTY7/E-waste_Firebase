@@ -155,7 +155,7 @@ export default function AuctionEntryPage() {
   const progressPct = Math.round((uploadedCount / totalDocs) * 100);
 
   return (
-    <div className="max-w-4xl mx-auto pb-20 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-4xl mx-auto pb-20 px-4 sm:px-6 lg:px-8 py-6">
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
@@ -166,14 +166,14 @@ export default function AuctionEntryPage() {
             >
               <span className="material-symbols-outlined text-base">arrow_back</span>
             </button>
-            <span className="text-[9px] font-black uppercase tracking-widest text-[color:var(--color-primary)] bg-[color:var(--color-secondary-container)] px-2 py-0.5 rounded-full">
+            <span className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
               Auction Entry
             </span>
           </div>
-          <h1 className="text-2xl font-headline font-extrabold text-[color:var(--color-on-surface)] tracking-tight">
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
             Document Verification Gate
           </h1>
-          <p className="text-[color:var(--color-on-surface-variant)] text-sm mt-1">
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
             Upload the required documents below to enter the live auction.
           </p>
         </div>
@@ -188,7 +188,7 @@ export default function AuctionEntryPage() {
       </div>
 
       {/* Lot info card */}
-      <div className="card p-5 mb-6 bg-slate-900 text-white relative overflow-hidden">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 mb-8 text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
           <span className="material-symbols-outlined text-[8rem]">gavel</span>
         </div>
@@ -228,7 +228,7 @@ export default function AuctionEntryPage() {
         </div>
         <div className="h-2 bg-slate-100 rounded-full overflow-hidden dark:bg-slate-800">
           <div
-            className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-500"
+            className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 rounded-full transition-all duration-500"
             style={{ width: `${progressPct}%` }}
           />
         </div>
@@ -243,12 +243,12 @@ export default function AuctionEntryPage() {
           return (
             <div
               key={doc.id}
-              className={`card p-5 flex items-start gap-4 transition-all ${
+              className={`bg-white dark:bg-slate-900 border rounded-2xl p-5 flex items-start gap-4 transition-all ${
                 uploaded
-                  ? "border-emerald-200 bg-emerald-50/50"
+                  ? "border-emerald-200 bg-emerald-50/20"
                   : doc.required
-                  ? "border-[color:var(--color-outline-variant)]"
-                  : "border-dashed border-[color:var(--color-outline-variant)] bg-slate-50/50"
+                  ? "border-slate-200 dark:border-slate-800"
+                  : "border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/30"
               }`}
             >
               {/* Icon */}
@@ -256,12 +256,11 @@ export default function AuctionEntryPage() {
                 className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                   uploaded
                     ? "bg-emerald-100 text-emerald-600"
-                    : "bg-[color:var(--color-surface-container-low)] text-[color:var(--color-on-surface-variant)]"
+                    : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                 }`}
               >
                 <span
                   className="material-symbols-outlined text-xl"
-                  style={uploaded ? { fontVariationSettings: "'FILL' 1" } : undefined}
                 >
                   {uploaded ? "check_circle" : doc.icon}
                 </span>
@@ -270,7 +269,7 @@ export default function AuctionEntryPage() {
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
-                  <p className="font-bold text-sm text-[color:var(--color-on-surface)]">
+                  <p className="font-bold text-sm text-slate-900 dark:text-white">
                     {doc.name}
                   </p>
                   {doc.required ? (
@@ -283,16 +282,16 @@ export default function AuctionEntryPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-[color:var(--color-on-surface-variant)]">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {doc.description}
                 </p>
 
                 {uploaded && (
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="material-symbols-outlined text-emerald-500 text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    <span className="material-symbols-outlined text-emerald-500 text-sm">
                       attach_file
                     </span>
-                    <span className="text-xs font-bold text-emerald-700 truncate max-w-[240px]">
+                    <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 truncate max-w-[240px]">
                       {uploaded.fileName}
                     </span>
                     <button
@@ -316,7 +315,7 @@ export default function AuctionEntryPage() {
                   </span>
                 ) : uploaded ? (
                   <span className="flex items-center gap-1 text-xs text-emerald-600 font-black uppercase tracking-wider">
-                    <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    <span className="material-symbols-outlined text-sm">
                       verified
                     </span>
                     Uploaded
@@ -333,7 +332,7 @@ export default function AuctionEntryPage() {
                         e.target.value = "";
                       }}
                     />
-                    <span className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border border-[color:var(--color-primary)]/30 text-[color:var(--color-primary)] hover:bg-[color:var(--color-secondary-container)] transition-all">
+                    <span className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest border border-blue-100 text-blue-600 hover:bg-blue-50 transition-all dark:border-blue-900/30 dark:text-blue-400">
                       <span className="material-symbols-outlined text-sm">upload</span>
                       Upload
                     </span>
@@ -346,7 +345,7 @@ export default function AuctionEntryPage() {
       </div>
 
       {/* Terms acceptance */}
-      <div className="card p-5 mb-6 border-slate-200 bg-slate-50 dark:bg-slate-950 dark:border-slate-700">
+      <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-6 rounded-3xl mb-8">
         <label className="flex items-start gap-3 cursor-pointer">
           <div className="mt-0.5">
             <input
@@ -356,24 +355,24 @@ export default function AuctionEntryPage() {
               className="hidden"
             />
             <div
-              className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
                 agreed
-                  ? "bg-[color:var(--color-primary)] border-[color:var(--color-primary)]"
-                  : "border-slate-300"
+                  ? "bg-blue-600 border-blue-600"
+                  : "border-slate-300 dark:border-slate-700"
               }`}
             >
               {agreed && (
-                <span className="material-symbols-outlined text-white text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <span className="material-symbols-outlined text-white text-base">
                   check
                 </span>
               )}
             </div>
           </div>
           <div>
-            <p className="text-sm font-bold text-[color:var(--color-on-surface)]">
+            <p className="text-sm font-bold text-slate-900 dark:text-white">
               I accept the Auction Terms & Conditions
             </p>
-            <p className="text-xs text-[color:var(--color-on-surface-variant)] mt-0.5 leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
               I confirm that all uploaded documents are authentic and legally valid. I understand that placing a bid constitutes a binding offer and that my EMD is subject to forfeiture in case of bid withdrawal post-confirmation.
             </p>
           </div>
@@ -382,28 +381,27 @@ export default function AuctionEntryPage() {
 
       {/* Error */}
       {error && (
-        <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-100 rounded-xl mb-4 text-sm text-red-600 font-bold">
+        <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl mb-6 text-xs text-red-600 font-bold">
           <span className="material-symbols-outlined text-base">error</span>
           {error}
         </div>
       )}
 
       {/* Proceed button */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-4">
         <button
           onClick={() => router.back()}
-          className="btn-outline flex-1 py-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2"
+          className="flex-1 py-4 border border-slate-200 dark:border-slate-800 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
         >
-          <span className="material-symbols-outlined text-sm">arrow_back</span>
           Cancel
         </button>
         <button
           onClick={handleProceed}
           disabled={!canProceed || submitting}
-          className={`flex-[2] py-4 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all
+          className={`flex-[2] py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all
             ${canProceed
-              ? "btn-primary shadow-[0_0_30px_rgba(0,122,110,0.25)] hover:shadow-[0_0_40px_rgba(0,122,110,0.35)]"
-              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20 hover:bg-blue-700"
+              : "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-slate-800"
             }`}
         >
           {submitting ? (

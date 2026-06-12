@@ -25,8 +25,8 @@ export default function AdminDashboard() {
   );
 
   const vendors = users.filter(u => u.role === "vendor");
-  const liveAuctions = listings.filter(l => l.auctionPhase === 'live');
-  const completedListings = listings.filter(l => l.status === 'completed');
+  const liveAuctions = listings.filter(l => l.auctionPhase === 'live' || l.auctionPhase === 'sealed_bid');
+  const completedListings = listings.filter(l => l.status === 'completed' || l.auctionPhase === 'completed');
   const acceptedBids = bids.filter(b => b.status === "accepted");
   const totalRevenue = acceptedBids.reduce((sum, b) => sum + b.amount, 0);
 
@@ -39,19 +39,15 @@ export default function AdminDashboard() {
           title="Total Revenue (MTD)"
           value={`₹${(totalRevenue / 100000).toFixed(1)}L`}
           icon="payments"
-          trend={{ value: 18.6, isPositive: true }}
           variant="violet"
-          chartData={[{ v: 38 }, { v: 55 }, { v: 42 }, { v: 68 }, { v: 60 }, { v: 82 }, { v: 95 }]}
           delay={1}
-          href="/admin/transactions"
+          href="/admin/bidding"
         />
         <KpiCard
           title="Total Requests"
           value={listings.length}
           icon="inventory_2"
-          trend={{ value: 12.4, isPositive: true }}
           variant="blue"
-          chartData={[{ v: 30 }, { v: 45 }, { v: 35 }, { v: 58 }, { v: 50 }, { v: 70 }, { v: 80 }]}
           delay={2}
           href="/admin/listings"
         />
@@ -59,9 +55,7 @@ export default function AdminDashboard() {
           title="Active Auctions"
           value={liveAuctions.length}
           icon="sensors"
-          trend={{ value: 5, isPositive: true }}
           variant="emerald"
-          chartData={[{ v: 4 }, { v: 7 }, { v: 5 }, { v: 10 }, { v: 8 }, { v: 14 }, { v: 18 }]}
           delay={3}
           href="/admin/auctions"
         />
@@ -69,9 +63,7 @@ export default function AdminDashboard() {
           title="Completed Pickups"
           value={completedListings.length}
           icon="local_shipping"
-          trend={{ value: 23.7, isPositive: true }}
           variant="amber"
-          chartData={[{ v: 18 }, { v: 32 }, { v: 25 }, { v: 48 }, { v: 55 }, { v: 72 }, { v: 89 }]}
           delay={4}
           href="/admin/reconciliation"
         />
@@ -79,9 +71,7 @@ export default function AdminDashboard() {
           title="Total Vendors"
           value={vendors.length}
           icon="recycling"
-          trend={{ value: 8, isPositive: true }}
           variant="teal"
-          chartData={[{ v: 35 }, { v: 50 }, { v: 58 }, { v: 68 }, { v: 80 }, { v: 100 }, { v: 120 }]}
           delay={5}
           href="/admin/vendors"
         />
@@ -114,18 +104,16 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Right column: Activity feed (3 cols) */}
-        <div className="col-span-12 lg:col-span-3 h-fit lg:sticky lg:top-[96px] z-20">
+        {/* Right column: Activity feed + Quick Actions (3 cols) */}
+        <div className="col-span-12 lg:col-span-3 space-y-5 h-fit lg:sticky lg:top-[96px] z-20">
           <RealTimeActivityFeed />
+          <QuickActionsGrid />
         </div>
       </div>
 
-      {/* ── Row 4: Quick Actions + AI Insights ── */}
+      {/* ── Row 4: AI Insights (Now full width for prominence) ── */}
       <div className="grid grid-cols-12 gap-5">
-        <div className="col-span-12 lg:col-span-5">
-          <QuickActionsGrid />
-        </div>
-        <div className="col-span-12 lg:col-span-7 min-h-[200px]">
+        <div className="col-span-12 min-h-[200px]">
           <AiInsightsCard />
         </div>
       </div>

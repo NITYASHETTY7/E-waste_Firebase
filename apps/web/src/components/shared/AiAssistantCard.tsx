@@ -1,33 +1,39 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 export function AiAssistantCard() {
+  const router = useRouter();
+
   return (
-    <div className="mx-4 mt-6 p-5 rounded-3xl bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 relative overflow-hidden shadow-xl shadow-indigo-500/20 group cursor-default">
-      {/* Decorative Orbs */}
-      <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-125 transition-transform duration-700" />
-      <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-purple-400/20 rounded-full blur-xl animate-pulse" />
+    <div className="mx-4 mt-6 p-5 rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group">
+      {/* Decorative background elements */}
+      <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
+      <div className="absolute -left-8 -bottom-8 w-32 h-32 bg-indigo-400/10 rounded-full blur-3xl" />
       
       <div className="relative z-10">
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-md flex items-center justify-center">
-            <span className="material-symbols-outlined text-white text-lg animate-bounce">auto_awesome</span>
+          <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center">
+            <span className="material-symbols-outlined text-sm">smart_toy</span>
           </div>
-          <span className="text-white font-bold text-sm tracking-tight">AI Assistant</span>
-          <div className="ml-auto flex gap-0.5">
-            {[1,2].map(i => <div key={i} className="w-1 h-1 rounded-full bg-white/40" />)}
-          </div>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">AI Power</span>
         </div>
         
-        <p className="text-white/80 text-[10px] font-medium leading-relaxed mb-4 pr-2">
-          Get insights and automate your daily tasks with our new smart assistant.
+        <h4 className="text-lg font-headline font-bold leading-tight mb-2">
+          Need help with <br/> platform data?
+        </h4>
+        
+        <p className="text-[11px] text-indigo-100 font-medium leading-relaxed mb-5 opacity-90">
+          Ask our AI assistant about collections, vendor performance, or compliance rules.
         </p>
         
-        <button className="w-full h-9 bg-white text-indigo-600 rounded-xl text-xs font-black flex items-center justify-center gap-2 hover:bg-slate-50 active:scale-95 transition-all shadow-lg dark:bg-slate-900">
+        <button 
+          onClick={() => router.push("/admin/ai-assistant")}
+          className="w-full py-2.5 bg-white text-indigo-700 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-colors shadow-lg shadow-black/5 flex items-center justify-center gap-2 group/btn"
+        >
           Ask AI Assistant
-          <span className="material-symbols-outlined text-sm">arrow_forward</span>
+          <span className="material-symbols-outlined text-sm group-hover/btn:translate-x-1 transition-transform">arrow_forward</span>
         </button>
       </div>
     </div>

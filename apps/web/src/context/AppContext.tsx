@@ -621,63 +621,77 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const auctionEndDate = req.auction?.openPhaseEnd
       ? new Date(req.auction.openPhaseEnd).toISOString()
       : undefined;
-      
+
     const liveApprovalStatus = req.auction?.liveApprovalStatus;
 
     return {
       id: req.id,
       title: req.title,
-      description: req.description || '',
+      description: req.description,
       category: req.category || req.auction?.category || 'General',
       weight: req.totalWeight || req.auction?.totalWeight || 0,
-      location: req.client?.city || 'Unknown',
-      userId: req.client?.users?.[0]?.id || req.clientId,
-      userName: req.client?.name,
+      location: req.siteAddress || req.client?.city || 'Various',
+      status: req.status === 'APPROVED' || req.status === 'FINALIZED' ? 'active' : 'pending',
+      userId: req.clientId,
+      userName: req.client?.name || 'Company Client',
       createdAt: req.createdAt,
-      auctionPhase,
-      status: req.status === 'FINALIZED' ? 'active' : 'pending',
-      targetPrice: req.targetPrice,
-      basePrice: req.auction?.basePrice,
-      bidIncrement: req.auction?.tickSize,
-      maximumTickSize: req.auction?.maxTicks,
-      extensionTime: req.auction?.extensionMinutes,
+      urgency: req.urgency || 'medium',
+      auctionPhase: auctionPhase as any,
+      basePrice: req.auction?.basePrice || 0,
+      bidIncrement: req.auction?.bidIncrement || req.auction?.tickSize || 1000,
+      highestEmdAmount: req.auction?.highestEmdAmount || 0,
+      invitedVendorIds: (req.vendorInvites || []).map((v: any) => v.vendorId),
+      acceptedVendorIds: req.acceptedVendorIds ?? [],
+      declinedVendorIds: req.declinedVendorIds ?? [],
+      sealedBidStartDate: req.auction?.sealedPhaseStart || req.sealedPhaseStart,
+      sealedBidEndDate: req.auction?.sealedPhaseEnd || req.sealedPhaseEnd,
+      auctionStartDate,
+      auctionEndDate,
       requirementId: req.id,
       auctionId: req.auction?.id,
       liveConfigured: liveApprovalStatus === 'approved',
       requirementStatus: statusMap[req.status] ?? undefined,
-      processedSheetUrl: req.processedS3Key ? undefined : undefined,
-      invitedVendorIds: req.invitedVendorIds ?? [],
-      acceptedVendorIds: req.acceptedVendorIds ?? [],
-      declinedVendorIds: req.declinedVendorIds ?? [],
-      sealedBidStartDate: req.sealedPhaseStart,
-      sealedBidEndDate: req.sealedPhaseEnd,
-      auctionStartDate,
-      auctionEndDate,
+      poStatus: req.auction?.poNumber ? 'issued' : undefined,
+      poNumber: req.auction?.poNumber,
+      poPaymentTerms: req.auction?.poPaymentTerms,
+      poDeliveryTerms: req.auction?.poDeliveryTerms,
+      poPenaltyClause: req.auction?.poPenaltyClause,
+      poSpecialConditions: req.auction?.poSpecialConditions,
+    } as Listing;
+  };
+
+  const mapUserProductToListing = (p: any): Listing => {
+    return {
+      id: p.id,
+      title: p.name,
+      description: p.description || '',
+      category: p.category || 'Individual',
+      weight: p.weightKg || 0,
+      location: p.city || 'Unknown',
+      userId: p.userId,
+      userName: p.user?.name || 'Individual User',
+      createdAt: p.createdAt,
+      auctionPhase: p.status === 'COMPLETED' ? 'completed' : 'live',
+      status: p.status === 'COMPLETED' ? 'completed' : 'active',
+      targetPrice: p.askingPrice,
+      requirementId: p.id,
+      requirementStatus: p.status,
+      images: p.photoUrls || [],
     } as Listing;
   };
 
   const mapBackendUser = (u: any): User => {
-    const companyStatus = u.company?.status;
-    let status: User['status'] = 'pending';
-    if (companyStatus === 'APPROVED') status = 'active';
-    else if (companyStatus === 'REJECTED') status = 'rejected';
-    else if (companyStatus === 'BLOCKED') status = 'on-hold';
-    else if (!u.companyId && u.isActive) status = 'active'; // ADMIN/USER roles without company
-
-    const roleMap: Record<string, User['role']> = {
-      CLIENT: 'client', VENDOR: 'vendor', ADMIN: 'admin', USER: 'user',
-    };
-
+    if (!u) return {} as User;
     return {
       id: u.id,
       name: u.name,
       email: u.email,
       phone: u.phone,
-      role: roleMap[u.role] ?? 'guest',
-      status,
+      role: (u.role || 'guest').toLowerCase() as UserRole,
       companyId: u.companyId,
+      status: u.isActive ? 'active' : 'pending',
+      onboardingStep: u.companyId ? 5 : 1,
       registeredAt: u.createdAt,
-      onboardingStep: u.onboardingStep ?? 1,
       onboardingProfile: u.company ? {
         companyName: u.company.name,
         contactPerson: u.name,
@@ -687,14 +701,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         city: u.company.city || '',
         state: u.company.state || '',
         pincode: u.company.pincode || '',
+        gstin: u.company.gstNumber || '',
+        industrySector: u.company.industrySector || '',
       } : undefined,
-    };
+    } as User;
   };
 
   const fetchAllData = async () => {
     try {
-      const [requirementsRes, bidsRes, usersRes, auctionsRes, auditsRes, notificationsRes] = await Promise.all([
+      const [requirementsRes, userProductsRes, bidsRes, usersRes, auctionsRes, auditsRes, notificationsRes] = await Promise.all([
         api.get('/requirements').catch(() => ({ data: [] })),
+        api.get('/user-products/admin/all').catch(() => ({ data: [] })),
         api.get('/auctions/bids').catch(() => ({ data: [] })),
         api.get('/users').catch(() => ({ data: [] })),
         api.get('/auctions').catch(() => ({ data: [] })),
@@ -702,14 +719,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         api.get('/notifications').catch(() => ({ data: [] })),
       ]);
 
-      const backendListings = (requirementsRes.data || []).map(mapRequirementToListing);
+      const backendListings = [
+        ...(requirementsRes.data || []).map(mapRequirementToListing),
+        ...(userProductsRes.data || []).map(mapUserProductToListing),
+      ];
       
       const backendBidsRaw = bidsRes.data || [];
       const bidsByAuction: Record<string, any[]> = {};
       const backendBids = backendBidsRaw.map((b: any) => {
         return {
           ...b,
+          vendorName: b.vendorName || b.vendor?.name || b.vendor?.company?.name || 'Unknown Vendor',
           status: 'pending',
+          type: b.phase?.toLowerCase() || 'open',
           listingId: b.auction?.requirementId || b.auctionId,
         };
       });

@@ -8,12 +8,12 @@ import { useRouter } from "next/navigation";
 import api from "@/lib/api";
 
 export default function VendorProfile() {
-  const { currentUser, bids, listings, updateUserProfile, changePassword, deleteAccount } = useApp();
+  const { currentUser, bids, listings, updateUserProfile, changePassword, deleteAccount, refreshData } = useApp();
   const router = useRouter();
   const profile = currentUser?.onboardingProfile;
   const docs = currentUser?.documents || [];
   
-  const [tab, setTab] = useState<"profile" | "documents" | "stats" | "settings">("profile");
+  const [tab, setTab] = useState<"profile" | "documents" | "transactions" | "stats" | "settings">("profile");
   const [isEditing, setIsEditing] = useState(false);
   const [kycDocs, setKycDocs] = useState<any[]>([]);
   const [loadingKyc, setLoadingKyc] = useState(false);
@@ -21,11 +21,27 @@ export default function VendorProfile() {
   const [editData, setEditData] = useState({
     name: currentUser?.name || '',
     email: currentUser?.email || '',
-    phone: currentUser?.phone || ''
+    phone: currentUser?.phone || '',
+    companyName: profile?.companyName || '',
+    cpcbNo: profile?.cpcbNo || '',
+    capacity: profile?.processingCapacity || '',
+    companyReg: profile?.companyRegistrationNo || '',
+    city: profile?.city || '',
+    state: profile?.state || '',
+    address: profile?.address || '',
   });
+
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
+  const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
+  const [txHistory, setTxHistory] = useState<any[]>([]);
+  const [txLoading, setTxLoading] = useState(false);
+
+  const showFeedback = (type: 'success' | 'error', msg: string) => {
+    setFeedback({ type, msg });
+    setTimeout(() => setFeedback(null), 3000);
+  };
 
   useEffect(() => {
     if (tab === "documents" && currentUser?.companyId && kycDocs.length === 0) {
@@ -34,6 +50,13 @@ export default function VendorProfile() {
         .then(res => setKycDocs(res.data?.kycDocuments || []))
         .catch(() => {})
         .finally(() => setLoadingKyc(false));
+    }
+    if (tab === "transactions" && currentUser?.companyId) {
+      setTxLoading(true);
+      api.get(`/payments/by-company/${currentUser.companyId}`)
+        .then(r => setTxHistory(r.data ?? []))
+        .catch(() => {})
+        .finally(() => setTxLoading(false));
     }
   }, [tab, currentUser?.companyId]);
 
@@ -47,37 +70,96 @@ export default function VendorProfile() {
     finally { setUrlLoading(null); }
   };
 
-  const myBids = bids.filter(b => b.vendorId === currentUser?.id);
-  const wonBids = myBids.filter(b => b.status === "accepted");
-  const totalPurchase = wonBids.reduce((s, b) => s + b.amount, 0);
-  const winRate = myBids.length > 0 ? Math.round((wonBids.length / myBids.length) * 100) : 0;
-
-  const handleUpdateProfile = (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateUserProfile({ name: editData.name, email: editData.email, phone: editData.phone });
-    setIsEditing(false);
-    showFeedback('success', 'Profile updated successfully.');
+    try {
+      // 1. Update User Record
+      await updateUserProfile({ name: editData.name, email: editData.email, phone: editData.phone });
+      
+      // 2. Update Company Record if exists
+      if (currentUser?.companyId) {
+        await api.patch(`/companies/${currentUser.companyId}`, {
+          name: editData.companyName || editData.name,
+          address: editData.address,
+          city: editData.city,
+          state: editData.state,
+          cpcbNo: editData.cpcbNo,
+          processingCapacity: editData.capacity,
+          companyRegistrationNo: editData.companyReg,
+        });
+      }
+
+      setIsEditing(false);
+      showFeedback('success', 'Profile and credentials updated successfully.');
+      // Refresh context data to reflect changes everywhere
+      await refreshData();
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Failed to update profile.';
+      showFeedback('error', msg);
+    }
   };
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwords.new !== passwords.confirm) {
       showFeedback('error', 'Passwords do not match.');
       return;
     }
-    changePassword(passwords.new);
-    setPasswords({ current: '', new: '', confirm: '' });
-    showFeedback('success', 'Password changed successfully.');
+    if (passwords.new.length < 8) {
+      showFeedback('error', 'New password must be at least 8 characters.');
+      return;
+    }
+    
+    try {
+      await changePassword(passwords.new, passwords.current);
+      setPasswords({ current: '', new: '', confirm: '' });
+      showFeedback('success', 'Password changed successfully.');
+    } catch (err: any) {
+      showFeedback('error', err.response?.data?.message || 'Failed to change password.');
+    }
+  };
+
+  const myBids = bids.filter(b => b.vendorId === currentUser?.id);
+  const wonBids = myBids.filter(b => b.status === "accepted");
+  const totalPurchase = wonBids.reduce((s, b) => s + b.amount, 0);
+  const winRate = myBids.length > 0 ? Math.round((wonBids.length / myBids.length) * 100) : 0;
+
+  const handleDownloadAudit = () => {
+    const reportData = [
+      ["Performance Audit Report", ""],
+      ["Date", new Date().toLocaleDateString()],
+      ["Vendor", currentUser?.name || ""],
+      ["", ""],
+      ["Metric", "Value"],
+      ["Bids Placed", myBids.length],
+      ["Bids Won", wonBids.length],
+      ["Success Rate", `${winRate}%`],
+      ["Total Purchase", `₹${totalPurchase.toLocaleString()}`],
+      ["", ""],
+      ["Recent Wins", ""],
+      ...wonBids.map(b => {
+        const l = listings.find(lst => lst.id === b.listingId);
+        return [l?.title || "Unknown Lot", `₹${b.amount.toLocaleString()}`];
+      })
+    ];
+
+    const csvContent = "\uFEFF" + reportData.map(row => 
+      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(",")
+    ).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `Performance_Audit_${currentUser?.name?.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleDeleteAccount = () => {
     deleteAccount();
     router.push('/');
-  };
-
-  const showFeedback = (type: 'success' | 'error', msg: string) => {
-    setFeedback({ type, msg });
-    setTimeout(() => setFeedback(null), 3000);
   };
 
   return (
@@ -109,6 +191,7 @@ export default function VendorProfile() {
           {[
             { id: "profile", label: "Business Credentials", icon: "badge" },
             { id: "documents", label: "Certifications", icon: "verified" },
+            { id: "transactions", label: "Transaction History", icon: "receipt_long" },
             { id: "stats", label: "Performance Audit", icon: "analytics" },
             { id: "settings", label: "Account Settings", icon: "settings" },
           ].map((t) => (
@@ -165,6 +248,46 @@ export default function VendorProfile() {
                         onChange={e => setEditData(prev => ({ ...prev, email: e.target.value }))}
                       />
                     </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">CPCB Authorization No</label>
+                      <input 
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-950 dark:border-slate-700"
+                        value={editData.cpcbNo}
+                        onChange={e => setEditData(prev => ({ ...prev, cpcbNo: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">Processing Capacity</label>
+                      <input 
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-950 dark:border-slate-700"
+                        value={editData.capacity}
+                        onChange={e => setEditData(prev => ({ ...prev, capacity: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">City</label>
+                      <input 
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-950 dark:border-slate-700"
+                        value={editData.city}
+                        onChange={e => setEditData(prev => ({ ...prev, city: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">State</label>
+                      <input 
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-950 dark:border-slate-700"
+                        value={editData.state}
+                        onChange={e => setEditData(prev => ({ ...prev, state: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">Business Address</label>
+                    <textarea 
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-950 dark:border-slate-700 min-h-[80px]"
+                      value={editData.address}
+                      onChange={e => setEditData(prev => ({ ...prev, address: e.target.value }))}
+                    />
                   </div>
                   <div className="flex gap-3">
                     <button type="submit" className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold">Save Changes</button>
@@ -240,6 +363,69 @@ export default function VendorProfile() {
             </div>
           )}
 
+          {tab === "transactions" && (
+            <div className="p-8 space-y-6 animate-fade-in">
+              <div>
+                <h4 className="text-xl font-black text-slate-900 dark:text-white">Transaction History</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">All auction payments where you were the winning bidder.</p>
+              </div>
+              {txLoading ? (
+                <div className="py-16 text-center">
+                  <span className="material-symbols-outlined text-4xl text-slate-200 animate-spin block mb-2">progress_activity</span>
+                  <p className="text-slate-400 text-sm">Loading transaction history...</p>
+                </div>
+              ) : txHistory.length === 0 ? (
+                <div className="py-16 text-center space-y-2">
+                  <span className="material-symbols-outlined text-5xl text-slate-200 block">receipt_long</span>
+                  <p className="text-slate-400 font-bold text-sm italic">No transactions yet.</p>
+                  <p className="text-slate-400 text-xs">Payment records appear here after you win auctions.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                        <th className="px-4 py-3">Auction / Lot</th>
+                        <th className="px-4 py-3">Client</th>
+                        <th className="px-4 py-3 text-right">Bid Amount</th>
+                        <th className="px-4 py-3 text-right">Total Paid</th>
+                        <th className="px-4 py-3">UTR / Ref</th>
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {txHistory.map((tx: any) => {
+                        const statusMap: Record<string, { label: string; cls: string }> = {
+                          PENDING:   { label: "Pending",   cls: "bg-amber-100 text-amber-700" },
+                          SUBMITTED: { label: "Submitted", cls: "bg-blue-100 text-blue-700" },
+                          CONFIRMED: { label: "Confirmed", cls: "bg-emerald-100 text-emerald-700" },
+                          REJECTED:  { label: "Rejected",  cls: "bg-red-100 text-red-700" },
+                        };
+                        const s = statusMap[tx.status] ?? statusMap.PENDING;
+                        return (
+                          <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                            <td className="px-4 py-3 font-bold text-slate-800 dark:text-slate-200 max-w-[160px] truncate" title={tx.auction?.title}>
+                              {tx.auction?.title ?? "—"}
+                            </td>
+                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{tx.auction?.client?.name ?? "—"}</td>
+                            <td className="px-4 py-3 font-black text-emerald-700 text-right">₹{(tx.clientAmount || 0).toLocaleString("en-IN")}</td>
+                            <td className="px-4 py-3 font-black text-slate-900 dark:text-white text-right">₹{(tx.totalAmount || 0).toLocaleString("en-IN")}</td>
+                            <td className="px-4 py-3 font-mono text-slate-500 text-[10px]">{tx.utrNumber ?? "—"}</td>
+                            <td className="px-4 py-3 text-slate-500">{new Date(tx.createdAt).toLocaleDateString("en-IN")}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase ${s.cls}`}>{s.label}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
           {tab === "stats" && (
             <div className="p-8 space-y-8 animate-fade-in">
               <div className="grid grid-cols-2 gap-4">
@@ -249,7 +435,7 @@ export default function VendorProfile() {
                   { label: "Success Rate", value: `${winRate}%`, icon: "monitoring", color: "text-amber-600", bg: "bg-amber-50" },
                   { label: "Total Purchase", value: `₹${(totalPurchase / 1000).toFixed(1)}k`, icon: "payments", color: "text-purple-600", bg: "bg-purple-50" },
                 ].map(s => (
-                  <div key={s.label} className="p-5 bg-white border border-slate-100 rounded-3xl flex items-center gap-4 shadow-sm dark:bg-slate-900 dark:border-slate-800">
+                  <div key={s.label} className="p-5 bg-white border border-slate-100 rounded-3xl flex items-center gap-4 shadow-sm dark:bg-slate-900 dark:border-slate-700">
                     <div className={`w-12 h-12 rounded-2xl ${s.bg} flex items-center justify-center shrink-0`}>
                       <span className={`material-symbols-outlined text-xl ${s.color}`}>{s.icon}</span>
                     </div>
@@ -266,7 +452,7 @@ export default function VendorProfile() {
                 <div className="relative z-10">
                   <h4 className="text-xl font-black mb-2">Performance Audit Report</h4>
                   <p className="text-blue-100 text-sm mb-6">Analyze your bidding efficiency and acquisition costs for the current quarter.</p>
-                  <button className="px-6 py-3 bg-white text-blue-600 rounded-xl font-bold text-xs uppercase tracking-widest transition-all hover:bg-blue-50 dark:bg-slate-900">
+                  <button onClick={handleDownloadAudit} className="px-6 py-3 bg-white text-blue-600 rounded-xl font-bold text-xs uppercase tracking-widest transition-all hover:bg-blue-50 dark:bg-slate-900">
                     Download Audit Report
                   </button>
                 </div>
@@ -280,23 +466,66 @@ export default function VendorProfile() {
                 <h4 className="text-lg font-black text-slate-900 dark:text-white">Security Credentials</h4>
                 <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
                   <div className="space-y-1.5">
+                    <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">Current Password</label>
+                    <div className="relative">
+                      <input 
+                        type={showPasswords.current ? "text" : "password"}
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-950 dark:border-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500 pr-12"
+                        value={passwords.current}
+                        onChange={e => setPasswords(prev => ({ ...prev, current: e.target.value }))}
+                        placeholder="Enter old password"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowPasswords(prev => ({ ...prev, current: !prev.current }))}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-xl">
+                          {showPasswords.current ? "visibility_off" : "visibility"}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">New Password</label>
-                    <input 
-                      type="password" 
-                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-950 dark:border-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                      value={passwords.new}
-                      onChange={e => setPasswords(prev => ({ ...prev, new: e.target.value }))}
-                      placeholder="Min 8 characters"
-                    />
+                    <div className="relative">
+                      <input 
+                        type={showPasswords.new ? "text" : "password"}
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-950 dark:border-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500 pr-12"
+                        value={passwords.new}
+                        onChange={e => setPasswords(prev => ({ ...prev, new: e.target.value }))}
+                        placeholder="Min 8 characters"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowPasswords(prev => ({ ...prev, new: !prev.new }))}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-xl">
+                          {showPasswords.new ? "visibility_off" : "visibility"}
+                        </span>
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">Confirm New Password</label>
-                    <input 
-                      type="password" 
-                      className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-950 dark:border-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                      value={passwords.confirm}
-                      onChange={e => setPasswords(prev => ({ ...prev, confirm: e.target.value }))}
-                    />
+                    <div className="relative">
+                      <input 
+                        type={showPasswords.confirm ? "text" : "password"}
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:bg-slate-950 dark:border-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500 pr-12"
+                        value={passwords.confirm}
+                        onChange={e => setPasswords(prev => ({ ...prev, confirm: e.target.value }))}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowPasswords(prev => ({ ...prev, confirm: !prev.confirm }))}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-xl">
+                          {showPasswords.confirm ? "visibility_off" : "visibility"}
+                        </span>
+                      </button>
+                    </div>
                   </div>
                   <button type="submit" className="px-6 py-3 bg-slate-900 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all">
                     Update Password

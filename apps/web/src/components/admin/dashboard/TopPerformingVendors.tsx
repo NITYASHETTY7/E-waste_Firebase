@@ -1,16 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-
-const VENDORS = [
-  { rank: 1, name: 'RecycleX Solutions', revenue: '₹45,80,000', score: 98, initial: 'R' },
-  { rank: 2, name: 'GreenWay Recycling', revenue: '₹32,40,000', score: 96, initial: 'G' },
-  { rank: 3, name: 'EcoTech Solutions', revenue: '₹28,75,000', score: 94, initial: 'E' },
-  { rank: 4, name: 'Waste2Worth Pvt Ltd', revenue: '₹22,10,000', score: 92, initial: 'W' },
-  { rank: 5, name: 'Earth Renewables', revenue: '₹18,60,000', score: 90, initial: 'E' },
-];
+import { useApp } from "@/context/AppContext";
 
 const RANK_BADGE = [
   'bg-yellow-400 text-yellow-900',
@@ -42,6 +35,25 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 export function TopPerformingVendors() {
+  const { users, bids } = useApp();
+
+  const topVendors = useMemo(() => {
+    const vendors = users.filter(u => u.role === 'vendor');
+    const vendorStats = vendors.map(v => {
+      const vendorBids = bids.filter(b => b.vendorId === v.id && b.status === 'accepted');
+      const totalRevenue = vendorBids.reduce((sum, b) => sum + b.amount, 0);
+      return {
+        id: v.id,
+        name: v.name,
+        initial: v.name.charAt(0),
+        revenue: totalRevenue,
+        score: 95, // Mock score for now as we don't have rating system fully mapped yet
+      };
+    }).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+    return vendorStats.map((v, i) => ({ ...v, rank: i + 1 }));
+  }, [users, bids]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -51,16 +63,12 @@ export function TopPerformingVendors() {
     >
       <div className="flex items-center justify-between mb-5">
         <h3 className="font-headline font-bold text-slate-900 dark:text-white text-base">Top Performing Vendors</h3>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-          This Month
-          <span className="material-symbols-outlined text-sm">expand_more</span>
-        </button>
       </div>
 
       <div className="flex-1 space-y-1.5">
-        {VENDORS.map((vendor, idx) => (
+        {topVendors.map((vendor, idx) => (
           <motion.div
-            key={vendor.rank}
+            key={vendor.id}
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 + idx * 0.07 }}
@@ -76,13 +84,16 @@ export function TopPerformingVendors() {
             </div>
             <div className="flex-1 min-w-0 pr-1">
               <p className="text-[11px] font-bold text-slate-900 dark:text-white truncate leading-tight group-hover:text-white" title={vendor.name}>{vendor.name}</p>
-              <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 mt-0.5 group-hover:text-emerald-50">{vendor.revenue}</p>
+              <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 mt-0.5 group-hover:text-emerald-50">₹{vendor.revenue.toLocaleString()}</p>
             </div>
             <div className="shrink-0 scale-[0.85] origin-right group-hover:invert group-hover:brightness-200">
               <ScoreRing score={vendor.score} />
             </div>
           </motion.div>
         ))}
+        {topVendors.length === 0 && (
+          <div className="text-center py-8 text-xs text-slate-400 italic">No vendor data available</div>
+        )}
       </div>
 
       <Link href="/admin/vendors" className="mt-4 w-full h-9 rounded-xl border border-slate-100 dark:border-slate-800 text-[10px] font-black uppercase tracking-wider text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">

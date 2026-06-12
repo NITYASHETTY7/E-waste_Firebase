@@ -2,6 +2,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import type { Queue } from 'bull';
 import { InjectQueue } from '@nestjs/bull';
 import { FirebaseService } from '../firebase/firebase.service';
+import * as admin from 'firebase-admin';
 
 export interface EmailPayload {
   to: string;
@@ -316,6 +317,31 @@ export class NotificationService {
     });
   }
 
+  async notifyListingRejected(
+    clientEmail: string,
+    clientName: string,
+    listingTitle: string,
+    reason?: string,
+  ) {
+    const webUrl = process.env.WEB_URL || 'http://localhost:3000';
+    return this.sendEmail({
+      to: clientEmail,
+      subject: `[WeConnect] Listing Rejection Notice — ${listingTitle}`,
+      body: emailLayout(`
+        ${alertBanner('❌', 'Listing Application Not Approved', '#fef2f2', '#fca5a5', '#991b1b')}
+        ${greeting(clientName)}
+        <p style="color:#475569;font-size:14px;margin:0 0 16px;">We regret to inform you that your listing <strong>"${listingTitle}"</strong> has not been approved for auction at this time.</p>
+        ${reason ? infoBox(`
+          <p style="margin:0 0 6px;font-weight:700;font-size:13px;color:#64748b;">Reason provided by admin:</p>
+          <p style="margin:0;color:#1e293b;font-size:14px;">${reason}</p>
+        `, '#ef4444', '#fef2f2') : ''}
+        <p style="color:#475569;font-size:14px;margin:16px 0;">You can review your listing status and any comments in your dashboard. If you need to make corrections, you can submit a new listing with the updated information.</p>
+        ${ctaButton('View My Listings', `${webUrl}/client/listings`, '#1e293b')}
+        ${signOff}
+      `, '#ef4444'),
+    });
+  }
+
   async notifyClientLiveAuctionApproval(
     clientEmail: string,
     clientName: string,
@@ -389,7 +415,7 @@ export class NotificationService {
         <p style="color:#475569;font-size:14px;margin:0 0 16px;">Congratulations on winning the auction! Your bid has been accepted. Please complete the payment to proceed with the pickup.</p>
         ${dataTable([
           ['Auction', auctionTitle],
-          ['Amount Due', `₹${amount.toLocaleString('en-IN')}`],
+          ['Amount Due', `INR ${amount.toLocaleString('en-IN')}`],
           ['Payment Deadline', '5 business days from this notice'],
         ])}
         <p style="color:#475569;font-size:14px;margin:16px 0;">Please log in to the WeConnect portal to view the payment instructions and submit your payment proof.</p>
@@ -643,7 +669,7 @@ export class NotificationService {
         ${infoBox(
           `
           <p style="margin:0;font-weight:700;font-size:15px;color:#1e293b;">${productName}</p>
-          <p style="margin:6px 0 0;color:#64748b;font-size:13px;">Accepted Quote: <strong style="color:#166534;">₹${offeredPrice.toLocaleString('en-IN')}</strong></p>
+          <p style="margin:6px 0 0;color:#64748b;font-size:13px;">Accepted Quote: <strong style="color:#166534;">INR ${offeredPrice.toLocaleString('en-IN')}</strong></p>
         `,
           '#22c55e',
           '#f0fdf4',
@@ -918,7 +944,7 @@ export class NotificationService {
             ? `
         <div style="background:#fff7ed;border:1px solid #fdba74;padding:16px 20px;border-radius:8px;margin:20px 0;">
           <p style="margin:0 0 6px;font-weight:700;color:#9a3412;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;">⚠️ Penalty / Fine Levied</p>
-          <p style="margin:0;font-size:28px;font-weight:900;color:#c2410c;">₹${fineAmount.toLocaleString('en-IN')}</p>
+          <p style="margin:0;font-size:28px;font-weight:900;color:#c2410c;">INR ${fineAmount.toLocaleString('en-IN')}</p>
           <p style="margin:8px 0 0;font-size:12px;color:#9a3412;">This fine must be paid within 5 business days. Contact our support team for payment instructions.</p>
         </div>`
             : ''
@@ -1005,14 +1031,14 @@ export class NotificationService {
         ${infoBox(`<p style="margin:0;font-weight:700;font-size:16px;color:#1e293b;">${requirementTitle}</p>`, '#22c55e', '#f0fdf4')}
         <p style="font-weight:700;font-size:13px;color:#1e293b;margin:20px 0 8px;">Payment Breakdown</p>
         ${dataTable([
-          ['Winning Bid Amount', `₹${winningAmount.toLocaleString('en-IN')}`],
+          ['Winning Bid Amount', `INR ${winningAmount.toLocaleString('en-IN')}`],
           [
             `Pay to Client (${clientName})`,
-            `<strong style="color:#166534;">₹${clientAmount.toLocaleString('en-IN')}</strong>`,
+            `<strong style="color:#166534;">INR ${clientAmount.toLocaleString('en-IN')}</strong>`,
           ],
           [
             'WeConnect Commission (5%)',
-            `<strong style="color:#1e40af;">₹${commissionAmount.toLocaleString('en-IN')}</strong>`,
+            `<strong style="color:#1e40af;">INR ${commissionAmount.toLocaleString('en-IN')}</strong>`,
           ],
         ])}
         ${divider}
@@ -1048,7 +1074,7 @@ export class NotificationService {
         message: data.message,
         link: data.link || null,
         read: false,
-        createdAt: new Date(),
+        createdAt: admin.firestore.Timestamp.now(),
       };
       await notifRef.set(notif);
       return notif;
@@ -1097,7 +1123,6 @@ export class NotificationService {
       const adminsSnap = await db
         .collection('users')
         .where('role', '==', 'ADMIN')
-        .where('isActive', '==', true)
         .get();
       await Promise.all(
         adminsSnap.docs.map((admin: any) =>

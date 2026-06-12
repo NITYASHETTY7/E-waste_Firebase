@@ -1,5 +1,4 @@
 "use client";
-"use client";
 
 import { useApp } from "@/context/AppContext";
 import { KpiCard } from "@/components/dashboard/KpiCard";
@@ -9,6 +8,7 @@ import { StatusStepper, DealStage } from "@/components/StatusStepper";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { Listing } from "@/types";
 
 export default function ClientDashboard() {
   const { listings, bids, currentUser } = useApp();
@@ -18,12 +18,14 @@ export default function ClientDashboard() {
 
   const isDemo = currentUser?.email === 'client@weconnect.com';
 
-  const myListings = listings.filter(l => l.userId === currentUser?.id);
+  const myListings = listings.filter(l => l.userId === currentUser?.id || (l.userId === currentUser?.companyId && currentUser?.companyId));
   const activeListings = myListings.filter(l => 
-    l.status === "active" || 
-    l.auctionPhase === "live" || 
-    l.auctionPhase === "completed" ||
-    l.requirementStatus === "client_review"
+    (l.status === "active" || 
+     l.auctionPhase === "live" || 
+     l.auctionPhase === "sealed_bid" ||
+     l.requirementStatus === "client_review") &&
+    l.auctionPhase !== "completed" &&
+    l.status !== "completed"
   ).sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
 
   const completedListings = myListings.filter(l => l.status === "completed" || l.auctionPhase === "completed");
@@ -55,7 +57,7 @@ export default function ClientDashboard() {
         .filter(b => new Date(b.createdAt).getMonth() === i)
         .reduce((sum, b) => sum + b.amount, 0);
       
-      const fallback = isDemo && i < 4 ? 12000 + i * 3000 : 0;
+      const fallback = isDemo && i < 4 ? 20000 + i * 5000 : 0;
       return { name: m, value: volume || fallback }; 
     });
   };
@@ -67,7 +69,7 @@ export default function ClientDashboard() {
         .filter(b => new Date(b.createdAt).getDay() === (i + 1) % 7)
         .reduce((sum, b) => sum + b.amount, 0);
       
-      const fallback = isDemo ? (5000 + i * 1500) : 0;
+      const fallback = isDemo ? (2000 + i * 800) : 0;
       return { name: d, value: volume || fallback };
     });
   };
@@ -109,7 +111,7 @@ export default function ClientDashboard() {
       {/* KPI Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KpiCard title="Total Lots Posted" value={myListings.length} icon="inventory_2" delay={0.1} href="/client/listings" />
-        <KpiCard title="Revenue Realized" value={`₹${(revenueGenerated / 1000).toFixed(1)}k`} icon="payments" delay={0.2} trend={{ value: 24, isPositive: true }} href="/client/bids" />
+        <KpiCard title="Revenue Realized" value={`₹${(revenueGenerated / 1000).toFixed(1)}k`} icon="payments" delay={0.2} href="/client/bids" />
         <KpiCard title="Active Auctions" value={activeListings.length} icon="gavel" delay={0.3} href="/client/live-auction" />
         <KpiCard title="Success Rate" value={`${myListings.length > 0 ? Math.round((completedListings.length / myListings.length) * 100) : 0}%`} icon="verified" delay={0.4} href="/client/reports" />
       </div>
@@ -133,9 +135,9 @@ export default function ClientDashboard() {
         <div className="lg:col-span-4 space-y-6">
           <InteractiveDonutChart title="Lot Disposition" percentage={myListings.length > 0 ? Math.round((completedListings.length / myListings.length) * 100) : 0} label1="Completed" label2="Pending" />
 
-          <div className="bg-slate-900 p-8 rounded-3xl text-white relative overflow-hidden group">
+          <div className="bg-slate-900 p-8 rounded-3xl text-white relative overflow-hidden group shadow-xl">
             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500 rounded-full -mr-16 -mt-16 blur-[80px] opacity-20" />
-            <h3 className="text-xl font-bold mb-4 relative z-10">Quick Actions</h3>
+            <h3 className="text-xl font-bold mb-4 relative z-10 text-white">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-3 relative z-10">
               {[
                 { label: "Compliance", icon: "verified_user", href: "/client/reports" },
@@ -145,13 +147,13 @@ export default function ClientDashboard() {
               ].map((action) => (
                 <Link key={action.label} href={action.href} className="flex flex-col items-center justify-center p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-all group/item">
                   <span className="material-symbols-outlined text-emerald-400 mb-2 group-hover/item:scale-110 transition-transform">{action.icon}</span>
-                  <span className="text-[10px] font-black uppercase tracking-widest">{action.label}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white">{action.label}</span>
                 </Link>
               ))}
             </div>
           </div>
 
-          <div className="dashboard-card p-6 rounded-3xl">
+          <div className="dashboard-card p-6 rounded-3xl border border-slate-100 dark:border-slate-800">
             <h3 className="font-bold text-slate-900 dark:text-white mb-4">Active Lot Status</h3>
             <div className="space-y-4">
               {activeListings.slice(0, 3).map(listing => (
@@ -161,10 +163,10 @@ export default function ClientDashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{listing.title}</p>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black">{listing.auctionPhase?.replace('_', ' ')}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black">{listing.auctionPhase?.replace('_', ' ') || listing.status}</p>
                   </div>
                   <div className="text-emerald-600 dark:text-emerald-500 group-hover:translate-x-1 transition-transform">
-                    <span className="material-symbols-outlined">arrow_forward_ios</span>
+                    <span className="material-symbols-outlined text-sm">arrow_forward_ios</span>
                   </div>
                 </Link>
               ))}

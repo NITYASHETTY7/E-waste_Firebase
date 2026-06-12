@@ -89,6 +89,8 @@ export default function AdminManageAuction() {
   const [reconcileForm, setReconcileForm] = useState({ finalWeight: "", finalAmount: "", notes: "" });
   const [showReconcile, setShowReconcile] = useState(false);
   const [ratingForm, setRatingForm] = useState({ score: 5, comment: "" });
+  const [showDocsModal, setShowDocsModal] = useState(false);
+  const [docsForm, setDocsForm] = useState({ paymentTerms: "", deliveryTerms: "", penaltyClause: "", specialConditions: "" });
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToast({ msg, type });
@@ -132,8 +134,10 @@ export default function AdminManageAuction() {
       await fn();
       await fetchData();
       showToast(`${label} completed successfully`);
+      return true;
     } catch (e: any) {
       showToast(e?.response?.data?.message || `${label} failed`, "error");
+      return false;
     } finally {
       setBusy(null);
     }
@@ -180,6 +184,60 @@ export default function AdminManageAuction() {
       {toast && (
         <div className={`fixed top-5 right-5 z-50 px-5 py-3 rounded-xl shadow-xl text-sm font-bold text-white transition-all ${toast.type === "error" ? "bg-red-600" : "bg-emerald-600"}`}>
           {toast.msg}
+        </div>
+      )}
+
+      {/* Docs Modal */}
+      {showDocsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 w-full max-w-lg shadow-2xl border border-slate-200 dark:border-slate-800">
+            <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2">Generate Documents</h2>
+            <p className="text-xs text-slate-500 mb-6">Enter the commercial terms to be included in the Purchase Order, Work Order, and Agreement.</p>
+            
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Payment Terms</label>
+                <input type="text" value={docsForm.paymentTerms} onChange={(e) => setDocsForm({ ...docsForm, paymentTerms: e.target.value })}
+                  placeholder="e.g. 50% advance, 50% on pickup"
+                  className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Delivery Terms</label>
+                <input type="text" value={docsForm.deliveryTerms} onChange={(e) => setDocsForm({ ...docsForm, deliveryTerms: e.target.value })}
+                  placeholder="e.g. Pickup within 15 working days"
+                  className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Penalty Clause</label>
+                <input type="text" value={docsForm.penaltyClause} onChange={(e) => setDocsForm({ ...docsForm, penaltyClause: e.target.value })}
+                  placeholder="e.g. 1% per week of delay"
+                  className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Special Conditions</label>
+                <input type="text" value={docsForm.specialConditions} onChange={(e) => setDocsForm({ ...docsForm, specialConditions: e.target.value })}
+                  placeholder="e.g. Safety gear mandatory during pickup"
+                  className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50" />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowDocsModal(false)}
+                className="px-5 py-2.5 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                Cancel
+              </button>
+              <button 
+                onClick={async () => {
+                  const ok = await action("Generate Documents", () => api.post(`/auctions/${auctionId}/generate-docs`, docsForm));
+                  if (ok) setShowDocsModal(false);
+                }}
+                disabled={busy === "Generate Documents"}
+                className="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-purple-600 hover:bg-purple-700 transition-colors flex items-center gap-2 disabled:opacity-50">
+                {busy === "Generate Documents" && <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>}
+                Generate
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -249,16 +307,14 @@ export default function AdminManageAuction() {
             ) : (
               <p className="text-sm text-slate-500">No documents generated yet.</p>
             )}
-            {(!hasPO || !hasAgreement) && (
-              <button
-                onClick={() => action("Generate Documents", () => api.post(`/auctions/${auctionId}/generate-docs`))}
+            <button
+                onClick={() => setShowDocsModal(true)}
                 disabled={busy === "Generate Documents" || !data.winnerId}
                 className="mt-2 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs uppercase tracking-widest disabled:opacity-50 transition-all"
               >
                 <span className="material-symbols-outlined text-sm">{busy === "Generate Documents" ? "progress_activity" : "auto_awesome"}</span>
-                {busy === "Generate Documents" ? "Generating…" : "Generate PO, Work Order & Agreement"}
+                {busy === "Generate Documents" ? "Generating…" : hasPO ? "Regenerate PO, Work Order & Agreement" : "Generate PO, Work Order & Agreement"}
               </button>
-            )}
           </div>
         </Section>
 

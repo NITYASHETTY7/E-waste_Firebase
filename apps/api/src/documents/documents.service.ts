@@ -22,6 +22,12 @@ export class DocumentsService {
     auctionTitle: string,
     totalWeight: number,
     winningAmount: number,
+    terms?: {
+      paymentTerms?: string;
+      deliveryTerms?: string;
+      penaltyClause?: string;
+      specialConditions?: string;
+    },
   ): Promise<string> {
     const s3Key = `work-orders/${auctionId}/WO-${Date.now()}.pdf`;
 
@@ -34,6 +40,7 @@ export class DocumentsService {
       totalWeight,
       winningAmount,
       s3Key,
+      ...terms,
     };
 
     if (this.pdfQueue) {
@@ -69,6 +76,10 @@ export class DocumentsService {
     winningAmount: number;
     commissionAmount: number;
     date?: string;
+    paymentTerms?: string;
+    deliveryTerms?: string;
+    penaltyClause?: string;
+    specialConditions?: string;
   }): Promise<string> {
     const { auctionId } = params;
     const html = this.buildPoHtml(params);
@@ -87,6 +98,10 @@ export class DocumentsService {
     totalWeight: number;
     winningAmount: number;
     date: string;
+    paymentTerms?: string;
+    deliveryTerms?: string;
+    penaltyClause?: string;
+    specialConditions?: string;
   }): Promise<string> {
     const { auctionId } = params;
     const html = this.buildAgreementHtml(params);

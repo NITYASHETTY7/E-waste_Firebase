@@ -13,11 +13,11 @@ const ADMIN_SECTIONS = [
       { href: "/admin/users", icon: "group", label: "Clients" },
       { href: "/admin/vendors", icon: "recycling", label: "Vendors" },
       { href: "/admin/individual-users", icon: "person_check", label: "Individual Users" },
-      { href: "/admin/user-products", icon: "person_pin", label: "Individual Products", badge: "New" },
+      { href: "/admin/user-products", icon: "person_pin", label: "Individual Products" },
       { href: "/admin/listings", icon: "inventory_2", label: "Requests" },
       { href: "/admin/auctions", icon: "gavel", label: "Auctions" },
       { href: "/admin/payments", icon: "payments", label: "Payments" },
-      { href: "/admin/transactions", icon: "receipt_long", label: "Transactions" },
+      { href: "/admin/bidding", icon: "gavel", label: "Bids" },
     ]
   },
   {
@@ -37,7 +37,7 @@ const ADMIN_SECTIONS = [
     links: [
       { href: "/admin/reports", icon: "analytics", label: "Reports & Insights" },
       { href: "/admin/performance", icon: "troubleshoot", label: "Performance" },
-      { href: "/admin/analytics-hub", icon: "hub", label: "Analytics Hub", badge: "New" },
+      { href: "/admin/analytics-hub", icon: "hub", label: "Analytics Hub" },
     ]
   }
 ];
@@ -50,19 +50,22 @@ const VENDOR_LINKS = [
   { href: "/vendor/live-auction", icon: "sensors", label: "Live Auction" },
   { href: "/vendor/purchase-order", icon: "description", label: "Purchase Orders" },
   { href: "/vendor/payments", icon: "payments", label: "Payments" },
+  { href: "/vendor/transactions", icon: "receipt_long", label: "Transactions" },
   { href: "/vendor/handover", icon: "inventory", label: "Handover & Compliance" },
   { href: "/vendor/ratings", icon: "star_rate", label: "Ratings" },
   { href: "/vendor/reports", icon: "bar_chart", label: "Reports" },
+  { href: "/vendor/notifications", icon: "notifications", label: "Notifications" },
   { href: "/vendor/profile", icon: "badge", label: "Profile & Docs" },
+  { href: "/vendor/help", icon: "help", label: "Help & Support" },
 ];
 
 const CLIENT_LINKS = [
   { href: "/client/post", icon: "add_circle", label: "Post E-Waste" },
   { href: "/client/listings", icon: "inventory_2", label: "My Listings" },
-  { href: "/client/sealed-bids", icon: "lock", label: "Sealed Bids" },
   { href: "/client/live-auction", icon: "sensors", label: "Live Auction" },
   { href: "/client/purchase-order", icon: "description", label: "Purchase Orders" },
   { href: "/client/handover", icon: "inventory", label: "Handover & Gate Pass" },
+  { href: "/client/transactions", icon: "receipt_long", label: "Transactions" },
   { href: "/client/ratings", icon: "star_rate", label: "Rate Vendors" },
   { href: "/client/reports", icon: "bar_chart", label: "Reports" },
   { href: "/client/documents", icon: "folder_open", label: "Documents" },
@@ -82,6 +85,7 @@ const USER_LINKS = [
   { href: "/user/my-products", icon: "inventory_2", label: "My Products" },
   { href: "/user/quotes", icon: "request_quote", label: "Vendor Quotes" },
   { href: "/user/track", icon: "local_shipping", label: "Track Pickup" },
+  { href: "/user/transactions", icon: "receipt_long", label: "Transactions" },
   { href: "/user/profile", icon: "person", label: "Profile" },
 ];
 
@@ -95,7 +99,30 @@ export default function Sidebar() {
 
   const renderLink = (link: any) => {
     const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
-    const showIndicator = isActive && role === 'admin';
+    const showIndicator = isActive && (role === 'admin' || role === 'client');
+
+    const isLockedRoute = currentUser.isLocked &&
+      role === "vendor" &&
+      link.href !== "/vendor/dashboard" &&
+      link.href !== "/vendor/profile" &&
+      link.href !== "/vendor/help";
+
+    if (isLockedRoute) {
+      return (
+        <div key={link.href}
+          title={isSidebarCollapsed ? `${link.label} (Locked)` : "Account Restricted"}
+          className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl opacity-40 cursor-not-allowed ${
+            isSidebarCollapsed ? 'justify-center' : ''
+          } text-slate-400 dark:text-slate-600`}>
+          <span className="material-symbols-outlined text-xl shrink-0">
+            lock
+          </span>
+          {!isSidebarCollapsed && (
+            <span className="text-sm flex-1 truncate line-through">{link.label}</span>
+          )}
+        </div>
+      );
+    }
 
     return (
       <Link key={link.href} href={link.href}

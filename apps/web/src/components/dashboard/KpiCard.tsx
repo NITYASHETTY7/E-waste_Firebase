@@ -29,8 +29,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
   title, value, icon, trend, chartData, delay = 0, variant = 'emerald', href
 }) => {
   const cfg = VARIANT_CONFIG[variant];
-  const defaultData = [{ v: 30 }, { v: 45 }, { v: 28 }, { v: 60 }, { v: 48 }, { v: 75 }, { v: 82 }];
-  const data = chartData || defaultData;
+  const data = chartData || [];
 
   const Content = (
     <div className="relative z-10">

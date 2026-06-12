@@ -1,9 +1,32 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
+import { useApp } from "@/context/AppContext";
+import { useRouter } from "next/navigation";
 
 export function AiInsightsCard() {
+  const { bids, listings } = useApp();
+  const router = useRouter();
+
+  const totalRevenue = useMemo(() => {
+    return bids.filter(b => b.status === 'accepted').reduce((sum, b) => sum + b.amount, 0);        
+  }, [bids]);
+
+  const bestCategory = useMemo(() => {
+    const categories: Record<string, number> = {};
+    listings.forEach(l => {
+      categories[l.category] = (categories[l.category] || 0) + (l.weight || 0);
+    });
+    const sorted = Object.entries(categories).sort((a, b) => b[1] - a[1]);
+    return sorted.length > 0 ? sorted[0][0] : "N/A";
+  }, [listings]);
+
+  const highestBid = useMemo(() => {
+    const sorted = [...bids].sort((a, b) => b.amount - a.amount);
+    return sorted.length > 0 ? sorted[0] : null;
+  }, [bids]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -18,50 +41,51 @@ export function AiInsightsCard() {
         {/* Header */}
         <div>
           <div className="flex items-center gap-2 mb-1.5">
-            <h3 className="text-white font-headline font-bold text-base">AI Insights</h3>
-            <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-[9px] font-black text-indigo-300 uppercase tracking-wider">New</span>
+            <h3 className="text-white font-headline font-bold text-base">Dashboard Insights</h3>   
           </div>
-          <p className="text-white/40 text-[11px] leading-relaxed mb-4">AI powered insights to help you make better decisions</p>
+          <p className="text-white/40 text-[11px] leading-relaxed mb-4">Real-time data insights for your operations</p>
         </div>
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-2.5 flex-1">
-          {/* Revenue Prediction */}
+          {/* Total Revenue */}
           <div className="p-3 sm:p-4 lg:p-3 xl:p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/8 transition-colors flex flex-col justify-between">
             <div>
-              <p className="text-white/40 text-[9px] font-black uppercase tracking-widest mb-1.5">Revenue Prediction</p>
-              <p className="text-white font-headline font-black text-sm sm:text-base lg:text-sm xl:text-base 2xl:text-lg leading-none whitespace-nowrap">₹3,12,00,000</p>
+              <p className="text-white/40 text-[9px] font-black uppercase tracking-widest mb-1.5">Total Revenue</p>
+              <p className="text-white font-headline font-black text-sm sm:text-base lg:text-sm xl:text-base 2xl:text-lg leading-none whitespace-nowrap">₹{totalRevenue.toLocaleString()}</p>       
             </div>
             <div className="flex items-center gap-1 mt-2">
-              <span className="material-symbols-outlined text-emerald-400 text-sm">trending_up</span>
-              <span className="text-emerald-400 text-[10px] font-black">+15.2%</span>
-              <span className="text-white/30 text-[10px] ml-1">Next Month</span>
+              <span className="material-symbols-outlined text-emerald-400 text-sm">payments</span> 
+              <span className="text-white/30 text-[10px] ml-1">Total realized</span>
             </div>
           </div>
 
-          {/* Best Performing Category */}
+          {/* Best Category */}
           <div className="p-3 sm:p-4 lg:p-3 xl:p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/8 transition-colors flex flex-col justify-between">
             <div>
-              <p className="text-white/40 text-[9px] font-black uppercase tracking-widest mb-1.5">Best Performing Category</p>
-              <p className="text-white font-headline font-black text-sm sm:text-base lg:text-sm xl:text-base 2xl:text-lg leading-none">IT Equipment</p>
+              <p className="text-white/40 text-[9px] font-black uppercase tracking-widest mb-1.5">Top Category</p>
+              <p className="text-white font-headline font-black text-sm sm:text-base lg:text-sm xl:text-base 2xl:text-lg leading-none">{bestCategory}</p>
             </div>
-            <p className="text-white/30 text-[10px] font-bold mt-2">35.6% of total</p>
+            <p className="text-white/30 text-[10px] font-bold mt-2">By volume (Kg)</p>
           </div>
 
-          {/* High Value Auction */}
+          {/* Highest Bid */}
           <div className="p-3 sm:p-4 lg:p-3 xl:p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm hover:bg-white/8 transition-colors flex flex-col justify-between">
             <div>
-              <p className="text-white/40 text-[9px] font-black uppercase tracking-widest mb-1.5">High Value Auction</p>
-              <p className="text-white font-headline font-black text-sm sm:text-base lg:text-sm xl:text-base 2xl:text-lg leading-none">Dell IT Assets</p>
+              <p className="text-white/40 text-[9px] font-black uppercase tracking-widest mb-1.5">Highest Bid Recorded</p>
+              <p className="text-white font-headline font-black text-sm sm:text-base lg:text-sm xl:text-base 2xl:text-lg leading-none">{highestBid ? `₹${highestBid.amount.toLocaleString()}` : 'N/A'}</p>
             </div>
-            <p className="text-white/30 text-[10px] font-bold mt-2">₹15.2L Top Bid</p>
+            <p className="text-white/30 text-[10px] font-bold mt-2">{highestBid?.vendorName || 'No bids yet'}</p>
           </div>
         </div>
 
         {/* CTA */}
-        <button className="mt-4 flex items-center gap-2 px-5 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black transition-all active:scale-95 shadow-lg shadow-indigo-600/25 w-fit">
-          <span className="material-symbols-outlined text-sm">psychology</span>
-          Get AI Insights
+        <button
+          onClick={() => router.push('/admin/analytics-hub')}
+          className="mt-4 flex items-center gap-2 px-5 h-10 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black transition-all active:scale-95 shadow-lg shadow-indigo-600/25 w-fit"
+        >
+          <span className="material-symbols-outlined text-sm">insights</span>
+          Analytics Hub
           <span className="material-symbols-outlined text-sm">arrow_forward</span>
         </button>
       </div>
