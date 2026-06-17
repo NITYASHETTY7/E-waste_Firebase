@@ -40,6 +40,11 @@ export class PaymentsController {
     return this.svc.findByAuction(auctionId);
   }
 
+  @Get('payments/by-company/:companyId')
+  findByCompany(@Param('companyId') companyId: string) {
+    return this.svc.findByCompany(companyId);
+  }
+
   @Patch('payments/:id/upload-proof')
   @UseInterceptors(FileInterceptor('file'))
   uploadProof(

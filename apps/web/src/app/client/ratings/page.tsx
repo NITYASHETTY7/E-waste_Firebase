@@ -67,13 +67,14 @@ export default function ClientRatingsPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const submitRating = async (pickup: any) => {
-    const form = forms[pickup.auctionId];
+    const actId = pickup.auctionId || pickup.auction?.id;
+    const form = forms[actId];
     if (!form) return;
-    setSubmitting(pickup.auctionId);
+    setSubmitting(actId);
     try {
       await api.post("/ratings", {
-        auctionId: pickup.auctionId,
-        toCompanyId: pickup.auction?.winner?.id,
+        auctionId: actId,
+        toCompanyId: pickup.auction?.winnerId || pickup.auction?.winner?.id,
         score: form.score,
         comment: form.comment,
         type: "CLIENT_TO_VENDOR",
@@ -111,7 +112,7 @@ export default function ClientRatingsPage() {
       ) : (
         <div className="space-y-4">
           {pickups.map(pickup => {
-            const auctionId = pickup.auctionId;
+            const auctionId = pickup.auctionId || pickup.auction?.id;
             const form = forms[auctionId] ?? { score: 5, comment: "" };
             const existing = ratings[auctionId];
             const isSubmitted = !!existing;

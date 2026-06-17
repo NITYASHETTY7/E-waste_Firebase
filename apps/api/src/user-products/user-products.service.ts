@@ -150,7 +150,7 @@ export class UserProductsService {
       products.map(async (p) => ({
         ...p,
         photoUrls: await Promise.all(
-          p.photoS3Keys.map((key: string) =>
+          Object.values(p.photoS3Keys || {}).map((key: string) =>
             this.s3.getSignedUrl(key, p.photoS3Bucket ?? undefined),
           ),
         ),
@@ -219,7 +219,7 @@ export class UserProductsService {
       products.map(async (p) => ({
         ...p,
         photoUrls: await Promise.all(
-          p.photoS3Keys.map((key: string) =>
+          Object.values(p.photoS3Keys || {}).map((key: string) =>
             this.s3.getSignedUrl(key, p.photoS3Bucket ?? undefined),
           ),
         ),
@@ -286,7 +286,7 @@ export class UserProductsService {
       products.map(async (p) => ({
         ...p,
         photoUrls: await Promise.all(
-          p.photoS3Keys.map((key: string) =>
+          Object.values(p.photoS3Keys || {}).map((key: string) =>
             this.s3.getSignedUrl(key, p.photoS3Bucket ?? undefined),
           ),
         ),

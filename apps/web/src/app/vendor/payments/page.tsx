@@ -502,7 +502,7 @@ export default function VendorPayments() {
               </button>
               <button
                 onClick={handleUpload}
-                disabled={!uttr || uploading}
+                disabled={!utr || uploading}
                 className="px-5 py-2.5 rounded-xl bg-primary text-white text-sm font-black hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
               >
                 {uploading ? (

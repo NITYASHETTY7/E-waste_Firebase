@@ -201,7 +201,7 @@ export class PaymentsService {
       totalAmount: Number(amount),
       status: PaymentStatus.SUBMITTED,
       proofS3Key: key,
-      proofS3Bucket: 'ecoloop-uploads',
+      proofS3Bucket: this.s3.getPrivateBucket(),
       paymentProofUrl: key,
       utrNumber: utrNumber || null,
       isPenalty: true,
@@ -306,10 +306,11 @@ export class PaymentsService {
       }
     }
 
-    const { key } = await this.s3.upload(file, `payments/${auctionId}`);
+    const { key, bucket } = await this.s3.upload(file, `payments/${auctionId}`);
 
     const updateData = {
       proofS3Key: key,
+      proofS3Bucket: bucket,
       paymentProofUrl: key, 
       utrNumber: utrNumber || null,
       status: PaymentStatus.SUBMITTED,

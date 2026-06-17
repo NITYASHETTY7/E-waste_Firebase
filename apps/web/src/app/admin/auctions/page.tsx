@@ -5,12 +5,12 @@ import { useApp } from "@/context/AppContext";
 import Link from "next/link";
 import api from "@/lib/api";
 
-const PHASE_ORDER = ["invitation_window", "sealed_bid", "open_configuration", "live", "completed"] as const;
-type Phase = typeof PHASE_ORDER[number];
+const PHASE_ORDER = ["invitation_window", "sealed_bid", "live", "completed"] as const;
+type Phase = typeof PHASE_ORDER[number] | "open_configuration";
 
 const PHASE_META: Record<Phase, { label: string; color: string; next?: Phase }> = {
   invitation_window: { label: "Invitation Window", color: "bg-blue-100 text-blue-700", next: "sealed_bid" },
-  sealed_bid: { label: "Sealed Bid", color: "bg-amber-100 text-amber-700", next: "open_configuration" },
+  sealed_bid: { label: "Sealed Bid", color: "bg-amber-100 text-amber-700", next: "live" },
   open_configuration: { label: "Configuring Open Bid", color: "bg-orange-100 text-orange-700", next: "live" },
   live: { label: "Live Auction", color: "bg-red-100 text-red-700", next: "completed" },
   completed: { label: "Completed", color: "bg-emerald-100 text-emerald-700" },
@@ -86,7 +86,7 @@ export default function AdminAuctions() {
       </div>
 
       {/* Phase summary */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-4 gap-3">
         {PHASE_ORDER.map(phase => {
           const m = PHASE_META[phase];
           return (

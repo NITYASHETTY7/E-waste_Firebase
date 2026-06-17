@@ -223,6 +223,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       poDeliveryTerms: req.auction?.poDeliveryTerms,
       poPenaltyClause: req.auction?.poPenaltyClause,
       poSpecialConditions: req.auction?.poSpecialConditions,
+      winnerVendorId: req.auction?.winnerId,
+      winnerVendorName: req.auction?.winner?.name || req.auction?.winnerId,
+      finalQuoteStatus: req.auction?.winnerId ? 'approved' : undefined,
+      emdStatus: req.auction?.emdStatus || (req.auction?.highestEmdAmount ? 'pending' : 'not_required'),
+      emdAmount: req.auction?.emdAmount,
+      emdUTR: req.auction?.emdUTR,
     } as Listing;
   };
 

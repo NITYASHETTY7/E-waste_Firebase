@@ -49,7 +49,7 @@ async function createAdminUser() {
       id: userRecord.uid,
       email,
       name,
-      role: 'admin',
+      role: 'ADMIN',
       status: 'active',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),

@@ -81,14 +81,14 @@ export class PickupsService {
     pickup.payment = paymentSnap.empty ? null : { id: paymentSnap.docs[0].id, ...paymentSnap.docs[0].data() };
 
     const docs = await Promise.all(
-      (pickup.pickupDocs ?? []).map(async (doc: any) => ({
+      Object.values(pickup.pickupDocs || {}).map(async (doc: any) => ({
         ...doc,
         signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket),
       })),
     );
 
     const auctionDocs = await Promise.all(
-      (pickup.auction?.auctionDocs ?? []).map(async (doc: any) => ({
+      Object.values(pickup.auction?.auctionDocs || {}).map(async (doc: any) => ({
         ...doc,
         signedUrl: await this.s3
           .getSignedUrl(doc.s3Key, doc.s3Bucket)
@@ -627,13 +627,13 @@ export class PickupsService {
     return Promise.all(
       pickups.map(async (pickup) => {
         const docs = await Promise.all(
-          (pickup.pickupDocs ?? []).map(async (doc: any) => ({
+          Object.values(pickup.pickupDocs || {}).map(async (doc: any) => ({
             ...doc,
             signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket),
           })),
         );
         const auctionDocs = await Promise.all(
-          (pickup.auction?.auctionDocs ?? []).map(async (doc: any) => ({
+          Object.values(pickup.auction?.auctionDocs || {}).map(async (doc: any) => ({
             ...doc,
             signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
           })),
@@ -683,14 +683,14 @@ export class PickupsService {
     }
 
     const docs = await Promise.all(
-      (pickup.pickupDocs ?? []).map(async (doc: any) => ({
+      Object.values(pickup.pickupDocs || {}).map(async (doc: any) => ({
         ...doc,
         signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket),
       })),
     );
 
     const auctionDocs = await Promise.all(
-      (pickup.auction?.auctionDocs ?? []).map(async (doc: any) => ({
+      Object.values(pickup.auction?.auctionDocs || {}).map(async (doc: any) => ({
         ...doc,
         signedUrl: await this.s3.getSignedUrl(doc.s3Key, doc.s3Bucket).catch(() => null),
       })),

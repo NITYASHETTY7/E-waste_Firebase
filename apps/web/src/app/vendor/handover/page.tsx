@@ -188,7 +188,7 @@ export default function VendorHandoverPage() {
                     <p className="text-xs text-slate-500 mt-1 flex flex-wrap gap-2 items-center">
                       <span>{pickup.auction?.category}</span>
                       <span className="text-slate-300 dark:text-slate-700">•</span>
-                      <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-400">ID: {pickup.auctionId.substring(0, 8)}</span>
+                      <span className="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-600 dark:text-slate-400">ID: {(pickup.auctionId || pickup.id).substring(0, 8)}</span>
                     </p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">

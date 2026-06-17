@@ -61,20 +61,20 @@ export class S3Service {
     bucket?: string,
     expiresIn = 3600,
   ): Promise<string> {
-    const b = bucket || this.privateBucket;
+    const b = (bucket && bucket !== 'undefined' && bucket !== 'ecoloop-uploads') ? bucket : this.privateBucket;
     const command = new GetObjectCommand({ Bucket: b, Key: key });
     return getSignedUrl(this.s3, command, { expiresIn });
   }
 
   async getFileStream(key: string, bucket?: string): Promise<Readable> {
-    const b = bucket || this.privateBucket;
+    const b = (bucket && bucket !== 'undefined' && bucket !== 'ecoloop-uploads') ? bucket : this.privateBucket;
     const command = new GetObjectCommand({ Bucket: b, Key: key });
     const response = await this.s3.send(command);
     return response.Body as Readable;
   }
 
   async delete(key: string, bucket?: string): Promise<void> {
-    const b = bucket || this.privateBucket;
+    const b = (bucket && bucket !== 'undefined' && bucket !== 'ecoloop-uploads') ? bucket : this.privateBucket;
     await this.s3.send(new DeleteObjectCommand({ Bucket: b, Key: key }));
   }
 
@@ -82,7 +82,7 @@ export class S3Service {
     prefix: string,
     bucket?: string,
   ): Promise<Array<{ key: string; size: number; lastModified: Date }>> {
-    const b = bucket || this.privateBucket;
+    const b = (bucket && bucket !== 'undefined' && bucket !== 'ecoloop-uploads') ? bucket : this.privateBucket;
     const response = await this.s3.send(
       new ListObjectsV2Command({ Bucket: b, Prefix: prefix }),
     );

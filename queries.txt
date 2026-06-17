@@ -1,0 +1,176 @@
+apps\api\src\auctions\auction.scheduler.ts:43 const pickupGroupSnap = await db.collectionGroup('pickup')
+apps\api\src\auctions\auction.scheduler.ts:44 .where('createdAt', '<', twentyFourHoursAgo)
+apps\api\src\auctions\auction.scheduler.ts:72 .where('companyId', '==', aData.winnerId)
+apps\api\src\auctions\auctions.service.ts:75 .orderBy('amount', 'desc')
+apps\api\src\auctions\auctions.service.ts:155 db.collection('users').where('companyId', '==', vendorUserData.companyId)
+apps\api\src\auctions\auctions.service.ts:160 .where('phase', '==', BidPhase.SEALED)
+apps\api\src\auctions\auctions.service.ts:161 .where('isShortlisted', '==', true);
+apps\api\src\auctions\auctions.service.ts:176 .orderBy('amount', 'desc');
+apps\api\src\auctions\auctions.service.ts:290 .orderBy('amount', 'desc')
+apps\api\src\auctions\auctions.service.ts:335 query = query.where('vendorId', '==', vendorId);
+apps\api\src\auctions\auctions.service.ts:339 bidsSnap = await db.collectionGroup('bids')
+apps\api\src\auctions\auctions.service.ts:340 .where('vendorId', '==', vendorId)
+apps\api\src\auctions\auctions.service.ts:344 bidsSnap = await db.collectionGroup('bids').limit(100).get();
+apps\api\src\auctions\auctions.service.ts:370 const snap = await db.collection('users').where(admin.firestore.FieldPath.documentId(), 'in', chunk).get();
+apps\api\src\auctions\auctions.service.ts:382 const snap = await db.collection('auctions').where(admin.firestore.FieldPath.documentId(), 'in', chunk).get();
+apps\api\src\auctions\auctions.service.ts:451 query = query.where('status', '==', status);
+apps\api\src\auctions\auctions.service.ts:454 query = query.where('clientId', '==', clientId);
+apps\api\src\auctions\auctions.service.ts:485 const cSnap = await db.collection('companies').where(admin.firestore.FieldPath.documentId(), 'in', chunk).get();
+apps\api\src\auctions\auctions.service.ts:494 .orderBy('amount', 'desc')
+apps\api\src\auctions\auctions.service.ts:539 const cSnap = await db.collection('companies').where(admin.firestore.FieldPath.documentId(), 'in', companyIds).get();
+apps\api\src\auctions\auctions.service.ts:545 const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').get();
+apps\api\src\auctions\auctions.service.ts:643 const usersSnap = await db.collection('users').where('companyId', '==', clientCompany.id).get();
+apps\api\src\auctions\auctions.service.ts:812 const clientUsersSnap = await db.collection('users').where('companyId', '==', auction.clientId).get();
+apps\api\src\auctions\auctions.service.ts:887 .where('vendorId', '==', vendorUserId)
+apps\api\src\auctions\auctions.service.ts:888 .orderBy('amount', 'desc')
+apps\api\src\auctions\auctions.service.ts:959 const clientUsersSnap = await db.collection('users').where('companyId', '==', auction.clientId).get();
+apps\api\src\auctions\auctions.service.ts:1040 const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').get();
+apps\api\src\auctions\auctions.service.ts:1281 const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').limit(1).get();
+apps\api\src\auctions\auctions.service.ts:1329 const ratingsSnap = await db.collection('ratings').where('auctionId', '==', id).get();
+apps\api\src\auctions\auctions.service.ts:1388 const clientUsersSnap = await db.collection('users').where('companyId', '==', auction.clientId).get();
+apps\api\src\auctions\auctions.service.ts:1416 const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').limit(1).get();
+apps\api\src\auctions\auctions.service.ts:1489 const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').limit(1).get();
+apps\api\src\auctions\auctions.service.ts:1544 .where('status', '==', AuctionStatus.UPCOMING)
+apps\api\src\auctions\auctions.service.ts:1561 .where('status', '==', AuctionStatus.SEALED_PHASE)
+apps\api\src\auctions\auctions.service.ts:1562 .where('liveApprovalStatus', '==', 'approved')
+apps\api\src\auctions\auctions.service.ts:1579 .where('status', '==', AuctionStatus.OPEN_PHASE)
+apps\api\src\auctions\auctions.service.ts:1618 const bidsSnap = await auctionRef.collection('bids').orderBy('amount', 'desc').get();
+apps\api\src\audits\audits.service.ts:50 const usersSnap = await firebaseService.db.collection('users').where('companyId', '==', vendorSnap.id).limit(1).get();
+apps\api\src\audits\audits.service.ts:127 const usersSnap = await this.firebaseService.db.collection('users').where('companyId', '==', vendorId).limit(1).get();
+apps\api\src\audits\audits.service.ts:169 query = query.where('vendorId', '==', vendorId);
+apps\api\src\audits\audits.service.ts:173 let query: admin.firestore.Query = this.firebaseService.db.collectionGroup('auditInvitations');
+apps\api\src\audits\audits.service.ts:175 query = query.where('vendorId', '==', vendorId);
+apps\api\src\audits\audits.service.ts:195 .collectionGroup('auditInvitations')
+apps\api\src\audits\audits.service.ts:196 .where('id', '==', id)
+apps\api\src\audits\audits.service.ts:209 .collectionGroup('auditInvitations')
+apps\api\src\audits\audits.service.ts:210 .where('id', '==', id)
+apps\api\src\audits\audits.service.ts:253 .where('companyId', '==', inv.requirement.client.id)
+apps\api\src\audits\audits.service.ts:276 .collectionGroup('auditInvitations')
+apps\api\src\audits\audits.service.ts:277 .where('id', '==', id)
+apps\api\src\audits\audits.service.ts:308 .where('companyId', '==', inv.requirement.client.id)
+apps\api\src\audits\audits.service.ts:340 .collectionGroup('auditInvitations')
+apps\api\src\audits\audits.service.ts:341 .where('id', '==', id)
+apps\api\src\audits\audits.service.ts:387 .collectionGroup('auditInvitations')
+apps\api\src\audits\audits.service.ts:388 .where('id', '==', invitationId)
+apps\api\src\audits\audits.service.ts:456 .where('companyId', '==', invitation.requirement.clientId)
+apps\api\src\auth\auth.service.ts:131 .where('role', '==', 'ADMIN')
+apps\api\src\auth\auth.service.ts:132 .where('isActive', '==', true)
+apps\api\src\auth\otp.service.ts:28 .where('email', '==', email)
+apps\api\src\auth\otp.service.ts:202 .where('email', '==', email)
+apps\api\src\companies\companies.service.ts:80 if (type) query = query.where('type', '==', type);
+apps\api\src\companies\companies.service.ts:81 if (status) query = query.where('status', '==', status);
+apps\api\src\companies\companies.service.ts:90 const usersSnap = await this.db.collection('users').where('companyId', '==', company.id).get();
+apps\api\src\companies\companies.service.ts:137 const usersSnap = await this.db.collection('users').where('companyId', '==', id).get();
+apps\api\src\companies\companies.service.ts:326 const usersSnap = await this.db.collection('users').where('companyId', '==', id).limit(1).get();
+apps\api\src\companies\companies.service.ts:368 const usersSnap = await this.db.collection('users').where('companyId', '==', id).limit(1).get();
+apps\api\src\companies\companies.service.ts:410 const usersSnap = await this.db.collection('users').where('companyId', '==', id).limit(1).get();
+apps\api\src\companies\companies.service.ts:460 const usersSnap = await this.db.collection('users').where('companyId', '==', id).limit(1).get();
+apps\api\src\companies\companies.service.ts:497 const usersSnap = await this.db.collection('users').where('companyId', '==', id).limit(1).get();
+apps\api\src\companies\companies.service.ts:536 const usersSnap = await this.db.collection('users').where('companyId', '==', id).limit(1).get();
+apps\api\src\dashboard\dashboard.service.ts:44 .where('type', '==', CompanyType.CLIENT)
+apps\api\src\dashboard\dashboard.service.ts:45 .where('status', '==', CompanyStatus.APPROVED)
+apps\api\src\dashboard\dashboard.service.ts:50 .where('type', '==', CompanyType.VENDOR)
+apps\api\src\dashboard\dashboard.service.ts:51 .where('status', '==', CompanyStatus.APPROVED)
+apps\api\src\dashboard\dashboard.service.ts:56 .where('status', '==', CompanyStatus.PENDING)
+apps\api\src\dashboard\dashboard.service.ts:61 .where('status', '==', AuctionStatus.OPEN_PHASE)
+apps\api\src\dashboard\dashboard.service.ts:65 .collectionGroup('payment')
+apps\api\src\dashboard\dashboard.service.ts:66 .where('status', '==', PaymentStatus.SUBMITTED)
+apps\api\src\dashboard\dashboard.service.ts:71 .where('status', '==', AuctionStatus.COMPLETED)
+apps\api\src\dashboard\dashboard.service.ts:85 .collectionGroup('payment')
+apps\api\src\dashboard\dashboard.service.ts:86 .where('status', '==', PaymentStatus.CONFIRMED)
+apps\api\src\dashboard\dashboard.service.ts:111 .where('clientId', '==', clientId)
+apps\api\src\dashboard\dashboard.service.ts:116 .where('clientId', '==', clientId)
+apps\api\src\dashboard\dashboard.service.ts:117 .where('status', 'in', [
+apps\api\src\dashboard\dashboard.service.ts:125 .where('clientId', '==', clientId)
+apps\api\src\dashboard\dashboard.service.ts:126 .where('status', '==', AuctionStatus.COMPLETED)
+apps\api\src\dashboard\dashboard.service.ts:137 .where('clientId', '==', clientId)
+apps\api\src\dashboard\dashboard.service.ts:138 .orderBy('createdAt', 'desc')
+apps\api\src\dashboard\dashboard.service.ts:174 .where('winnerId', '==', vendorId)
+apps\api\src\dashboard\dashboard.service.ts:181 .collectionGroup('bids')
+apps\api\src\dashboard\dashboard.service.ts:182 .where('vendorId', '==', vendorId)
+apps\api\src\dashboard\dashboard.service.ts:195 .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
+apps\api\src\dashboard\dashboard.service.ts:196 .where('status', '==', AuctionStatus.OPEN_PHASE)
+apps\api\src\dashboard\dashboard.service.ts:203 .collectionGroup('pickup')
+apps\api\src\dashboard\dashboard.service.ts:204 .where('status', 'in', [
+apps\api\src\dashboard\dashboard.service.ts:224 .where('winnerId', '==', vendorId)
+apps\api\src\dashboard\dashboard.service.ts:225 .where('status', '==', AuctionStatus.COMPLETED)
+apps\api\src\dashboard\dashboard.service.ts:226 .orderBy('updatedAt', 'desc')
+apps\api\src\dashboard\dashboard.service.ts:261 .collectionGroup('payment')
+apps\api\src\dashboard\dashboard.service.ts:262 .where('status', '==', PaymentStatus.CONFIRMED)
+apps\api\src\dashboard\dashboard.service.ts:310 .where('status', '==', AuctionStatus.COMPLETED)
+apps\api\src\dashboard\dashboard.service.ts:315 .where('type', '==', CompanyType.VENDOR)
+apps\api\src\dashboard\dashboard.service.ts:316 .where('status', '==', CompanyStatus.APPROVED)
+apps\api\src\dashboard\dashboard.service.ts:327 .where('status', '==', AuctionStatus.COMPLETED)
+apps\api\src\dashboard\dashboard.service.ts:370 .collectionGroup('payment')
+apps\api\src\dashboard\dashboard.service.ts:371 .where('status', '==', PaymentStatus.CONFIRMED)
+apps\api\src\dashboard\dashboard.service.ts:426 .collectionGroup('pickup')
+apps\api\src\dashboard\dashboard.service.ts:427 .where('status', '==', PickupStatus.COMPLETED)
+apps\api\src\notifications\notification.service.ts:1097 .where('companyId', '==', companyId)
+apps\api\src\notifications\notification.service.ts:1125 .where('role', '==', 'ADMIN')
+apps\api\src\notifications\notifications.controller.ts:29 .orderBy('createdAt', 'desc')
+apps\api\src\notifications\notifications.controller.ts:60 .where('read', '==', false)
+apps\api\src\payments\payments.service.ts:28 .collectionGroup('payment')
+apps\api\src\payments\payments.service.ts:29 .where('id', '==', id)
+apps\api\src\payments\payments.service.ts:88 .where('winnerId', '==', companyId)
+apps\api\src\payments\payments.service.ts:92 .where('clientId', '==', companyId)
+apps\api\src\payments\payments.service.ts:127 const penaltySnap = await this.db.collectionGroup('payment')
+apps\api\src\payments\payments.service.ts:128 .where('isPenalty', '==', true)
+apps\api\src\payments\payments.service.ts:129 .where('penaltyCompanyId', '==', companyId)
+apps\api\src\payments\payments.service.ts:149 .where('userId', '==', userId)
+apps\api\src\payments\payments.service.ts:238 let query: any = this.db.collectionGroup('payment');
+apps\api\src\payments\payments.service.ts:240 query = query.where('status', '==', status);
+apps\api\src\payments\payments.service.ts:353 const usersSnap = await this.db.collection('users').where('companyId', '==', payment.penaltyCompanyId).limit(1).get();
+apps\api\src\payments\payments.service.ts:395 .where('companyId', '==', auctionData.winnerId)
+apps\api\src\payments\payments.service.ts:407 .where('companyId', '==', auctionData.clientId)
+apps\api\src\pickups\pickups.service.ts:32 .collectionGroup('pickup')
+apps\api\src\pickups\pickups.service.ts:33 .where('id', '==', id)
+apps\api\src\pickups\pickups.service.ts:154 .where('companyId', '==', auctionData.winnerId)
+apps\api\src\pickups\pickups.service.ts:218 .where('companyId', '==', auctionData.winnerId)
+apps\api\src\pickups\pickups.service.ts:288 .where('companyId', '==', auctionData.clientId)
+apps\api\src\pickups\pickups.service.ts:345 .where('companyId', '==', auctionData.clientId)
+apps\api\src\pickups\pickups.service.ts:419 .where('companyId', '==', auctionData.clientId)
+apps\api\src\pickups\pickups.service.ts:430 .where('companyId', '==', auctionData.winnerId)
+apps\api\src\pickups\pickups.service.ts:585 let query: any = this.db.collectionGroup('pickup');
+apps\api\src\pickups\pickups.service.ts:587 query = query.where('status', '==', status);
+apps\api\src\pickups\pickups.service.ts:777 const usersSnap = await this.db.collection('users').where('companyId', '==', auctionData.clientId).limit(1).get();
+apps\api\src\pickups\pickups.service.ts:861 const usersSnap = await this.db.collection('users').where('companyId', '==', auctionData.clientId).limit(1).get();
+apps\api\src\pickups\pickups.service.ts:866 const usersSnap = await this.db.collection('users').where('companyId', '==', auctionData.winnerId).limit(1).get();
+apps\api\src\ratings\ratings.service.ts:74 .where('auctionId', '==', auctionId)
+apps\api\src\ratings\ratings.service.ts:108 .where('toCompanyId', '==', companyId)
+apps\api\src\requirements\requirements.service.ts:82 .where(admin.firestore.FieldPath.documentId(), 'in', chunk)
+apps\api\src\requirements\requirements.service.ts:209 query = query.where('clientId', '==', clientId);
+apps\api\src\requirements\requirements.service.ts:229 .where('companyId', '==', req.clientId)
+apps\api\src\requirements\requirements.service.ts:246 .where('requirementId', '==', req.id)
+apps\api\src\requirements\requirements.service.ts:304 .where('requirementId', '==', id)
+apps\api\src\requirements\requirements.service.ts:369 .where('companyId', '==', req.clientId)
+apps\api\src\requirements\requirements.service.ts:584 .where('companyId', '==', req.clientId)
+apps\api\src\requirements\requirements.service.ts:651 .where('companyId', '==', req.clientId)
+apps\api\src\requirements\requirements.service.ts:689 .where('vendorId', '==', vendorUserId)
+apps\api\src\requirements\requirements.service.ts:690 .where('phase', '==', 'SEALED')
+apps\api\src\requirements\requirements.service.ts:782 .where('companyId', '==', req.clientId)
+apps\api\src\requirements\requirements.service.ts:848 const snap = await this.firebaseService.db.collectionGroup('vendorAuditDocs').get();
+apps\api\src\requirements\requirements.service.ts:979 .where('requirementId', '==', requirementId)
+apps\api\src\requirements\requirements.service.ts:1050 .where('requirementId', '==', requirementId)
+apps\api\src\requirements\requirements.service.ts:1063 .where('vendorId', '==', vendorUserId)
+apps\api\src\requirements\requirements.service.ts:1064 .where('phase', '==', 'SEALED')
+apps\api\src\requirements\requirements.service.ts:1104 .where('requirementId', '==', requirementId)
+apps\api\src\requirements\requirements.service.ts:1113 .where('phase', '==', 'SEALED')
+apps\api\src\requirements\requirements.service.ts:1157 .where('requirementId', '==', requirementId)
+apps\api\src\requirements\requirements.service.ts:1164 const bidsSnap = await bidsRef.where('phase', '==', 'SEALED').get();
+apps\api\src\requirements\requirements.service.ts:1175 .where('companyId', '==', req.clientId)
+apps\api\src\requirements\requirements.service.ts:1236 .where('requirementId', '==', requirementId)
+apps\api\src\requirements\requirements.service.ts:1243 .where('companyId', '==', req.clientId)
+apps\api\src\requirements\requirements.service.ts:1280 .where('requirementId', '==', requirementId)
+apps\api\src\requirements\requirements.service.ts:1287 .where('companyId', '==', req.clientId)
+apps\api\src\requirements\requirements.service.ts:1293 .where('role', '==', 'ADMIN')
+apps\api\src\requirements\requirements.service.ts:1294 .where('isActive', '==', true)
+apps\api\src\requirements\requirements.service.ts:1337 .where('requirementId', '==', requirementId)
+apps\api\src\requirements\requirements.service.ts:1442 .where('vendorId', '==', vendorUserId)
+apps\api\src\requirements\requirements.service.ts:1443 .where('phase', '==', 'SEALED')
+apps\api\src\user-products\user-products.service.ts:103 .where('userId', '==', userId)
+apps\api\src\user-products\user-products.service.ts:239 .where('status', 'in', [
+apps\api\src\user-products\user-products.service.ts:256 .where('vendorCompanyId', '==', vendorCompanyId)
+apps\api\src\user-products\user-products.service.ts:387 .where('vendorCompanyId', '==', vendorCompanyId)
+apps\api\src\user-products\user-products.service.ts:490 .where('companyId', '==', quote.vendorCompanyId)
+apps\api\src\users\users.service.ts:24 query = query.where('role', '==', role);
+apps\api\src\users\users.service.ts:60 .where('email', '==', email.toLowerCase().trim())
