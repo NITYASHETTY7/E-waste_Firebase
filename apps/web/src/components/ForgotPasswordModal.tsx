@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import api from "@/lib/api";
+import { AnimatePresence, motion } from "framer-motion";
+import { useState } from "react";
 
 type Step = "email" | "otp" | "password" | "done";
 
@@ -88,8 +88,9 @@ export default function ForgotPasswordModal({
       >
         {/* Close button */}
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 text-slate-500 hover:text-slate-700 transition-colors"
+          className="absolute top-5 right-5 z-10 text-slate-500 hover:text-slate-700 transition-colors p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800"
         >
           <span className="material-symbols-outlined text-xl">close</span>
         </button>

@@ -1,17 +1,16 @@
 import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
+    BadRequestException,
+    ConflictException,
+    Injectable,
+    NotFoundException,
+    UnauthorizedException,
 } from '@nestjs/common';
 import { FirebaseService } from '../firebase/firebase.service';
+import { CompanyStatus, CompanyType } from '../firebase/firestore-types';
+import { NotificationService } from '../notifications/notification.service';
 import { UsersService } from '../users/users.service';
 import { LoginDto, RegisterDto } from './auth.dto';
 import { OtpService } from './otp.service';
-import { NotificationService } from '../notifications/notification.service';
-import { CompanyType, CompanyStatus } from '../firebase/firestore-types';
-import * as admin from 'firebase-admin';
 
 @Injectable()
 export class AuthService {
@@ -180,6 +179,38 @@ export class AuthService {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Verify password using Firebase Auth REST API
+    try {
+      const serviceAccount = this.firebaseService.serviceAccount;
+      const apiKey = process.env.FIREBASE_API_KEY; // Web API Key needed
+      
+      if (apiKey) {
+        // Call Firebase Auth REST API to verify password
+        const response = await fetch(
+          `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: dto.email,
+              password: dto.password,
+              returnSecureToken: true
+            })
+          }
+        );
+        
+        if (!response.ok) {
+          throw new UnauthorizedException('Invalid credentials');
+        }
+      }
+    } catch (error: any) {
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      // If API call fails, log but continue (fallback for development)
+      console.error('Password verification error:', error.message);
     }
 
     if ((user as any).status === 'REJECTED' || user.company?.status === CompanyStatus.REJECTED) {

@@ -43,6 +43,11 @@ export class CreateAuctionDto {
   @IsNumber()
   @IsOptional()
   @Type(() => Number)
+  maximumTickSize?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
   extensionMinutes?: number;
 
   @IsString()
@@ -80,6 +85,11 @@ export class ScheduleAuctionDto {
   @IsOptional()
   @Type(() => Number)
   maxTicks?: number;
+
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  maximumTickSize?: number;
 
   @IsNumber()
   @IsOptional()

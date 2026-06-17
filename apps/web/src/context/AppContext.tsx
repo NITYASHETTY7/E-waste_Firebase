@@ -76,417 +76,6 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'weconnect_state_v13';
 
-const MOCK_LISTINGS: Listing[] = [
-  {
-    id: 'ECO18951', title: 'Batch of CRT Monitors and Mixed eWaste (15 Units)', category: 'Display Units', subCategory: 'ITAssets',
-    weight: 1500, location: 'Bengaluru Global Village', locationType: 'STPI', status: 'active', userId: 'C1',
-    userName: 'Tech Corp Ltd', description: 'End of life IT hardware including legacy CRT monitors, thick-client workstations, and broken peripherals.',
-    createdAt: '2026-04-10T10:00:00.000Z', urgency: 'medium', bidCount: 4, viewCount: 124,
-    auctionStartDate: '2026-04-16T08:00:00.000Z',
-    auctionEndDate: '2026-04-17T18:00:00.000Z',
-    auctionPhase: 'live', basePrice: 21000, bidIncrement: 500, highestEmdAmount: 5000,
-    images: ['https://images.unsplash.com/photo-1588508065123-287b28e013da?auto=format&fit=crop&w=800&q=80']
-  },
-  {
-    id: 'ECO18950', title: 'Decommissioned Server Rack Components', category: 'IT Equipment', subCategory: 'DataCenter Assets',
-    weight: 4200, location: 'Bengaluru Whitefield (STPI)', locationType: 'SEZ / STPI', status: 'active', userId: 'C2',
-    userName: 'Global Infra Pvt Ltd', description: 'Includes storage drives (drilled), network switches, and redundant power supplies. Vendor must possess Category 1 handling certification.',
-    createdAt: '2026-04-14T14:30:00.000Z', urgency: 'high', bidCount: 2, viewCount: 89,
-    auctionPhase: 'sealed_bid', basePrice: 135000, highestEmdAmount: 25000,
-    images: ['https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80']
-  },
-  {
-    id: 'ECO18937', title: 'Lithium Battery Storage Cell Block', category: 'Batteries', subCategory: 'UPS Systems',
-    weight: 850, location: 'Harman International-Bangalore', locationType: 'Corporate Park', status: 'completed', userId: 'C1',
-    userName: 'Tech Corp Ltd', description: 'Used backup laptop battery matrices and UPS cell columns. 240 units total. Partially functional.',
-    createdAt: '2026-04-01T09:15:00.000Z', urgency: 'low', bidCount: 8, viewCount: 210,
-    auctionPhase: 'completed', basePrice: 42000, bidIncrement: 2000, highestEmdAmount: 10000,
-    images: ['https://images.unsplash.com/photo-1563298723-dcfebaa392e3?auto=format&fit=crop&w=800&q=80']
-  },
-  {
-    id: 'ECO18910', title: 'Legacy Workstations (Pentium Era)', category: 'Laptops & PCs',
-    weight: 2200, location: 'Whitefield, Bangalore', status: 'completed', userId: 'C1',
-    userName: 'Tech Corp Ltd', description: 'Bulk removal of 85 legacy tower PCs. Very old hardware, intended for scrap value only.',
-    createdAt: '2026-03-15T11:00:00.000Z', urgency: 'low', bidCount: 5, viewCount: 145,
-    auctionPhase: 'completed', basePrice: 15000, bidIncrement: 1000,
-    images: ['https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80']
-  },
-  {
-    id: 'ECO18905', title: 'Redundant Power Distribution Units', category: 'Power Equipment',
-    weight: 950, location: 'Hydrabad, HITEC City', status: 'completed', userId: 'C2',
-    userName: 'Global Infra Pvt Ltd', description: 'Heavy duty rack-mount PDUs. Industrial grade copper content.',
-    createdAt: '2026-03-01T16:45:00.000Z', urgency: 'medium', bidCount: 7, viewCount: 92,
-    auctionPhase: 'completed', basePrice: 65000, bidIncrement: 2500,
-    images: ['https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=800&q=80']
-  },
-  {
-    id: 'ECO18960', title: 'Mixed Office IT Scrap (Laptops & Peripherals)', category: 'Laptops & PCs',
-    weight: 450, location: 'Electronic City, Bangalore', status: 'active', userId: 'C1',
-    userName: 'Tech Corp Ltd', description: 'Assorted lot of 25 Dell laptops (Latitude series), 15 HP keyboards, and 10 Logitech mice. Non-functional.',
-    createdAt: '2026-04-15T12:00:00.000Z', urgency: 'medium', bidCount: 0, viewCount: 15,
-    auctionPhase: 'sealed_bid', basePrice: 85000, highestEmdAmount: 15000,
-    images: ['https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=800&q=80']
-  },
-  {
-    id: 'ECO18972', title: 'Industrial Copper Wiring and Connectors', category: 'Cables & Wiring',
-    weight: 3200, location: 'Peenya Industrial Area', status: 'active', userId: 'C3',
-    userName: 'Manufacturing Hub', description: 'Stripped copper wiring from decommissioned production line. High-grade industrial quality.',
-    createdAt: '2026-04-12T08:00:00.000Z', urgency: 'low', bidCount: 5, viewCount: 78,
-    auctionPhase: 'live',
-    auctionStartDate: '2026-04-16T10:00:00.000Z',
-    auctionEndDate: '2026-04-18T10:00:00.000Z',
-    basePrice: 450000, bidIncrement: 5000, highestEmdAmount: 50000,
-    images: ['https://images.unsplash.com/photo-1558494949-ef010cbdcc48?auto=format&fit=crop&w=800&q=80']
-  },
-  {
-    id: 'ECO18980', title: 'Legacy Telecom Equipment (Base Stations)', category: 'Other',
-    weight: 8500, location: 'Manesar, Haryana', status: 'active', userId: 'C2',
-    userName: 'Global Infra Pvt Ltd', description: 'Decommissioned 2G/3G base station hardware. Heavy metal enclosures. Mixed PCB content.',
-    createdAt: '2026-04-06T14:00:00.000Z', urgency: 'low', bidCount: 12, viewCount: 156,
-    auctionPhase: 'completed', basePrice: 1200000, bidIncrement: 10000,
-    images: ['https://images.unsplash.com/photo-1516397281156-ca07cf9746fc?auto=format&fit=crop&w=800&q=80']
-  },
-  {
-    id: 'ECO18985', title: 'Batch of 100+ Smartphones (Mixed Brands)', category: 'Mobile Devices',
-    weight: 25, location: 'Gurgaon, Sector 44', status: 'active', userId: 'C1',
-    userName: 'Tech Corp Ltd', description: 'Mixed lot of corporate smartphones (iPhone, Samsung, Pixel). Screen damage or battery issues in 80% units.',
-    createdAt: '2026-04-16T12:00:00.000Z', urgency: 'high', bidCount: 3, viewCount: 45,
-    auctionPhase: 'sealed_bid', basePrice: 250000, highestEmdAmount: 30000,
-    images: ['https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=800&q=80']
-  },
-
-  {
-    id: 'CON-L1', title: 'Old Sony Bravia 42 inch LED TV', category: 'Display Units', subCategory: 'Consumer Electronics',
-    weight: 15, location: 'Koramangala, Bangalore', status: 'completed', userId: 'CON1',
-    userName: 'Rahul Sharma', description: 'Used LED TV with screen flickering issues. Original stand included.',
-    createdAt: '2026-04-12T10:00:00.000Z', urgency: 'medium', bidCount: 3, viewCount: 45,
-    auctionPhase: 'completed', basePrice: 800, bidIncrement: 100,
-    images: ['https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?auto=format&fit=crop&w=800&q=80']
-  },
-  {
-    id: 'CON-L2', title: 'Mixed Home Electronics (Blender, Iron, Toaster)', category: 'Home Appliances', subCategory: 'Small Appliances',
-    weight: 12, location: 'Koramangala, Bangalore', status: 'active', userId: 'CON1',
-    userName: 'Rahul Sharma', description: 'Assorted non-functional home appliances. Toaster heating element broken, blender motor burnt.',
-    createdAt: '2026-04-17T09:00:00.000Z', urgency: 'low', bidCount: 1, viewCount: 22,
-    auctionPhase: 'sealed_bid', basePrice: 400, highestEmdAmount: 50,
-    images: ['https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=800&q=80']
-  },
-  {
-    id: 'ECO18990', title: 'Bulk Desktop Computers (Office Decommission Lot)', category: 'Laptops & PCs',
-    weight: 800, location: 'MG Road, Bangalore', status: 'active', userId: 'C1',
-    userName: 'Tech Corp Ltd', description: 'Bulk lot of 40 desktop computers from office decommission. Core i3/Pentium era hardware. HDD securely wiped. Non-functional screens excluded.',
-    createdAt: '2026-04-19T09:00:00.000Z', urgency: 'medium', bidCount: 0, viewCount: 8,
-    auctionPhase: 'invitation_window',
-    invitedVendorIds: ['V1', 'V2', 'V3'],
-    vendorResponses: [
-      { vendorId: 'V1', status: 'interested', respondedAt: '2026-04-19T11:00:00.000Z' },
-      { vendorId: 'V2', status: 'declined', respondedAt: '2026-04-19T10:30:00.000Z' },
-    ],
-    sealedBidStartDate: '2026-04-20T14:00:00.000Z',
-    sealedBidEndDate: '2026-04-20T17:00:00.000Z',
-    invitationDeadline: '2026-04-21T18:00:00.000Z',
-    images: ['https://images.unsplash.com/photo-1547082299-de196ea013d6?auto=format&fit=crop&w=800&q=80']
-  },
-
-  // ── POST-AUCTION DEMO LISTINGS ──────────────────────────────────────────
-  // Stage 1: Auction done, vendor submitted final quote → client must approve
-  {
-    id: 'ECO18992', title: 'Network Switches & Patch Panels (EOL Batch)', category: 'IT Equipment',
-    weight: 620, location: 'Koramangala, Bangalore', status: 'completed', userId: 'C1',
-    userName: 'Tech Corp Ltd', description: 'End-of-life Cisco Catalyst switches and 48-port patch panels. 28 units total. Factory reset. Suitable for copper/PCB recovery.',
-    createdAt: '2026-04-10T11:00:00.000Z', urgency: 'medium', bidCount: 5, viewCount: 98,
-    auctionPhase: 'completed', basePrice: 95000, bidIncrement: 2000, highestEmdAmount: 12000,
-    auctionStartDate: '2026-04-17T10:00:00.000Z', auctionEndDate: '2026-04-18T18:00:00.000Z',
-    winnerVendorId: 'V1', winnerVendorName: 'Green Recyclers Pvt Ltd',
-    finalQuoteStatus: 'submitted',
-    finalQuoteProductUrl: undefined,
-    finalQuoteLetterheadUrl: undefined,
-    finalQuoteSubmittedAt: '2026-04-20T14:30:00.000Z',
-    images: ['https://images.unsplash.com/photo-1558494949-ef010cbdcc48?auto=format&fit=crop&w=800&q=80']
-  },
-
-  // Stage 2: Final quote approved, payment proof uploaded → admin to confirm
-  {
-    id: 'ECO18993', title: 'UPS Battery Banks (Industrial Grade)', category: 'Batteries',
-    weight: 1850, location: 'Electronic City, Bangalore', status: 'completed', userId: 'C2',
-    userName: 'Global Infra Pvt Ltd', description: 'Industrial UPS battery banks (12V/100Ah VRLA blocks). 96 units. Capacity degraded below 60%. Lead content high — needs authorised recycler.',
-    createdAt: '2026-04-05T08:00:00.000Z', urgency: 'high', bidCount: 9, viewCount: 178,
-    auctionPhase: 'completed', basePrice: 220000, bidIncrement: 5000, highestEmdAmount: 30000,
-    auctionStartDate: '2026-04-14T09:00:00.000Z', auctionEndDate: '2026-04-15T18:00:00.000Z',
-    winnerVendorId: 'V3', winnerVendorName: 'RecycleFirst India',
-    finalQuoteStatus: 'approved',
-    finalQuoteSubmittedAt: '2026-04-17T10:00:00.000Z',
-    paymentStatus: 'proof_uploaded',
-    paymentClientAmount: 237500, paymentCommissionAmount: 12500,
-    paymentUTR: 'ICIC2604190082345', paymentSubmittedAt: '2026-04-19T16:45:00.000Z',
-    images: ['https://images.unsplash.com/photo-1563298723-dcfebaa392e3?auto=format&fit=crop&w=800&q=80']
-  },
-
-  // ── STEP 6: PO issued, vendor must acknowledge ────────────────────────────
-  {
-    id: 'ECO19001', title: 'Server Room IT Assets — Phase 1 Decommission', category: 'IT Equipment',
-    weight: 1200, location: 'Koramangala, Bangalore', status: 'completed', userId: 'C1',
-    userName: 'Tech Corp Ltd', description: 'HP ProLiant servers (Gen 9/10), Dell PowerEdge R740 units. 18 servers total. HDDs removed. BIOS reset. Includes rack hardware and PDUs.',
-    createdAt: '2026-04-22T09:00:00.000Z', urgency: 'high', bidCount: 5, viewCount: 88,
-    auctionPhase: 'completed', basePrice: 160000, bidIncrement: 3000, highestEmdAmount: 20000,
-    winnerVendorId: 'V1', winnerVendorName: 'Green Recyclers Pvt Ltd',
-    finalQuoteStatus: 'approved', finalQuoteSubmittedAt: '2026-04-25T11:00:00.000Z',
-    poStatus: 'issued',
-    poNumber: 'WC-2026-0047',
-    poIssuedAt: '2026-04-26T10:00:00.000Z',
-    poPaymentTerms: 'Advance Payment — 100% before pickup',
-    poDeliveryTerms: 'Ex-Works (Client premises, Koramangala)',
-    poPenaltyClause: '2% per week of delay, capped at 10%',
-    poSpecialConditions: 'All drives to be physically destroyed on-site. Vendor must carry CPCB certificate.',
-    emdStatus: 'pending', emdAmount: 20000,
-    images: ['https://images.unsplash.com/photo-1558494949-ef010cbdcc48?auto=format&fit=crop&w=800&q=80']
-  },
-
-  // ── STEP 6: PO acknowledged, EMD pending → then payment ──────────────────
-  {
-    id: 'ECO19002', title: 'Network Equipment Lot — End of Lease Return', category: 'IT Equipment',
-    weight: 560, location: 'MG Road, Bangalore', status: 'completed', userId: 'C1',
-    userName: 'Tech Corp Ltd', description: 'Cisco Catalyst 9000 series switches (12 units), Juniper SRX firewalls (4 units), Aruba access points (32 units). All factory-reset.',
-    createdAt: '2026-04-18T10:00:00.000Z', urgency: 'medium', bidCount: 4, viewCount: 63,
-    auctionPhase: 'completed', basePrice: 120000, bidIncrement: 2000, highestEmdAmount: 15000,
-    winnerVendorId: 'V1', winnerVendorName: 'Green Recyclers Pvt Ltd',
-    finalQuoteStatus: 'approved', finalQuoteSubmittedAt: '2026-04-21T14:00:00.000Z',
-    poStatus: 'acknowledged', poNumber: 'WC-2026-0046', poIssuedAt: '2026-04-22T09:00:00.000Z',
-    poPaymentTerms: 'Net 15 — Payment within 15 days of PO acknowledgement',
-    poDeliveryTerms: 'Ex-Works (Client premises, MG Road)',
-    poPenaltyClause: '1.5% per week of delay, capped at 8%',
-    emdStatus: 'submitted', emdAmount: 15000, emdUTR: 'HDFC2604220099123', emdSubmittedAt: '2026-04-23T10:00:00.000Z',
-    paymentStatus: 'pending', paymentClientAmount: 142500, paymentCommissionAmount: 7500,
-    images: ['https://images.unsplash.com/photo-1605810230434-7631ac76ec81?auto=format&fit=crop&w=800&q=80']
-  },
-
-  // V1 payment pending — client just approved quote, vendor must pay (payment flow demo)
-  {
-    id: 'ECO18996', title: 'Workstation PC Lot (Engineering Dept Refresh)', category: 'Laptops & PCs',
-    weight: 940, location: 'Indiranagar, Bangalore', status: 'completed', userId: 'C1',
-    userName: 'Tech Corp Ltd', description: 'Dell Precision workstations (Gen 7-9). 22 units. Drives wiped. BIOS locked. Hard drives removed and shredded.',
-    createdAt: '2026-04-08T11:00:00.000Z', urgency: 'medium', bidCount: 4, viewCount: 71,
-    auctionPhase: 'completed', basePrice: 80000, bidIncrement: 2000, highestEmdAmount: 10000,
-    winnerVendorId: 'V1', winnerVendorName: 'Green Recyclers Pvt Ltd',
-    finalQuoteStatus: 'approved', finalQuoteSubmittedAt: '2026-04-19T09:00:00.000Z',
-    poStatus: 'acknowledged', poNumber: 'WC-2026-0044', poIssuedAt: '2026-04-18T09:00:00.000Z',
-    poPaymentTerms: 'Advance Payment — 100% before pickup', poDeliveryTerms: 'Ex-Works (Client premises)',
-    emdStatus: 'verified', emdAmount: 10000, emdUTR: 'ICIC2604170055678',
-    paymentStatus: 'pending', paymentClientAmount: 109750, paymentCommissionAmount: 5750,
-    images: ['https://images.unsplash.com/photo-1547082299-de196ea013d6?auto=format&fit=crop&w=800&q=80']
-  },
-
-  // ── STEP 7: Payment confirmed, client has sent handover docs → vendor to acknowledge ──
-  {
-    id: 'ECO18997', title: 'Mixed PCB Scrap — R&D Lab Decommission', category: 'Circuit Boards',
-    weight: 380, location: 'HSR Layout, Bangalore', status: 'completed', userId: 'C1',
-    userName: 'Tech Corp Ltd', description: 'PCBs from decommissioned R&D lab equipment. Includes motherboards, daughter cards, and memory modules. Lead-solder boards included.',
-    createdAt: '2026-04-02T10:00:00.000Z', urgency: 'low', bidCount: 3, viewCount: 55,
-    auctionPhase: 'completed', basePrice: 55000, bidIncrement: 1000,
-    winnerVendorId: 'V1', winnerVendorName: 'Green Recyclers Pvt Ltd',
-    finalQuoteStatus: 'approved',
-    poStatus: 'acknowledged', poNumber: 'WC-2026-0042', poIssuedAt: '2026-04-09T09:00:00.000Z',
-    poPaymentTerms: 'Advance Payment', poDeliveryTerms: 'Ex-Works', emdStatus: 'not_required',
-    paymentStatus: 'confirmed', paymentClientAmount: 68400, paymentCommissionAmount: 3600, paymentUTR: 'ICIC2604080033221',
-    handoverStatus: 'created',
-    handoverGatePass: 'GP-2026-0312', handoverVehicle: 'KA-01-AB-5678', handoverDriver: 'Ramesh Kumar',
-    handoverDate: '2026-05-10T09:00:00.000Z', handoverNotes: 'Report to Gate 3. Contact security: Ravi +91 98001 11222. PCB lots in Warehouse B, Rack 14-18.',
-    images: ['https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=80']
-  },
-
-  // ── STEP 8: Handover done, reconciliation submitted → admin to verify ────
-  {
-    id: 'ECO18994', title: 'Decommissioned Data Centre Cooling Units', category: 'Other',
-    weight: 3400, location: 'Whitefield, Bangalore', status: 'completed', userId: 'C1',
-    userName: 'Tech Corp Ltd', description: 'Precision air conditioning units from decommissioned DC. Compressors removed. Aluminium fins, copper coils, and steel enclosures.',
-    createdAt: '2026-03-28T09:00:00.000Z', urgency: 'low', bidCount: 6, viewCount: 133,
-    auctionPhase: 'completed', basePrice: 180000, bidIncrement: 4000, highestEmdAmount: 25000,
-    winnerVendorId: 'V2', winnerVendorName: 'EcoMetal Solutions',
-    finalQuoteStatus: 'approved',
-    poStatus: 'acknowledged', poNumber: 'WC-2026-0038', poIssuedAt: '2026-03-31T09:00:00.000Z',
-    emdStatus: 'verified', emdAmount: 25000,
-    paymentStatus: 'confirmed', paymentClientAmount: 285500, paymentCommissionAmount: 15000, paymentUTR: 'HDFC2603290056781',
-    handoverStatus: 'acknowledged', handoverGatePass: 'GP-2026-0289', handoverDate: '2026-04-18T08:00:00.000Z',
-    reconciliationStatus: 'submitted',
-    reconciliationFinalWeight: 3350, reconciliationFinalQuantity: 6, reconciliationFinalValue: 282000,
-    reconciliationNotes: 'One unit had missing compressor housing — 50kg short. Adjusted commercial value accordingly.',
-    reconciliationSubmittedAt: '2026-04-20T14:00:00.000Z',
-    complianceStatus: 'documents_uploaded', pickupScheduledDate: '2026-04-18T08:00:00.000Z',
-    images: ['https://images.unsplash.com/photo-1544724569-5f546fd6f2b5?auto=format&fit=crop&w=800&q=80']
-  },
-
-  // ── FULLY COMPLETED — all steps done ─────────────────────────────────────
-  {
-    id: 'ECO18995', title: 'Enterprise Printer Fleet Disposal (60 Units)', category: 'Other',
-    weight: 720, location: 'MG Road, Bangalore', status: 'completed', userId: 'C1',
-    userName: 'Tech Corp Ltd', description: 'HP and Xerox laser printers. Toner cartridges removed. Drums wiped. Includes 8 heavy-duty production printers.',
-    createdAt: '2026-03-10T10:00:00.000Z', urgency: 'low', bidCount: 4, viewCount: 87,
-    auctionPhase: 'completed', basePrice: 42000, bidIncrement: 1000,
-    winnerVendorId: 'V1', winnerVendorName: 'Green Recyclers Pvt Ltd',
-    finalQuoteStatus: 'approved',
-    poStatus: 'acknowledged', poNumber: 'WC-2026-0031', poIssuedAt: '2026-03-18T09:00:00.000Z',
-    emdStatus: 'not_required',
-    paymentStatus: 'confirmed', paymentClientAmount: 49400, paymentCommissionAmount: 2600,
-    handoverStatus: 'acknowledged', handoverGatePass: 'GP-2026-0256', handoverDate: '2026-04-10T08:00:00.000Z',
-    reconciliationStatus: 'verified', reconciliationFinalWeight: 720, reconciliationFinalQuantity: 60, reconciliationFinalValue: 52000,
-    complianceStatus: 'verified', pickupScheduledDate: '2026-04-10T08:00:00.000Z',
-    form6Url: 'data:text/plain;base64,Rm9ybTY=',
-    weightSlipEmptyUrl: 'data:text/plain;base64,V2VpZ2h0RW1wdHk=',
-    weightSlipLoadedUrl: 'data:text/plain;base64,V2VpZ2h0TG9hZGVk',
-    recyclingCertUrl: 'data:text/plain;base64,UmVjeWNsaW5nQ2VydA==',
-    disposalCertUrl: 'data:text/plain;base64,RGlzcG9zYWxDZXJ0',
-    images: ['https://images.unsplash.com/photo-1612198188060-c7c2a3b66eae?auto=format&fit=crop&w=800&q=80']
-  },
-];
-
-const MOCK_BIDS: Bid[] = [
-  { id: 'B1-0', listingId: 'ECO18951', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 21200, status: 'pending', type: 'open', createdAt: '2026-04-16T14:45:00.000Z' },
-  { id: 'B2-0', listingId: 'ECO18951', vendorId: 'V2', vendorName: 'EcoMetal Solutions', amount: 21400, status: 'pending', type: 'open', createdAt: '2026-04-16T14:50:00.000Z' },
-  { id: 'B1-1', listingId: 'ECO18951', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 21800, status: 'pending', type: 'open', createdAt: '2026-04-16T15:10:00.000Z' },
-  { id: 'B2-1', listingId: 'ECO18951', vendorId: 'V2', vendorName: 'EcoMetal Solutions', amount: 22100, status: 'pending', type: 'open', createdAt: '2026-04-16T15:20:00.000Z' },
-  { id: 'B1', listingId: 'ECO18951', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 22500, status: 'pending', type: 'open', createdAt: '2026-04-16T15:30:00.000Z' },
-  { id: 'B2', listingId: 'ECO18951', vendorId: 'V2', vendorName: 'EcoMetal Solutions', amount: 22600, status: 'pending', type: 'open', createdAt: '2026-04-16T15:35:00.000Z' },
-  { id: 'B3-0', listingId: 'ECO18951', vendorId: 'V3', vendorName: 'RecycleFirst India', amount: 22800, status: 'pending', type: 'open', createdAt: '2026-04-16T15:45:00.000Z' },
-  { id: 'B11', listingId: 'ECO18951', vendorId: 'V3', vendorName: 'RecycleFirst India', amount: 23000, status: 'pending', type: 'open', createdAt: '2026-04-16T15:50:00.000Z' },
-  { id: 'B3', listingId: 'ECO18950', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 145000, status: 'pending', type: 'sealed', createdAt: '2026-04-16T14:00:00.000Z' },
-  { id: 'B4', listingId: 'ECO18950', vendorId: 'V3', vendorName: 'RecycleFirst India', amount: 152000, status: 'pending', type: 'sealed', createdAt: '2026-04-16T12:00:00.000Z' },
-  { id: 'B5', listingId: 'ECO18937', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 48000, status: 'accepted', type: 'open', createdAt: '2026-04-12T11:00:00.000Z' },
-  { id: 'B6', listingId: 'ECO18972', vendorId: 'V2', vendorName: 'EcoMetal Solutions', amount: 465000, status: 'pending', type: 'open', createdAt: '2026-04-16T15:00:00.000Z' },
-  { id: 'B7', listingId: 'ECO18972', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 470000, status: 'pending', type: 'open', createdAt: '2026-04-16T15:40:00.000Z' },
-  { id: 'B8', listingId: 'ECO18980', vendorId: 'V3', vendorName: 'RecycleFirst India', amount: 1350000, status: 'accepted', type: 'open', createdAt: '2026-04-14T10:00:00.000Z' },
-  { id: 'B12', listingId: 'ECO18910', vendorId: 'V2', vendorName: 'EcoMetal Solutions', amount: 18500, status: 'accepted', type: 'open', createdAt: '2026-03-20T11:00:00.000Z' },
-  { id: 'B13', listingId: 'ECO18905', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 72000, status: 'accepted', type: 'open', createdAt: '2026-03-05T14:00:00.000Z' },
-  { id: 'B9', listingId: 'ECO18985', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 260000, status: 'pending', type: 'sealed', createdAt: '2026-04-16T15:00:00.000Z' },
-  { id: 'B10', listingId: 'ECO18985', vendorId: 'V2', vendorName: 'EcoMetal Solutions', amount: 255000, status: 'pending', type: 'sealed', createdAt: '2026-04-16T14:00:00.000Z' },
-  { id: 'CON-B1', listingId: 'CON-L1', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 1500, status: 'accepted', type: 'open', createdAt: '2026-04-14T11:00:00.000Z' },
-  { id: 'CON-B2', listingId: 'CON-L2', vendorId: 'V2', vendorName: 'EcoMetal Solutions', amount: 450, status: 'pending', type: 'sealed', createdAt: '2026-04-17T15:00:00.000Z' },
-  // New step-6 demo bids
-  { id: 'B20', listingId: 'ECO19001', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 175000, status: 'accepted', type: 'open', createdAt: '2026-04-24T17:00:00.000Z' },
-  { id: 'B21', listingId: 'ECO19002', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 150000, status: 'accepted', type: 'open', createdAt: '2026-04-20T16:00:00.000Z' },
-  // Post-auction demo bids — accepted winners
-  { id: 'B14', listingId: 'ECO18992', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 105000, status: 'accepted', type: 'open', createdAt: '2026-04-18T17:55:00.000Z' },
-  { id: 'B15', listingId: 'ECO18993', vendorId: 'V3', vendorName: 'RecycleFirst India', amount: 250000, status: 'accepted', type: 'open', createdAt: '2026-04-15T17:58:00.000Z' },
-  { id: 'B16', listingId: 'ECO18994', vendorId: 'V2', vendorName: 'EcoMetal Solutions', amount: 300500, status: 'accepted', type: 'open', createdAt: '2026-04-10T17:57:00.000Z' },
-  { id: 'B17', listingId: 'ECO18995', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 52000, status: 'accepted', type: 'open', createdAt: '2026-03-25T17:50:00.000Z' },
-  { id: 'B18', listingId: 'ECO18996', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 115500, status: 'accepted', type: 'open', createdAt: '2026-04-17T16:40:00.000Z' },
-  { id: 'B19', listingId: 'ECO18997', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd', amount: 72000, status: 'accepted', type: 'open', createdAt: '2026-04-06T14:30:00.000Z' },
-];
-
-const MOCK_USERS: User[] = [
-  { id: 'A1', name: 'Super Admin', role: 'admin', email: 'admin@weconnect.com', status: 'active', registeredAt: '2026-02-15T10:00:00.000Z', onboardingStep: 5 },
-  {
-    id: 'C1', name: 'Tech Corp Ltd', role: 'client', email: 'client@weconnect.com', status: 'active', phone: '+91 98765 43210', registeredAt: '2026-03-01T10:00:00.000Z', onboardingStep: 5,
-    bankDetails: { accountHolderName: 'Tech Corp Ltd', bankName: 'HDFC Bank', accountNumber: '50100234567890', ifscCode: 'HDFC0001234', accountType: 'current' as const },
-  },
-  { id: 'C2', name: 'Global Infra Pvt Ltd', role: 'client', email: 'info@globalinfra.com', status: 'active', phone: '+91 87654 32109', registeredAt: '2026-03-15T10:00:00.000Z', onboardingStep: 5 },
-  { id: 'C3', name: 'Manufacturing Hub', role: 'client', email: 'ops@manhub.com', status: 'active', phone: '+91 76543 21098', registeredAt: '2026-03-25T10:00:00.000Z', onboardingStep: 5 },
-  { id: 'V1', name: 'Green Recyclers Pvt Ltd', role: 'vendor', email: 'vendor@weconnect.com', status: 'active', phone: '+91 76543 21098', registeredAt: '2026-03-05T10:00:00.000Z', onboardingStep: 5 },
-  { id: 'V2', name: 'EcoMetal Solutions', role: 'vendor', email: 'info@ecometal.com', status: 'active', phone: '+91 65432 10987', registeredAt: '2026-03-20T10:00:00.000Z', onboardingStep: 5 },
-  { id: 'V3', name: 'RecycleFirst India', role: 'vendor', email: 'ops@recyclefirst.in', status: 'active', phone: '+91 54321 09876', registeredAt: '2026-04-01T10:00:00.000Z', onboardingStep: 5 },
-  {
-    id: 'V4', name: 'PureRecovery Solutions', role: 'vendor', email: 'contact@purerecovery.com',
-    status: 'pending', phone: '+91 43210 98765', registeredAt: '2026-04-14T10:00:00.000Z', onboardingStep: 4,
-    onboardingProfile: {
-      companyName: 'PureRecovery Solutions Pvt Ltd', contactPerson: 'Arjun Mehta',
-      email: 'contact@purerecovery.com', phone: '+91 43210 98765',
-      address: 'Plot 14, Sector 18, HSIIDC Industrial Area', city: 'Faridabad',
-      state: 'Haryana', pincode: '121002',
-      companyRegistrationNo: 'U90000HR2019PTC082341', processingCapacity: '500 MT / Month',
-      materialSpecializations: ['IT Equipment', 'Batteries', 'Components'],
-      cpcbNo: 'CPCB/R/HR/2021/0842',
-    },
-    documents: [
-      { name: 'CPCB Certificate', fileName: 'CPCB_Certificate_PureRecovery.pdf', size: '2.1 MB', uploadedAt: '2026-04-14T10:00:00.000Z', status: 'pending' },
-      { name: 'GST Certificate', fileName: 'GST_PureRecovery.pdf', size: '1.2 MB', uploadedAt: '2026-04-14T10:05:00.000Z', status: 'pending' },
-      { name: 'Company Registration', fileName: 'CIN_PureRecovery.pdf', size: '3.4 MB', uploadedAt: '2026-04-14T10:10:00.000Z', status: 'pending' },
-      { name: 'EMD Proof', fileName: 'EMD_BankReceipt.pdf', size: '0.8 MB', uploadedAt: '2026-04-14T10:15:00.000Z', status: 'pending' },
-    ],
-    bankDetails: {
-      accountHolderName: 'PureRecovery Solutions Pvt Ltd', bankName: 'HDFC Bank',
-      accountNumber: '50200012345678', ifscCode: 'HDFC0001234', accountType: 'current',
-    },
-  },
-  {
-    id: 'V5', name: 'Urban Miners', role: 'vendor', email: 'hello@urbanminers.com',
-    status: 'pending', phone: '+91 32109 87654', registeredAt: '2026-04-15T10:00:00.000Z', onboardingStep: 2,
-    onboardingProfile: {
-      companyName: 'Urban Miners', contactPerson: 'Priya Nair',
-      email: 'hello@urbanminers.com', phone: '+91 32109 87654',
-      address: '7B, Anna Salai, Nungambakkam', city: 'Chennai',
-      state: 'Tamil Nadu', pincode: '600034',
-      companyRegistrationNo: 'U90000TN2023PTC145678', processingCapacity: '200 MT / Month',
-      materialSpecializations: ['Mobile Devices', 'Cables & Wiring'],
-      cpcbNo: 'Application Pending',
-    },
-  },
-  {
-    id: 'C4', name: 'InnoTech Systems Pvt Ltd', role: 'client', email: 'admin@innotech.in',
-    status: 'pending', phone: '+91 22334 55667', registeredAt: '2026-04-18T09:00:00.000Z', onboardingStep: 3,
-    onboardingProfile: {
-      companyName: 'InnoTech Systems Pvt Ltd', contactPerson: 'Vikram Rao',
-      email: 'admin@innotech.in', phone: '+91 22334 55667',
-      address: '302, Amar Tower, Bandra Kurla Complex', city: 'Mumbai',
-      state: 'Maharashtra', pincode: '400051',
-      gstin: '27AABCI9999A1Z5', industrySector: 'Information Technology',
-      numberOfEmployees: '201-500',
-    },
-    documents: [
-      { name: 'GST Certificate', fileName: 'GST_InnoTech.pdf', size: '1.5 MB', uploadedAt: '2026-04-18T09:00:00.000Z', status: 'pending' },
-      { name: 'Company Incorporation', fileName: 'CIN_InnoTech.pdf', size: '2.2 MB', uploadedAt: '2026-04-18T09:05:00.000Z', status: 'pending' },
-      { name: 'Address Proof', fileName: 'AddressProof_InnoTech.pdf', size: '1.1 MB', uploadedAt: '2026-04-18T09:10:00.000Z', status: 'pending' },
-    ],
-  },
-  { id: 'G1', name: 'Individual User', role: 'guest', email: 'guest@weconnect.com', status: 'active', registeredAt: '2026-04-16T13:00:00.000Z', onboardingStep: 5 },
-  { id: 'CON1', name: 'Rahul Sharma', role: 'consumer', email: 'consumer@weconnect.com', status: 'active', phone: '+91 91234 56789', registeredAt: '2026-04-16T13:00:00.000Z', onboardingStep: 5 },
-];
-
-const MOCK_AUDIT_INVITATIONS: AuditInvitation[] = [
-  {
-    id: 'AUD1', listingId: 'ECO18990', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd',
-    status: 'accepted', invitedAt: '2026-04-19T12:00:00.000Z', scheduledDate: '2026-04-22T10:00:00.000Z',
-    spocName: 'Ravi Kumar', spocPhone: '+91 98001 11222', siteAddress: 'MG Road, Bangalore',
-  },
-  {
-    id: 'AUD2', listingId: 'ECO18990', vendorId: 'V3', vendorName: 'RecycleFirst India',
-    status: 'completed', invitedAt: '2026-04-19T12:00:00.000Z', scheduledDate: '2026-04-21T09:00:00.000Z',
-    spocName: 'Ravi Kumar', spocPhone: '+91 98001 11222', siteAddress: 'MG Road, Bangalore',
-    productMatch: true, auditRemarks: 'All 40 desktop units verified. Condition matches description.', completedAt: '2026-04-21T11:30:00.000Z',
-  },
-  {
-    id: 'AUD3', listingId: 'ECO18950', vendorId: 'V2', vendorName: 'EcoMetal Solutions',
-    status: 'invited', invitedAt: '2026-04-20T09:00:00.000Z',
-    spocName: 'Anita Sharma', spocPhone: '+91 98002 33444', siteAddress: 'Whitefield, Bangalore',
-  },
-];
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  { id: 'N1', userId: 'C1', type: 'bid_received', title: 'New Bid Received', message: 'Green Recyclers placed a bid of ₹22,500 on your CRT Monitor listing.', read: false, createdAt: '2026-04-16T15:45:00.000Z' },
-  { id: 'N2', userId: 'C1', type: 'bid_received', title: 'New Bid Received', message: 'EcoMetal Solutions placed a bid of ₹21,500 on your CRT Monitor listing.', read: false, createdAt: '2026-04-16T15:15:00.000Z' },
-  { id: 'N3', userId: 'V1', type: 'bid_accepted', title: 'Bid Accepted!', message: 'Your bid of ₹48,000 on Battery Storage Block has been accepted.', read: true, createdAt: '2026-04-13T10:00:00.000Z' },
-  { id: 'N4', userId: 'C3', type: 'bid_received', title: 'Live Bid Received', message: 'Green Recyclers just bid ₹470,000 on Industrial Copper Wiring.', read: false, createdAt: '2026-04-16T15:40:00.000Z' },
-  { id: 'N5', userId: 'V4', type: 'account_approved', title: 'Account Under Review', message: 'Admin is currently reviewing your documents.', read: false, createdAt: '2026-04-15T10:00:00.000Z' },
-  { id: 'N6', userId: 'C1', type: 'bid_received', title: 'Highest Bid Alert', message: 'RecycleFirst India just placed a new high bid on CRT Monitors.', read: false, createdAt: '2026-04-16T15:50:00.000Z' },
-  { id: 'CON-N1', userId: 'CON1', type: 'bid_accepted', title: 'Pick-up Scheduled', message: 'Your LED TV disposal request has been confirmed. Payout of ₹1,500 will be settled post verification.', read: false, createdAt: '2026-04-15T10:00:00.000Z' },
-  { id: 'CON-N2', userId: 'CON1', type: 'general', title: 'New Achievement 🌳', message: 'You have neutralized 42KG of Carbon this month. Check your impact score!', read: false, createdAt: '2026-04-17T10:00:00.000Z' },
-];
-
-const MOCK_VENDOR_RATINGS: VendorRating[] = [
-  {
-    id: 'RV1', listingId: 'ECO18995', vendorId: 'V1', vendorName: 'Green Recyclers Pvt Ltd',
-    clientId: 'C1', clientName: 'Tech Corp Ltd',
-    overallRating: 5, auditRating: 5, timelinessRating: 4, complianceRating: 5,
-    comment: 'Excellent service. Audit was thorough, pickup was on time, and all compliance documents submitted without any follow-up.',
-    createdAt: '2026-04-12T10:00:00.000Z',
-  },
-  {
-    id: 'RV2', listingId: 'ECO18994', vendorId: 'V2', vendorName: 'EcoMetal Solutions',
-    clientId: 'C1', clientName: 'Tech Corp Ltd',
-    overallRating: 4, auditRating: 4, timelinessRating: 5, complianceRating: 3,
-    comment: 'Good pickup coordination. Compliance documents needed one reminder but were submitted correctly.',
-    createdAt: '2026-04-20T11:00:00.000Z',
-  },
-];
-
 const initialState: AppState = {
   currentUser: null,
   listings: [],
@@ -539,23 +128,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           setState(prev => ({ ...prev, currentUser: null }));
         }
         console.error('Backend unavailable or token expired, using local state', e);
-        // Load mock data only if backend is completely unreachable and no data exists
-        if (!e?.response) {
-          setState(prev => {
-            if (prev.listings.length === 0) {
-              return {
-                ...prev,
-                listings: MOCK_LISTINGS,
-                bids: MOCK_BIDS,
-                users: MOCK_USERS,
-                notifications: MOCK_NOTIFICATIONS,
-                auditInvitations: MOCK_AUDIT_INVITATIONS,
-                vendorRatings: MOCK_VENDOR_RATINGS,
-              };
-            }
-            return prev;
-          });
-        }
       } finally {
         setIsInitialized(true);
       }
@@ -578,16 +150,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }, [state.theme, state.isSidebarOpen, state.isSidebarCollapsed, state.currentUser, isInitialized]);
-
-  // Removed aggressive polling to save Firestore quota
-  // Instead, the app relies on manual refreshes or specific action triggers.
-  useEffect(() => {
-    if (!isInitialized || !state.currentUser) return;
-    // const interval = setInterval(() => {
-    //   fetchAllData().catch(() => {});
-    // }, 30000);
-    // return () => clearInterval(interval);
-  }, [isInitialized, state.currentUser?.id]);
 
   const mapRequirementToListing = (req: any): Listing => {
     // Derive auctionPhase from auction status; new requirements without auction show as 'pending'
@@ -639,10 +201,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       auctionPhase: auctionPhase as any,
       basePrice: req.auction?.basePrice || 0,
       bidIncrement: req.auction?.bidIncrement || req.auction?.tickSize || 1000,
+      maximumTickSize: req.auction?.maximumTickSize,
+      extensionTime: req.auction?.extensionMinutes ?? req.auction?.extensionTime,
+      maxExtensions: req.auction?.maxTicks ?? req.auction?.maxExtensions,
       highestEmdAmount: req.auction?.highestEmdAmount || 0,
-      invitedVendorIds: (req.vendorInvites || []).map((v: any) => v.vendorId),
-      acceptedVendorIds: req.acceptedVendorIds ?? [],
-      declinedVendorIds: req.declinedVendorIds ?? [],
+      invitedVendorIds: Array.isArray(req.invitedVendorIds) ? req.invitedVendorIds : (typeof req.invitedVendorIds === 'string' ? JSON.parse(req.invitedVendorIds) : []),
+      acceptedVendorIds: Array.isArray(req.acceptedVendorIds) ? req.acceptedVendorIds : (typeof req.acceptedVendorIds === 'string' ? JSON.parse(req.acceptedVendorIds) : []),
+      declinedVendorIds: Array.isArray(req.declinedVendorIds) ? req.declinedVendorIds : (typeof req.declinedVendorIds === 'string' ? JSON.parse(req.declinedVendorIds) : []),
+      auditApprovedVendorIds: Array.isArray(req.auditApprovedVendorIds) ? req.auditApprovedVendorIds : (typeof req.auditApprovedVendorIds === 'string' ? JSON.parse(req.auditApprovedVendorIds) : []),
       sealedBidStartDate: req.auction?.sealedPhaseStart || req.sealedPhaseStart,
       sealedBidEndDate: req.auction?.sealedPhaseEnd || req.sealedPhaseEnd,
       auctionStartDate,
@@ -703,6 +269,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         pincode: u.company.pincode || '',
         gstin: u.company.gstNumber || '',
         industrySector: u.company.industrySector || '',
+        cpcbNo: u.company.cpcbNo || '',
+        processingCapacity: u.company.processingCapacity || '',
+        companyRegistrationNo: u.company.companyRegistrationNo || '',
       } : undefined,
     } as User;
   };
@@ -726,11 +295,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       
       const backendBidsRaw = bidsRes.data || [];
       const bidsByAuction: Record<string, any[]> = {};
-      const backendBids = backendBidsRaw.map((b: any) => {
+      
+      // Recovery logic: some bids might be nested in the auctions response but missing from the global bids response
+      const nestedBids: any[] = [];
+      if (Array.isArray(auctionsRes.data)) {
+        auctionsRes.data.forEach((a: any) => {
+          if (Array.isArray(a.bids)) {
+            a.bids.forEach((nb: any) => {
+              nestedBids.push({ ...nb, auctionId: a.id, auction: a });
+            });
+          }
+        });
+      }
+
+      const combinedBidsRaw = [...backendBidsRaw];
+      const existingBidIds = new Set(combinedBidsRaw.map(b => b.id));
+      nestedBids.forEach(nb => {
+        if (!existingBidIds.has(nb.id)) {
+          combinedBidsRaw.push(nb);
+          existingBidIds.add(nb.id);
+        }
+      });
+
+      const backendBids = combinedBidsRaw.map((b: any) => {
+        const status = b.status || (b.auction?.winnerId && (b.vendorId === b.auction.winnerId || b.vendor?.companyId === b.auction.winnerId) ? 'accepted' : 'pending');
         return {
           ...b,
           vendorName: b.vendorName || b.vendor?.name || b.vendor?.company?.name || 'Unknown Vendor',
-          status: 'pending',
+          status,
           type: b.phase?.toLowerCase() || 'open',
           listingId: b.auction?.requirementId || b.auctionId,
         };
@@ -799,7 +391,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setState(prev => {
         const hasBackendListings = backendListings.length > 0;
         const hasBackendUsers = backendUsers.length > 0;
-        const isAdmin = prev.currentUser?.role === 'admin';
 
         // Preserve local state for fields not yet fully implemented in the backend (e.g. closingDocuments, images)
         const mergedListings = hasBackendListings ? backendListings.map(bl => {
@@ -817,50 +408,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           return bl;
         }) : prev.listings;
 
-        // For admin users: always include MOCK_LISTINGS so all admin accounts see the
-        // same demo data regardless of which admin account is used.
-        // Mock listings are prepended only if their IDs don't exist in the backend result.
-        const backendListingIds = new Set(mergedListings.map((l: any) => l.id));
-        const mockOnlyListings = isAdmin
-          ? MOCK_LISTINGS.filter(ml => !backendListingIds.has(ml.id))
-          : [];
-        const finalListings = isAdmin
-          ? [...mergedListings, ...mockOnlyListings]
-          : mergedListings;
-
-        // For admin users: merge mock bids for mock listings
-        const backendBidListingIds = new Set(backendBids.map((b: any) => b.listingId));
-        const mockOnlyBids = isAdmin
-          ? MOCK_BIDS.filter(mb => !backendBidListingIds.has(mb.listingId))
-          : [];
-        const finalBids = isAdmin && backendBids.length > 0
-          ? [...backendBids, ...mockOnlyBids]
-          : backendBids.length > 0 ? backendBids : prev.bids;
-
-        // For admin users: merge mock users that don't exist in the backend list
-        const backendUserIds = new Set(backendUsers.map((u: any) => u.id));
-        const mockOnlyUsers = isAdmin
-          ? MOCK_USERS.filter(mu => !backendUserIds.has(mu.id))
-          : [];
-        const finalUsers = isAdmin && hasBackendUsers
-          ? [...backendUsers, ...mockOnlyUsers]
-          : hasBackendUsers ? backendUsers : prev.users;
-
-        // For admin users: merge mock audit invitations
-        const backendAuditIds = new Set(backendAudits.map((a: any) => a.id));
-        const mockOnlyAudits = isAdmin
-          ? MOCK_AUDIT_INVITATIONS.filter(ma => !backendAuditIds.has(ma.id))
-          : [];
-        const finalAudits = isAdmin && backendAudits.length > 0
-          ? [...backendAudits, ...mockOnlyAudits]
-          : backendAudits.length > 0 ? backendAudits : prev.auditInvitations;
-
         return {
           ...prev,
-          listings: finalListings,
-          bids: finalBids,
-          users: finalUsers,
-          auditInvitations: finalAudits,
+          listings: mergedListings,
+          bids: backendBids.length > 0 ? backendBids : prev.bids,
+          users: hasBackendUsers ? backendUsers : prev.users,
+          auditInvitations: backendAudits.length > 0 ? backendAudits : prev.auditInvitations,
           notifications: backendNotifications.length > 0 ? backendNotifications : prev.notifications,
         };
       });

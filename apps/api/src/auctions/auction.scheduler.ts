@@ -1,10 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { AuctionsService } from './auctions.service';
-import { AuctionGateway } from './auction.gateway';
 import { FirebaseService } from '../firebase/firebase.service';
-import { NotificationService } from '../notifications/notification.service';
 import { PickupStatus } from '../firebase/firestore-types';
+import { NotificationService } from '../notifications/notification.service';
+import { AuctionGateway } from './auction.gateway';
+import { AuctionsService } from './auctions.service';
 
 const convertDate = (field: any): Date | null => {
   if (!field) return null;
@@ -23,7 +23,7 @@ export class AuctionScheduler {
   ) {}
 
   // Runs every minute to transition auction phases automatically
-  // @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_MINUTE)
   async handlePhaseTransitions() {
     const { endedAuctionIds } = await this.auctionsService.transitionPhases();
     // Notify all WebSocket clients in ended auction rooms so the UI updates immediately
@@ -39,8 +39,11 @@ export class AuctionScheduler {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const db = this.firebaseService.db;
 
-    // Fetch all pickups from the subcollection 'pickup' across all auctions
-    const pickupGroupSnap = await db.collectionGroup('pickup').get();
+    // Fetch pickups with limit to avoid quota issues (filter in memory for status)
+    const pickupGroupSnap = await db.collectionGroup('pickup')
+      .where('createdAt', '<', twentyFourHoursAgo)
+      .limit(25)
+      .get();
     const pendingPickups: any[] = [];
 
     for (const doc of pickupGroupSnap.docs) {

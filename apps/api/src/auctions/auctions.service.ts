@@ -1,26 +1,26 @@
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
+    BadRequestException,
+    Injectable,
+    NotFoundException,
 } from '@nestjs/common';
-import { S3Service } from '../s3/s3.service';
-import { NotificationService } from '../notifications/notification.service';
-import { DocumentsService } from '../documents/documents.service';
-import { RedisService } from '../redis/redis.service';
-import { FirebaseService } from '../firebase/firebase.service';
 import * as admin from 'firebase-admin';
+import { DocumentsService } from '../documents/documents.service';
+import { FirebaseService } from '../firebase/firebase.service';
 import {
-  AuctionStatus,
-  BidPhase,
-  DocumentType,
-  PaymentStatus,
-  PickupStatus,
-  S3Document,
-  PaymentDoc,
-  PickupDoc,
-  AuctionDoc,
-  UserDoc,
+    AuctionDoc,
+    AuctionStatus,
+    BidPhase,
+    DocumentType,
+    PaymentDoc,
+    PaymentStatus,
+    PickupDoc,
+    PickupStatus,
+    S3Document,
+    UserDoc,
 } from '../firebase/firestore-types';
+import { NotificationService } from '../notifications/notification.service';
+import { RedisService } from '../redis/redis.service';
+import { S3Service } from '../s3/s3.service';
 import { GenerateDocsDto } from './auctions.dto';
 
 const convertDate = (field: any): Date | null => {
@@ -72,12 +72,11 @@ export class AuctionsService {
     // Pre-check helper to avoid lock contention for duplicate or lower bids
     const checkPriceAlreadyBid = async () => {
       const bidsSnap = await db.collection('auctions').doc(auctionId).collection('bids')
-        .where('phase', '==', BidPhase.OPEN)
         .orderBy('amount', 'desc')
-        .limit(1)
         .get();
       
-      const highestBid = bidsSnap.empty ? null : bidsSnap.docs[0].data();
+      const highestBidDoc = bidsSnap.docs.find((d: any) => d.data().phase === BidPhase.OPEN);
+      const highestBid = highestBidDoc ? highestBidDoc.data() : null;
       if (highestBid && amount <= highestBid.amount) {
         throw new BadRequestException(
           'The price is already bid. Try the next highest bid.',
@@ -174,11 +173,10 @@ export class AuctionsService {
 
         // Fetch highest bid in OPEN phase inside transaction
         const bidsQueryRef = auctionRef.collection('bids')
-          .where('phase', '==', BidPhase.OPEN)
-          .orderBy('amount', 'desc')
-          .limit(1);
+          .orderBy('amount', 'desc');
         const bidsQuerySnap = await transaction.get(bidsQueryRef);
-        const highestBidData = bidsQuerySnap.empty ? null : bidsQuerySnap.docs[0].data();
+        const highestBidDoc = bidsQuerySnap.docs.find((d: any) => d.data().phase === BidPhase.OPEN);
+        const highestBidData = highestBidDoc ? highestBidDoc.data() : null;
         const highestBidAmount = highestBidData ? highestBidData.amount : null;
 
         const baseHighest = highestBidAmount || auctionData.basePrice;
@@ -289,13 +287,13 @@ export class AuctionsService {
     if (result.length === 0) {
       const db = this.firebaseService.db;
       const bidsSnap = await db.collection('auctions').doc(auctionId).collection('bids')
-        .where('phase', '==', BidPhase.OPEN)
         .orderBy('amount', 'desc')
         .get();
 
       const seen = new Set<string>();
       const uniqueBids: any[] = [];
-      const vendorIds = Array.from(new Set(bidsSnap.docs.map((doc: any) => (doc.data() as any)?.vendorId)));
+      const openBids = bidsSnap.docs.filter((doc: any) => (doc.data() as any)?.phase === BidPhase.OPEN);
+      const vendorIds = Array.from(new Set(openBids.map((doc: any) => (doc.data() as any)?.vendorId)));
 
       const vendorUsers = await Promise.all(
         vendorIds.map(async (vid) => {
@@ -305,7 +303,7 @@ export class AuctionsService {
       );
       const vendorMap = new Map(vendorUsers.map((u: any) => [u.id, u]));
 
-      for (const doc of bidsSnap.docs) {
+      for (const doc of openBids) {
         const b = doc.data();
         if (seen.has(b.vendorId)) continue;
         seen.add(b.vendorId);
@@ -327,13 +325,23 @@ export class AuctionsService {
     return result;
   }
 
-  async findAllBids(auctionId?: string) {
+  async findAllBids(auctionId?: string, vendorId?: string) {
     const db = this.firebaseService.db;
     let bidsSnap: admin.firestore.QuerySnapshot;
+    
     if (auctionId) {
-      bidsSnap = await db.collection('auctions').doc(auctionId).collection('bids').orderBy('createdAt', 'desc').get();
+      let query: admin.firestore.Query = db.collection('auctions').doc(auctionId).collection('bids');
+      if (vendorId) {
+        query = query.where('vendorId', '==', vendorId);
+      }
+      bidsSnap = await query.limit(100).get();
+    } else if (vendorId) {
+      bidsSnap = await db.collectionGroup('bids')
+        .where('vendorId', '==', vendorId)
+        .limit(100)
+        .get();
     } else {
-      bidsSnap = await db.collectionGroup('bids').orderBy('createdAt', 'desc').get();
+      bidsSnap = await db.collectionGroup('bids').limit(100).get();
     }
 
     const bids = bidsSnap.docs.map((doc: any) => {
@@ -346,6 +354,10 @@ export class AuctionsService {
         auctionId: docAuctionId,
         createdAt: convertDate(data.createdAt),
       } as any;
+    }).sort((a: any, b: any) => {
+      const dateA = a.createdAt ? a.createdAt.getTime() : 0;
+      const dateB = b.createdAt ? b.createdAt.getTime() : 0;
+      return dateB - dateA;
     });
 
     const uniqueVendorIds = Array.from(new Set(bids.map((b: any) => b.vendorId))).filter(Boolean) as string[];
@@ -394,6 +406,7 @@ export class AuctionsService {
     basePrice: number;
     targetPrice?: number;
     tickSize?: number;
+    maximumTickSize?: number;
     maxTicks?: number;
     extensionMinutes?: number;
     clientId: string;
@@ -410,6 +423,7 @@ export class AuctionsService {
       basePrice: Number(data.basePrice),
       targetPrice: data.targetPrice !== undefined ? Number(data.targetPrice) : null,
       tickSize: data.tickSize !== undefined ? Number(data.tickSize) : 50,
+      maximumTickSize: data.maximumTickSize !== undefined ? Number(data.maximumTickSize) : null,
       maxTicks: data.maxTicks !== undefined ? Number(data.maxTicks) : 5,
       extensionMinutes: data.extensionMinutes !== undefined ? Number(data.extensionMinutes) : 3,
       extensionCount: 0,
@@ -440,7 +454,8 @@ export class AuctionsService {
       query = query.where('clientId', '==', clientId);
     }
 
-    const snap = await query.get();
+    // Limit to prevent quota issues - use pagination for large datasets
+    const snap = await query.limit(25).get();
     const auctions = snap.docs.map((doc: any) => {
       const data = doc.data();
       return {
@@ -575,6 +590,7 @@ export class AuctionsService {
       openPhaseStart: string;
       openPhaseEnd: string;
       tickSize?: number;
+      maximumTickSize?: number;
       maxTicks?: number;
       extensionMinutes?: number;
     },
@@ -596,6 +612,7 @@ export class AuctionsService {
       openPhaseStart: admin.firestore.Timestamp.fromDate(new Date(data.openPhaseStart)),
       openPhaseEnd: admin.firestore.Timestamp.fromDate(new Date(data.openPhaseEnd)),
       ...(data.tickSize && { tickSize: Number(data.tickSize) }),
+      ...(data.maximumTickSize !== undefined && { maximumTickSize: data.maximumTickSize ? Number(data.maximumTickSize) : null }),
       ...(data.maxTicks && { maxTicks: Number(data.maxTicks) }),
       ...(data.extensionMinutes && {
         extensionMinutes: Number(data.extensionMinutes),
@@ -1525,47 +1542,56 @@ export class AuctionsService {
 
     const upcomingSnap = await db.collection('auctions')
       .where('status', '==', AuctionStatus.UPCOMING)
-      .where('sealedPhaseStart', '<=', now)
       .get();
     
     const batch1 = db.batch();
     upcomingSnap.docs.forEach((doc: any) => {
-      batch1.update(doc.ref, {
-        status: AuctionStatus.SEALED_PHASE,
-        updatedAt: admin.firestore.Timestamp.now(),
-      });
+      const data = doc.data();
+      const sealedPhaseStart = convertDate(data.sealedPhaseStart);
+      if (sealedPhaseStart && sealedPhaseStart <= now) {
+        batch1.update(doc.ref, {
+          status: AuctionStatus.SEALED_PHASE,
+          updatedAt: admin.firestore.Timestamp.now(),
+        });
+      }
     });
     await batch1.commit();
 
     const sealedSnap = await db.collection('auctions')
       .where('status', '==', AuctionStatus.SEALED_PHASE)
-      .where('openPhaseStart', '<=', now)
       .where('liveApprovalStatus', '==', 'approved')
       .get();
 
     const batch2 = db.batch();
     sealedSnap.docs.forEach((doc: any) => {
-      batch2.update(doc.ref, {
-        status: AuctionStatus.OPEN_PHASE,
-        updatedAt: admin.firestore.Timestamp.now(),
-      });
+      const data = doc.data();
+      const openPhaseStart = convertDate(data.openPhaseStart);
+      if (openPhaseStart && openPhaseStart <= now) {
+        batch2.update(doc.ref, {
+          status: AuctionStatus.OPEN_PHASE,
+          updatedAt: admin.firestore.Timestamp.now(),
+        });
+      }
     });
     await batch2.commit();
 
     const endingSnap = await db.collection('auctions')
       .where('status', '==', AuctionStatus.OPEN_PHASE)
-      .where('openPhaseEnd', '<=', now)
       .get();
 
     const endedAuctionIds: string[] = [];
     if (!endingSnap.empty) {
       const batch3 = db.batch();
       endingSnap.docs.forEach((doc: any) => {
-        endedAuctionIds.push(doc.id);
-        batch3.update(doc.ref, {
-          status: AuctionStatus.PENDING_SELECTION,
-          updatedAt: admin.firestore.Timestamp.now(),
-        });
+        const data = doc.data();
+        const openPhaseEnd = convertDate(data.openPhaseEnd);
+        if (openPhaseEnd && openPhaseEnd <= now) {
+          endedAuctionIds.push(doc.id);
+          batch3.update(doc.ref, {
+            status: AuctionStatus.PENDING_SELECTION,
+            updatedAt: admin.firestore.Timestamp.now(),
+          });
+        }
       });
       await batch3.commit();
     }

@@ -1,13 +1,13 @@
 import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
+    BadRequestException,
+    Injectable,
+    NotFoundException,
 } from '@nestjs/common';
-import { FirebaseService } from '../firebase/firebase.service';
-import { S3Service } from '../s3/s3.service';
-import { NotificationService } from '../notifications/notification.service';
-import { RequirementStatus, AuctionStatus } from '../firebase/firestore-types';
 import * as admin from 'firebase-admin';
+import { FirebaseService } from '../firebase/firebase.service';
+import { AuctionStatus, RequirementStatus } from '../firebase/firestore-types';
+import { NotificationService } from '../notifications/notification.service';
+import { S3Service } from '../s3/s3.service';
 
 @Injectable()
 export class RequirementsService {
@@ -208,7 +208,8 @@ export class RequirementsService {
     if (clientId) {
       query = query.where('clientId', '==', clientId);
     }
-    const snapshot = await query.get();
+    // Limit to prevent quota issues - use pagination for large datasets
+    const snapshot = await query.limit(25).get();
     const requirements = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     // Sort in memory by createdAt descending to avoid composite indexes requirement
@@ -679,6 +680,20 @@ export class RequirementsService {
     const reqSnap = await reqRef.get();
     if (!reqSnap.exists) throw new NotFoundException('Requirement not found');
     const req = reqSnap.data() as any;
+
+    // Prevent audit doc upload if sealed bid already exists
+    if (req.auction?.id) {
+      const bidsSnap = await this.firebaseService.db.collection('auctions')
+        .doc(req.auction.id)
+        .collection('bids')
+        .where('vendorId', '==', vendorUserId)
+        .where('phase', '==', 'SEALED')
+        .limit(1)
+        .get();
+      if (!bidsSnap.empty) {
+        throw new BadRequestException('Cannot upload audit documents after bid submission');
+      }
+    }
 
     const folder = `requirements/${requirementId}/audit-docs/${vendorUserId}`;
     let auditReportS3Key: string | undefined;

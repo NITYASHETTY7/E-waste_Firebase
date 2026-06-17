@@ -373,6 +373,7 @@ export interface AuctionDoc {
   basePrice: number;
   targetPrice?: number | null;
   tickSize: number;
+  maximumTickSize?: number | null;
   maxTicks: number;
   extensionMinutes: number;
   sealedPhaseStart?: Date | null;

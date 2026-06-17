@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
-import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import api from "@/lib/api";
 import { toLocalDatetimeString } from "@/utils/format";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function ConfigureLiveAuction() {
   const params = useParams();
@@ -118,11 +118,11 @@ export default function ConfigureLiveAuction() {
     }
   };
 
-  // Admin-set params from listing
-  const adminTickSize = listing.bidIncrement ?? listing.tickSize ?? "—";
-  const adminMaxTick = listing.maximumTickSize ?? listing.maxTicks ?? "—";
-  const adminExtension = listing.extensionTime ?? listing.extensionMinutes ?? "—";
-  const adminMaxExtensions = listing.maxExtensions ?? "—";
+  // Admin-set params from auction (governance parameters set by admin)
+  const adminTickSize = listing.auction?.tickSize ?? listing.auction?.bidIncrement ?? listing.bidIncrement ?? "—";
+  const adminMaxTick = listing.auction?.maximumTickSize ?? listing.maximumTickSize ?? "—";
+  const adminExtension = listing.auction?.extensionMinutes ?? listing.auction?.extensionTime ?? listing.extensionTime ?? listing.extensionMinutes ?? "—";
+  const adminMaxExtensions = listing.auction?.maxTicks ?? listing.auction?.maxExtensions ?? listing.maxExtensions ?? "—";
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-20 animate-fade-in px-4 sm:px-6 lg:px-8">

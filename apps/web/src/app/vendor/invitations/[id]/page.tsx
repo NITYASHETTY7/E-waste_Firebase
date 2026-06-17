@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useParams, useSearchParams, useRouter } from "next/navigation";
-import api from "@/lib/api";
 import { useApp } from "@/context/AppContext";
+import api from "@/lib/api";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 interface InvitationDetails {
   id: string;
@@ -212,7 +212,22 @@ export default function VendorInvitationPage() {
       {details.hasAccepted && (
         <>
           {/* Step 1 — Upload Audit Docs (includes material sheet download) */}
-          {!auditStatus || auditStatus === "pending" ? (
+          {/* Hide upload if already submitted sealed bid */}
+          {details.hasSealedBid ? (
+            <div className="card p-6 space-y-4 border-2 border-emerald-200">
+              <div className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-black">
+                  <span className="material-symbols-outlined text-xs">check</span>
+                </div>
+                <h4 className="text-sm font-black uppercase tracking-widest text-emerald-700">Audit Documents Submitted</h4>
+              </div>
+              <div className="text-center py-6">
+                <span className="material-symbols-outlined text-5xl text-emerald-400 block mb-3">task_alt</span>
+                <p className="font-bold text-emerald-700">You have already submitted your sealed bid.</p>
+                <p className="text-sm text-slate-500 mt-1">Audit documents cannot be modified after bid submission.</p>
+              </div>
+            </div>
+          ) : !auditStatus || auditStatus === "pending" ? (
             <div className="card p-6 space-y-5">
               <div className="flex items-center gap-3">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black text-white ${auditStatus === "pending" ? "bg-amber-500" : "bg-blue-600"}`}>1</div>

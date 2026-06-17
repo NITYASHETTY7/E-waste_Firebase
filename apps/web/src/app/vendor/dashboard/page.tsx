@@ -1,13 +1,12 @@
 "use client";
 
-import { useApp } from "@/context/AppContext";
-import { KpiCard } from "@/components/dashboard/KpiCard";
-import { InteractiveLineChart, InteractiveDonutChart } from "@/components/dashboard/Charts";
 import { ActivityTable } from "@/components/dashboard/ActivityTable";
-import { StatusStepper, DealStage } from "@/components/StatusStepper";
+import { InteractiveDonutChart, InteractiveLineChart } from "@/components/dashboard/Charts";
+import { KpiCard } from "@/components/dashboard/KpiCard";
+import { useApp } from "@/context/AppContext";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 export default function VendorDashboard() {
   const { bids, listings, currentUser } = useApp();
@@ -15,24 +14,32 @@ export default function VendorDashboard() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const isDemo = currentUser?.email === 'vendor@weconnect.com';
+  const myBids = bids.filter(b => {
+    const bVendorId = b.vendorId || b.vendor?.id;
+    const bCompanyId = b.vendor?.companyId;
+    const cUserId = currentUser?.id;
+    const cCompanyId = currentUser?.companyId;
 
-  const myBids = bids.filter(b => b.vendorId === currentUser?.id);
-  const wonBids = myBids.filter(b => b.status === "accepted");
+    return (
+      (bVendorId && cUserId && bVendorId === cUserId) ||
+      (bCompanyId && cCompanyId && bCompanyId === cCompanyId) ||
+      (bVendorId && cCompanyId && bVendorId === cCompanyId)
+    );
+  });
+  const wonBids = myBids.filter(b => b.status === "accepted" || b.status === "won");
   const activeListings = listings.filter(l => l.auctionPhase === "live" || l.auctionPhase === "sealed_bid");
   const winRate = myBids.length > 0 ? Math.round((wonBids.length / myBids.length) * 100) : 0;
-  const totalCommitted = myBids.reduce((sum, b) => sum + b.amount, 0);
+  const totalCommitted = myBids.reduce((sum, b) => sum + (b.amount || 0), 0);
 
   // Dynamic Chart Data
   const getMonthlyVolume = () => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     return months.map((m, i) => {
       const volume = myBids
-        .filter(b => new Date(b.createdAt).getMonth() === i)
-        .reduce((sum, b) => sum + b.amount, 0);
+        .filter(b => b.createdAt && new Date(b.createdAt).getMonth() === i)
+        .reduce((sum, b) => sum + (b.amount || 0), 0);
       
-      const fallback = isDemo && i < 4 ? 15000 + i * 3000 : 0;
-      return { name: m, value: volume || fallback }; 
+      return { name: m, value: volume };
     });
   };
 
@@ -40,16 +47,15 @@ export default function VendorDashboard() {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return days.map((d, i) => {
       const volume = myBids
-        .filter(b => new Date(b.createdAt).getDay() === (i + 1) % 7)
-        .reduce((sum, b) => sum + b.amount, 0);
+        .filter(b => b.createdAt && new Date(b.createdAt).getDay() === (i + 1) % 7)
+        .reduce((sum, b) => sum + (b.amount || 0), 0);
       
-      const fallback = isDemo ? (1500 + i * 500) : 0;
-      return { name: d, value: volume || fallback };
+      return { name: d, value: volume };
     });
   };
 
-  const tableItems = myBids.slice(0, 5).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(b => {
-    const listing = listings.find(l => l.id === b.listingId);
+  const tableItems = myBids.slice(0, 5).sort((a,b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).map(b => {
+    const listing = listings.find(l => l.id === b.listingId || l.auctionId === b.auctionId);
     return {
       id: b.id,
       user: {
@@ -57,7 +63,7 @@ export default function VendorDashboard() {
         phone: listing?.location || "India",
       },
       auctions: 1,
-      amount: `₹${b.amount.toLocaleString()}`
+      amount: `₹${(b.amount || 0).toLocaleString()}`
     };
   });
 

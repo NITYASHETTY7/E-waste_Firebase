@@ -182,10 +182,10 @@ export default function VendorMarketplace() {
                         <span className="text-sm font-bold text-emerald-600">Bid Active</span>
                       </div>
                       {listing.auctionPhase === 'live' && (
-                        <Link href="/vendor/live-auction" className="w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg bg-red-600 hover:bg-red-700 text-white" onClick={e => e.stopPropagation()}>
+                        <button onClick={e => { e.preventDefault(); e.stopPropagation(); window.location.href = '/vendor/live-auction'; }} className="w-full py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg bg-red-600 hover:bg-red-700 text-white">
                           <span className="material-symbols-outlined text-sm">sensors</span>
                           Join Live Auction
-                        </Link>
+                        </button>
                       )}
                     </div>
                  ) : (

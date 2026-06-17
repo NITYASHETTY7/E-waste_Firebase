@@ -279,6 +279,7 @@ export default function AdminAuctions() {
                         openPhaseStart: listing.auctionStartDate || new Date().toISOString(),
                         openPhaseEnd: listing.auctionEndDate || new Date(Date.now() + 86400000).toISOString(),
                         tickSize: Number(configForm.tickSize),
+                        maximumTickSize: configForm.maxTick ? Number(configForm.maxTick) : undefined,
                         maxTicks: Number(configForm.maxExtensions || 3),
                         extensionMinutes: Number(configForm.extensionTime),
                       }).catch(() => {});

@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import { useApp } from "@/context/AppContext";
-import { Listing, Bid } from "@/types";
-import { useParams, useRouter } from "next/navigation";
-import { formatDate, formatTime } from "@/utils/format";
 import api from "@/lib/api";
+import { formatDate, formatTime } from "@/utils/format";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
 
 export default function VendorAuctionDetail() {
   const params = useParams();
@@ -32,8 +31,10 @@ export default function VendorAuctionDetail() {
   const isSealedPhase = listing.auctionPhase === 'sealed_bid';
   const isInvitationPhase = listing.auctionPhase === 'invitation_window';
   const canRespondToInvitation = isInvitationPhase || isSealedPhase;
-  const hasAccepted = localAccepted || listing.acceptedVendorIds?.includes(currentUser?.id || "");
-  const hasDeclined = localDeclined || listing.declinedVendorIds?.includes(currentUser?.id || "");
+  const acceptedVendorIds = Array.isArray(listing.acceptedVendorIds) ? listing.acceptedVendorIds : [];
+  const declinedVendorIds = Array.isArray(listing.declinedVendorIds) ? listing.declinedVendorIds : [];
+  const hasAccepted = localAccepted || acceptedVendorIds.includes(currentUser?.id || "");
+  const hasDeclined = localDeclined || declinedVendorIds.includes(currentUser?.id || "");
   const hasSubmittedSealed = myBids.some(b => b.type === 'sealed');
 
   const handleInvitation = async (status: 'interested' | 'declined') => {

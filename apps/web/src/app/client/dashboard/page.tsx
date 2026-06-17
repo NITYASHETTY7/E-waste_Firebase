@@ -16,7 +16,7 @@ export default function ClientDashboard() {
 
   useEffect(() => { setMounted(true); }, []);
 
-  const isDemo = currentUser?.email === 'client@weconnect.com';
+  const isDemo = currentUser?.email === 'client@weconnect.com' || currentUser?.email === 'everyuse89@gmail.com';
 
   const myListings = listings.filter(l => l.userId === currentUser?.id || (l.userId === currentUser?.companyId && currentUser?.companyId));
   const activeListings = myListings.filter(l => 
