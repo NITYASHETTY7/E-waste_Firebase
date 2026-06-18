@@ -10,20 +10,21 @@ ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
-# Copy root package files for workspace resolution
+# Copy ALL package files (root + workspaces)
 COPY package*.json ./
 COPY apps/api/package*.json ./apps/api/
+COPY apps/web/package*.json ./apps/web/
 
-# Install ALL dependencies (including devDeps for @nestjs/cli & typescript)
-RUN npm ci --include=dev --workspace=apps/api --ignore-scripts
+# Install ALL deps including devDeps from root (handles workspace hoisting correctly)
+RUN npm ci --include=dev
 
 # Copy all source files
 COPY . .
 
-# Build the API
-RUN npm run build:api
+# Build the API using node to call nest directly (avoids .bin symlink permission issues)
+RUN node node_modules/@nestjs/cli/bin/nest.js build --config apps/api/nest-cli.json
 
-# Expose port (Railway overrides this with $PORT at runtime)
+# Expose port
 EXPOSE 4000
 
 # Start the compiled app
