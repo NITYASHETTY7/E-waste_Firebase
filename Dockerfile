@@ -15,14 +15,17 @@ COPY package*.json ./
 COPY apps/api/package*.json ./apps/api/
 COPY apps/web/package*.json ./apps/web/
 
-# Install ALL deps including devDeps from root (handles workspace hoisting correctly)
+# Install ALL deps including devDeps from root
 RUN npm ci --include=dev
+
+# Install nest CLI globally so it's always available regardless of hoisting
+RUN npm install -g @nestjs/cli
 
 # Copy all source files
 COPY . .
 
-# Build the API using node to call nest directly (avoids .bin symlink permission issues)
-RUN node node_modules/@nestjs/cli/bin/nest.js build --config apps/api/nest-cli.json
+# Build the API — run from apps/api so nest-cli.json is auto-detected
+RUN cd apps/api && nest build
 
 # Expose port
 EXPOSE 4000
