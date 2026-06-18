@@ -1,5 +1,6 @@
 [build]
 builder = "nixpacks"
+installCommand = "npm ci --include=dev"
 buildCommand = "npm run build:api"
 
 [deploy]
