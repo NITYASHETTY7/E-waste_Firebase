@@ -10,17 +10,30 @@ export class FirebaseService implements OnModuleInit {
   private serviceAccountKey: any;
 
   onModuleInit() {
-    let credsPath = path.resolve(process.cwd(), 'creds');
-    if (!fs.existsSync(credsPath)) {
-      credsPath = path.resolve(process.cwd(), '../../creds');
-    }
+    let serviceAccount: any;
 
-    if (!fs.existsSync(credsPath)) {
-      throw new Error(`Firebase credentials not found at ${credsPath}. Please check your setup.`);
+    if (process.env.FIREBASE_CREDS_JSON) {
+      try {
+        serviceAccount = JSON.parse(process.env.FIREBASE_CREDS_JSON);
+        console.log('Firebase credentials loaded from environment variable.');
+      } catch (err) {
+        throw new Error('Failed to parse FIREBASE_CREDS_JSON environment variable.');
+      }
+    } else {
+      let credsPath = path.resolve(process.cwd(), 'creds');
+      if (!fs.existsSync(credsPath)) {
+        credsPath = path.resolve(process.cwd(), '../../creds');
+      }
+
+      if (!fs.existsSync(credsPath)) {
+        throw new Error(`Firebase credentials not found at ${credsPath} and FIREBASE_CREDS_JSON is not set.`);
+      }
+      
+      serviceAccount = JSON.parse(fs.readFileSync(credsPath, 'utf8'));
+      console.log('Firebase credentials loaded from local file.');
     }
 
     try {
-      const serviceAccount = JSON.parse(fs.readFileSync(credsPath, 'utf8'));
       this.serviceAccountKey = serviceAccount;
       
       // Initialize Firebase Admin SDK if not already initialized

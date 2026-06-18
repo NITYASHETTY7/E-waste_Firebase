@@ -34,4 +34,4 @@ RUN echo "=== Build output ==="; find /app -name "main.js" -not -path "*/node_mo
 EXPOSE 4000
 
 # Dynamically find and run main.js regardless of exact output path
-CMD ["sh", "-c", "node $(find /app -name 'main.js' -not -path '*/node_modules/*' | head -1)"]
+CMD ["node", "/app/apps/api/dist/main"]
