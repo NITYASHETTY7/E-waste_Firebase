@@ -122,11 +122,11 @@ export default function AdminLoginPage() {
         </div>
       </div>
 
-      <ForgotPasswordModal 
-        isOpen={showForgot}
-        onClose={() => setShowForgot(false)}
-        role="admin"
-      />
+      {showForgot && (
+        <ForgotPasswordModal 
+          onClose={() => setShowForgot(false)}
+        />
+      )}
     </>
   );
 }

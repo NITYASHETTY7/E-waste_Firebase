@@ -31,8 +31,10 @@ export default function ClientDashboard() {
   const completedListings = myListings.filter(l => l.status === "completed" || l.auctionPhase === "completed");
 
   const getListingLink = (l: Listing) => {
-    if (l.auctionPhase === "completed") return `/client/handover`;
-    return `/client/listings/${l.id}`;
+    if (l.auctionPhase === "completed") return `/client/handover?id=${l.id}`;
+    if (l.auctionPhase === "live") return `/client/live-auction?id=${l.id}`;
+    if (l.auctionPhase === "sealed_bid") return `/client/listings?id=${l.id}`;
+    return `/client/listings?id=${l.id}`;
   };
 
   const myBids = bids.filter(b => myListings.some(l => l.id === b.listingId));

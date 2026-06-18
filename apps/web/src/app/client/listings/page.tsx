@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { Listing } from "@/types";
 import Link from "next/link";
@@ -12,6 +12,13 @@ export default function ClientListings() {
   const { listings, bids, users, currentUser, updateListingStatus, editListing, approveRequirement } = useApp();
   const [filter, setFilter] = useState<"all" | "invites" | "sealed" | "live" | "ended" | "review">("all");
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const id = searchParams.get('id');
+    if (id) setSelectedListingId(id);
+  }, []);
+
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<{title: string; weight: number | string; basePrice: number | string; bidIncrement: number | string; description: string}>({title: "", weight: 0, basePrice: 0, bidIncrement: 0, description: ""});
 
