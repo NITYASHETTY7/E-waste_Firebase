@@ -1,0 +1,6 @@
+[build]
+builder = "nixpacks"
+buildCommand = "npm run build:api"
+
+[deploy]
+startCommand = "npm run start:prod --workspace=apps/api"
