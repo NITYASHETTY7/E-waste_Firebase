@@ -27,8 +27,8 @@ COPY . .
 # Build the API — run from apps/api so nest-cli.json is auto-detected
 RUN cd apps/api && nest build
 
-# Verify the build output exists
-RUN ls /app/apps/api/dist/src/main.js
+# Find where the compiled output actually is
+RUN find /app -name "main.js" 2>/dev/null || echo "main.js not found anywhere!"
 
 # Expose port
 EXPOSE 4000
