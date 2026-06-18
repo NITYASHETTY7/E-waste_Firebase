@@ -27,11 +27,11 @@ COPY . .
 # Build the API — run from apps/api so nest-cli.json is auto-detected
 RUN cd apps/api && nest build
 
-# Find where the compiled output actually is
-RUN find /app -name "main.js" 2>/dev/null || echo "main.js not found anywhere!"
+# Print where main.js was compiled to (for debugging)
+RUN echo "=== Build output ==="; find /app -name "main.js" -not -path "*/node_modules/*" 2>/dev/null || echo "main.js NOT FOUND"
 
 # Expose port
 EXPOSE 4000
 
-# Start the compiled app using absolute path
-CMD ["node", "/app/apps/api/dist/src/main"]
+# Dynamically find and run main.js regardless of exact output path
+CMD ["sh", "-c", "node $(find /app -name 'main.js' -not -path '*/node_modules/*' | head -1)"]
