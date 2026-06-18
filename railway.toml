@@ -1,6 +1,6 @@
 [build]
-builder = "nixpacks"
-buildCommand = "npm ci --include=dev && npm run build:api"
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "npm run start:prod --workspace=apps/api"
+startCommand = "node apps/api/dist/src/main"
