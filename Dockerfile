@@ -27,8 +27,11 @@ COPY . .
 # Build the API — run from apps/api so nest-cli.json is auto-detected
 RUN cd apps/api && nest build
 
+# Verify the build output exists
+RUN ls /app/apps/api/dist/src/main.js
+
 # Expose port
 EXPOSE 4000
 
-# Start the compiled app
-CMD ["node", "apps/api/dist/src/main"]
+# Start the compiled app using absolute path
+CMD ["node", "/app/apps/api/dist/src/main"]
