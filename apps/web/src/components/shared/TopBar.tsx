@@ -125,7 +125,7 @@ export default function TopBar() {
         </div>
       <div className="flex items-center gap-2 md:gap-4">
         {/* Quick Add - Only for Clients */}
-        {role === "client" && role !== "admin" && (
+        {role === "client" && (
           <button 
             onClick={() => router.push('/client/post')}
             className="hidden sm:flex w-10 h-10 rounded-2xl bg-primary text-white items-center justify-center hover:shadow-lg hover:shadow-primary/30 active:scale-95 transition-all" 
@@ -194,13 +194,13 @@ export default function TopBar() {
                             );
                             const isAuctionDone = listing && (
                               listing.auctionPhase === 'completed' || 
-                              listing.status === 'completed' ||
-                              listing.status === 'closed'
+                              listing.status === 'completed' as any ||
+                              (listing.status as any) === 'closed'
                             );
 
                             if (n.link.includes('configure-live')) {
                               // If it's already live or done, block re-configuration
-                              if (listing.auctionPhase === 'live' || isAuctionDone) {
+                              if (listing && (listing.auctionPhase === 'live' || isAuctionDone)) {
                                 allowRedirect = false;
                                 alert("already completed /exhausted");
                               }

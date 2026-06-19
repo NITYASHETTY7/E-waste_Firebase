@@ -83,6 +83,10 @@ export interface User {
   documents?: UploadedDoc[];
   bankDetails?: BankDetails;
   registeredAt?: string;
+  penaltyAmount?: number;
+  isLocked?: boolean;
+  lockReason?: string;
+  rating?: number;
 }
 
 export interface AuditInvitation {
@@ -244,7 +248,7 @@ export interface Bid {
   clientStatus?: 'pending' | 'approved' | 'rejected';
   clientRemarks?: string;
   auctionId?: string;
-  vendor?: { id: string; name: string; email?: string };
+  vendor?: { id: string; name: string; email?: string; companyId?: string };
 }
 
 export interface Notification {

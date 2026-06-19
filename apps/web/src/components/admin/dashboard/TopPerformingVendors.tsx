@@ -44,7 +44,7 @@ export function TopPerformingVendors() {
       const totalRevenue = vendorBids.reduce((sum, b) => sum + b.amount, 0);
       const ratings = (vendorRatings || []).filter(r => r.vendorId === v.id);
       const score = ratings.length > 0 
-        ? Math.round((ratings.reduce((sum, r) => sum + r.overall, 0) / ratings.length) * 20) 
+        ? Math.round((ratings.reduce((sum, r) => sum + r.overallRating, 0) / ratings.length) * 20)
         : (v.rating ? v.rating * 20 : 0);
       return {
         id: v.id,

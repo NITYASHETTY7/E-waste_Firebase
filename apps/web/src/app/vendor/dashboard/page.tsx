@@ -26,7 +26,7 @@ export default function VendorDashboard() {
       (bVendorId && cCompanyId && bVendorId === cCompanyId)
     );
   });
-  const wonBids = myBids.filter(b => b.status === "accepted" || b.status === "won");
+  const wonBids = myBids.filter(b => b.status === "accepted" || (b.status as any) === "won");
   const activeListings = listings.filter(l => l.auctionPhase === "live" || l.auctionPhase === "sealed_bid");
   const winRate = myBids.length > 0 ? Math.round((wonBids.length / myBids.length) * 100) : 0;
   const totalCommitted = myBids.reduce((sum, b) => sum + (b.amount || 0), 0);

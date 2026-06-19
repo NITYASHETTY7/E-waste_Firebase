@@ -7,7 +7,7 @@ import axios from 'axios';
 
 interface AppContextType extends AppState {
   refreshData: () => Promise<void>;
-  login: (role: UserRole, email: string, password?: string) => Promise<void>;
+  login: (role: UserRole, email: string, password?: string) => Promise<any>;
   logout: () => void;
   register: (role: UserRole, name: string, email: string, password?: string, phone?: string) => Promise<{ devEmailOtp?: string; devPhoneOtp?: string; resumed?: boolean; resumeStep?: number }>;
   startOnboarding: (role: 'client' | 'vendor' | 'consumer', email: string, password: string) => void;
@@ -461,28 +461,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await fetchAllData();
       return user;
     } catch (error: any) {
-      // Mock fallback: if backend is unreachable (no HTTP response), allow demo accounts
-      if (!error.response) {
-        const mockUser = MOCK_USERS.find(u => u.email.toLowerCase() === email.toLowerCase());
-        if (mockUser && password === 'password') {
-          setState(prev => ({
-            ...prev,
-            currentUser: mockUser,
-            // Load mock data only if not already present (preserve any mid-session state updates)
-            ...(prev.listings.length === 0 ? {
-              listings: MOCK_LISTINGS,
-              bids: MOCK_BIDS,
-              users: MOCK_USERS,
-              notifications: MOCK_NOTIFICATIONS,
-              auditInvitations: MOCK_AUDIT_INVITATIONS,
-              vendorRatings: MOCK_VENDOR_RATINGS,
-            } : {
-              users: prev.users.length === 0 ? MOCK_USERS : prev.users,
-            }),
-          }));
-          return mockUser;
-        }
-      }
       console.error('Login failed', error);
       throw error;
     }

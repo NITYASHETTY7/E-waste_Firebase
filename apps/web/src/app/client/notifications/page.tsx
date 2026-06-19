@@ -85,8 +85,8 @@ export default function ClientNotifications() {
                   
                   const isAuctionDone = listing && (
                     listing.auctionPhase === 'completed' || 
-                    listing.status === 'completed' ||
-                    listing.status === 'closed'
+                    listing.status === 'completed' as any ||
+                    (listing.status as any) === 'closed'
                   );
 
                   if (isAuctionDone && (n.link.includes('configure-live') || n.link.includes('invitations') || n.link.includes('marketplace'))) {

@@ -52,7 +52,7 @@ WeConnect Platform · Generated: ${new Date().toISOString()}
 export default function ClientProfile() {
   const { currentUser, listings, bids, updateUserProfile, changePassword, deleteAccount } = useApp();
   const router = useRouter();
-  const profile = currentUser?.onboardingProfile || {};
+  const profile = (currentUser?.onboardingProfile as any) || {};
   const docs = currentUser?.documents || [];
   
   const [tab, setTab] = useState<"profile" | "bids" | "impact" | "settings">("profile");

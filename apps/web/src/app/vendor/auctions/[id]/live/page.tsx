@@ -47,7 +47,7 @@ function BidChart({
         <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} />
         <YAxis domain={[minPrice, maxPrice]} tick={{ fontSize: 10, fill: '#94a3b8' }} tickLine={false} axisLine={{ stroke: '#e2e8f0' }} tickFormatter={(val) => `₹${val.toLocaleString('en-IN')}`} />
         <Tooltip
-          formatter={(value: number, name: string) => [`₹${value.toLocaleString('en-IN')}`, vendorLines.find((v) => v.id === name)?.name || name]}
+          formatter={(value: any, name: any) => [`₹${Number(value).toLocaleString('en-IN')}`, vendorLines.find((v) => v.id === name)?.name || name]}
           labelStyle={{ color: '#0f172a', fontWeight: 'bold' }}
           contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
         />

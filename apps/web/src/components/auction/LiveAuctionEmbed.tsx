@@ -63,9 +63,9 @@ function BidChart({
           tickFormatter={(val) => val >= 100000 ? `₹${(val/100000).toFixed(1)}L` : `₹${Math.round(val/1000)}k`} 
         />
         <Tooltip
-          formatter={(value: number, name: string) => [
-            `₹${value.toLocaleString('en-IN')}`, 
-            competitors.find((v) => v.id === name)?.name || 'Vendor'
+          formatter={(value: any, name: any) => [
+            `₹${Number(value).toLocaleString('en-IN')}`, 
+            competitors.find((v) => v.id === name)?.name || name
           ]}
           labelStyle={{ color: '#0f172a', fontWeight: 'bold', fontSize: '11px' }}
           contentStyle={{ 
@@ -162,10 +162,10 @@ export default function LiveAuctionEmbed({ listing: initialListing, userRole = "
     val: Math.round(yMax - i * (yMax - yMin) / 4),
   }));
 
-  const handleSubmitBid = () => {
+  const handleSubmitBid = async () => {
     const amount = parseInt(vendorBid);
     if (isNaN(amount)) return;
-    const result = placeBid(amount);
+    const result = await placeBid(amount);
     if (result.success) {
       setVendorBid("");
     } else {
