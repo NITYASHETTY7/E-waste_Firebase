@@ -6,10 +6,10 @@ import { formatDate } from "@/utils/format";
 
 export default function ClientReports() {
   const { listings, bids, currentUser } = useApp();
-  const [activeTab, setActiveTab] = useState<"sales" | "vendors" | "certificates">("sales");
+  const [activeTab, setActiveTab] = useState<"sales" | "vendors">("sales");
 
   // Filter listings and bids for current client
-  const myListings = listings.filter(l => l.userId === currentUser?.id);
+  const myListings = listings.filter(l => l.userId === currentUser?.id || (l.userId === currentUser?.companyId && currentUser?.companyId));
   const myCompletedListings = myListings.filter(l => l.status === "completed" || l.auctionPhase === "completed");
   
   // Sales Calculation
@@ -32,7 +32,33 @@ export default function ClientReports() {
     }, new Map<string, any>())
   ).map(([id, stats]) => ({ id, ...stats }));
 
-  const handleDownload = (name: string) => alert(`Generating ${name} PDF...`);
+  const handleDownload = (name: string, vendorId?: string) => {
+    if (vendorId) {
+      const vendorBids = bids.filter(b => b.vendorId === vendorId && myListings.some(l => l.id === b.listingId));
+      let csv = "Lot ID,Date,Amount,Status\n";
+      vendorBids.forEach(b => {
+        csv += `${b.listingId},${new Date(b.createdAt).toLocaleDateString()},${b.amount},${b.status}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${name}.csv`;
+      a.click();
+    } else {
+      let csv = "Lot ID,Category,Winning Vendor,Weight,Settlement Price\n";
+      myCompletedListings.forEach(l => {
+        const win = bids.find(b => b.listingId === l.id && b.status === "accepted");
+        csv += `${l.id},${l.category},${win?.vendorName || "Platform Audit"},${l.weight},${win?.amount || l.basePrice}\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${name}.csv`;
+      a.click();
+    }
+  };
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
@@ -44,8 +70,7 @@ export default function ClientReports() {
         <div className="flex gap-1 p-1 bg-slate-100 rounded-xl w-fit border border-slate-200 dark:bg-slate-800 dark:border-slate-700">
           {[
             { id: "sales", label: "Sales Report", icon: "payments" },
-            { id: "vendors", label: "Vendor Comparison", icon: "compare_arrows" },
-            { id: "certificates", label: "Recycling Certificates", icon: "verified" }
+            { id: "vendors", label: "Vendor Comparison", icon: "compare_arrows" }
           ].map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id as any)}
               className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
@@ -133,7 +158,7 @@ export default function ClientReports() {
                              <p className="text-xl font-bold text-emerald-600">₹{v.highest.toLocaleString()}</p>
                           </div>
                        </div>
-                       <button onClick={() => handleDownload(`${v.name} Performance`)} className="mt-6 w-full py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-all dark:bg-slate-900 dark:border-slate-700">Audit Interaction</button>
+                       <button onClick={() => handleDownload(`${v.name} Performance`, v.id)} className="mt-6 w-full py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:bg-blue-50 hover:text-blue-600 transition-all dark:bg-slate-900 dark:border-slate-700">Audit Interaction</button>
                     </div>
                  ))}
                  {vendorPerformance.length === 0 && (
@@ -147,39 +172,7 @@ export default function ClientReports() {
         </div>
       )}
 
-      {activeTab === "certificates" && (
-        <div className="space-y-8 animate-fade-in">
-           <div className="card p-8">
-              <h4 className="font-headline font-bold text-slate-900 mb-6 dark:text-white">Compliance & Recycling Certificates</h4>
-              <div className="space-y-3">
-                 {myCompletedListings.flatMap(l => (l.closingDocuments || []).map(doc => ({...doc, lotTitle: l.title, lotId: l.id}))).map((doc, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-xl hover:shadow-md transition-all dark:bg-slate-900 dark:border-slate-800">
-                       <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                             <span className="material-symbols-outlined">verified_user</span>
-                          </div>
-                          <div>
-                             <p className="font-bold text-slate-800 dark:text-slate-200">{doc.name}</p>
-                             <p className="text-[10px] text-slate-400 uppercase font-black">{doc.lotTitle} • {doc.lotId.split('-')[0]}</p>
-                          </div>
-                       </div>
-                       <div className="flex items-center gap-4">
-                          <span className="text-[10px] text-slate-400 font-bold">{formatDate(doc.timestamp)}</span>
-                          <button onClick={() => handleDownload(doc.name)} className="material-symbols-outlined text-slate-400 hover:text-emerald-500">download</button>
-                       </div>
-                    </div>
-                 ))}
-                 {myCompletedListings.every(l => !l.closingDocuments || l.closingDocuments.length === 0) && (
-                    <div className="p-16 text-center">
-                       <span className="material-symbols-outlined text-5xl text-slate-100 mb-4">folder_off</span>
-                       <p className="text-slate-400 font-bold">No certificates generated yet.</p>
-                       <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-2">Certificates are issued post-disposal verification</p>
-                    </div>
-                 )}
-              </div>
-           </div>
-        </div>
-      )}
+
     </div>
   );
 }

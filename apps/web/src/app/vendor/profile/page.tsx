@@ -123,6 +123,12 @@ export default function VendorProfile() {
   const wonBids = myBids.filter(b => b.status === "accepted");
   const totalPurchase = wonBids.reduce((s, b) => s + b.amount, 0);
   const winRate = myBids.length > 0 ? Math.round((wonBids.length / myBids.length) * 100) : 0;
+  
+  // Use listings context which merges requirement weights
+  const auctionsWon = listings.filter(a => 
+    a.auctionPhase === 'completed' && 
+    (a.winnerVendorId === currentUser?.companyId || a.winnerVendorId === currentUser?.id)
+  );
 
   const handleDownloadAudit = () => {
     const reportData = [
@@ -191,7 +197,6 @@ export default function VendorProfile() {
           {[
             { id: "profile", label: "Business Credentials", icon: "badge" },
             { id: "documents", label: "Certifications", icon: "verified" },
-            { id: "transactions", label: "Transaction History", icon: "receipt_long" },
             { id: "stats", label: "Performance Audit", icon: "analytics" },
             { id: "settings", label: "Account Settings", icon: "settings" },
           ].map((t) => (
@@ -363,68 +368,7 @@ export default function VendorProfile() {
             </div>
           )}
 
-          {tab === "transactions" && (
-            <div className="p-8 space-y-6 animate-fade-in">
-              <div>
-                <h4 className="text-xl font-black text-slate-900 dark:text-white">Transaction History</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">All auction payments where you were the winning bidder.</p>
-              </div>
-              {txLoading ? (
-                <div className="py-16 text-center">
-                  <span className="material-symbols-outlined text-4xl text-slate-200 animate-spin block mb-2">progress_activity</span>
-                  <p className="text-slate-400 text-sm">Loading transaction history...</p>
-                </div>
-              ) : txHistory.length === 0 ? (
-                <div className="py-16 text-center space-y-2">
-                  <span className="material-symbols-outlined text-5xl text-slate-200 block">receipt_long</span>
-                  <p className="text-slate-400 font-bold text-sm italic">No transactions yet.</p>
-                  <p className="text-slate-400 text-xs">Payment records appear here after you win auctions.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                        <th className="px-4 py-3">Auction / Lot</th>
-                        <th className="px-4 py-3">Client</th>
-                        <th className="px-4 py-3 text-right">Bid Amount</th>
-                        <th className="px-4 py-3 text-right">Total Paid</th>
-                        <th className="px-4 py-3">UTR / Ref</th>
-                        <th className="px-4 py-3">Date</th>
-                        <th className="px-4 py-3 text-center">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {txHistory.map((tx: any) => {
-                        const statusMap: Record<string, { label: string; cls: string }> = {
-                          PENDING:   { label: "Pending",   cls: "bg-amber-100 text-amber-700" },
-                          SUBMITTED: { label: "Submitted", cls: "bg-blue-100 text-blue-700" },
-                          CONFIRMED: { label: "Confirmed", cls: "bg-emerald-100 text-emerald-700" },
-                          REJECTED:  { label: "Rejected",  cls: "bg-red-100 text-red-700" },
-                        };
-                        const s = statusMap[tx.status] ?? statusMap.PENDING;
-                        return (
-                          <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                            <td className="px-4 py-3 font-bold text-slate-800 dark:text-slate-200 max-w-[160px] truncate" title={tx.auction?.title}>
-                              {tx.auction?.title ?? "—"}
-                            </td>
-                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{tx.auction?.client?.name ?? "—"}</td>
-                            <td className="px-4 py-3 font-black text-emerald-700 text-right">₹{(tx.clientAmount || 0).toLocaleString("en-IN")}</td>
-                            <td className="px-4 py-3 font-black text-slate-900 dark:text-white text-right">₹{(tx.totalAmount || 0).toLocaleString("en-IN")}</td>
-                            <td className="px-4 py-3 font-mono text-slate-500 text-[10px]">{tx.utrNumber ?? "—"}</td>
-                            <td className="px-4 py-3 text-slate-500">{new Date(tx.createdAt).toLocaleDateString("en-IN")}</td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase ${s.cls}`}>{s.label}</span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
+
 
           {tab === "stats" && (
             <div className="p-8 space-y-8 animate-fade-in">
@@ -447,7 +391,7 @@ export default function VendorProfile() {
                 ))}
               </div>
 
-              <div className="bg-blue-600 rounded-3xl p-8 text-white relative overflow-hidden">
+              <div className="bg-blue-600 rounded-3xl p-8 text-white relative overflow-hidden mb-8">
                 <div className="absolute top-0 right-0 w-40 h-40 bg-white rounded-full -mr-20 -mt-20 blur-[100px] opacity-20 dark:bg-slate-900" />
                 <div className="relative z-10">
                   <h4 className="text-xl font-black mb-2">Performance Audit Report</h4>
@@ -455,6 +399,57 @@ export default function VendorProfile() {
                   <button onClick={handleDownloadAudit} className="px-6 py-3 bg-white text-blue-600 rounded-xl font-bold text-xs uppercase tracking-widest transition-all hover:bg-blue-50 dark:bg-slate-900">
                     Download Audit Report
                   </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-8 mt-8">
+                <div className="bg-white border border-slate-100 rounded-3xl p-6 dark:bg-slate-900 dark:border-slate-800">
+                  <div className="flex justify-between items-center mb-6">
+                    <h4 className="font-bold text-slate-900 dark:text-white">Material Breakdown by Category</h4>
+                    <button onClick={handleDownloadAudit} className="text-xs font-bold text-blue-600">Export CSV</button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {["Power Equipment", "E-Waste", "Mobile Devices", "Display Units"].map(cat => {
+                      const totalKg = auctionsWon
+                        .filter(a => (a.category || "E-Waste") === cat)
+                        .reduce((acc, a) => acc + (Number(a.weight) || 0), 0);
+                      return (
+                        <div key={cat} className="p-4 bg-slate-50 rounded-2xl dark:bg-slate-800">
+                          <p className="text-[10px] uppercase font-black text-slate-500 mb-1">{cat}</p>
+                          <p className="font-bold text-slate-900 dark:text-white">{totalKg.toLocaleString("en-IN")} KG</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="bg-white border border-slate-100 rounded-3xl p-6 dark:bg-slate-900 dark:border-slate-800">
+                  <div className="flex justify-between items-center mb-6">
+                    <h4 className="font-bold text-slate-900 dark:text-white">Acquisitions Ledger</h4>
+                    <button onClick={handleDownloadAudit} className="text-xs font-bold text-blue-600">Export CSV</button>
+                  </div>
+                  <div className="space-y-3">
+                    {auctionsWon.length === 0 ? (
+                      <p className="text-sm text-slate-500 text-center py-4">No acquisitions yet</p>
+                    ) : auctionsWon.map((item, i) => {
+                      const amount = bids.find(b => b.auctionId === item.id && b.vendorId === currentUser?.companyId)?.amount || item.basePrice || 0;
+                      return (
+                        <div key={i} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 dark:bg-slate-800 dark:border-slate-700 gap-4">
+                          <div className="flex-1 min-w-0">
+                            <h5 className="font-bold text-sm text-slate-900 dark:text-white truncate">{item.title}</h5>
+                            <div className="flex gap-3 text-[10px] text-slate-500 font-bold uppercase mt-1">
+                              <span>{new Date(item.createdAt || Date.now()).toLocaleDateString("en-IN")}</span>
+                              <span>Qty: {item.weight || 0} kg</span>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-black text-sm text-emerald-600">₹{(amount * 1.05).toLocaleString("en-IN")}</p>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase">Completed</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>

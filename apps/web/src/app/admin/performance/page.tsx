@@ -20,8 +20,9 @@ export default function AdminPerformance() {
   };
 
   const getClientStats = (clientId: string) => {
-    const cListings = listings.filter(l => l.userId === clientId);
-    const completed = cListings.filter(l => l.auctionPhase === "completed");
+    const clientUser = users.find(u => u.id === clientId);
+    const cListings = listings.filter(l => l.userId === clientId || (clientUser?.companyId && l.userId === clientUser.companyId));
+    const completed = cListings.filter(l => l.status === "completed" || l.auctionPhase === "completed");
     const active = cListings.filter(l => l.status === "active");
     const totalValue = bids.filter(b => b.status === "accepted" && cListings.some(l => l.id === b.listingId)).reduce((s, b) => s + b.amount, 0);
     return { cListings, completed, active, totalValue };
@@ -38,7 +39,7 @@ export default function AdminPerformance() {
       <section>
         <h3 className="text-lg font-headline font-bold text-slate-900 mb-4 dark:text-white">Vendor Performance</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {vendors.filter(v => v.status === "active").map(vendor => {
+          {vendors.map(vendor => {
             const s = getVendorStats(vendor.id);
             return (
               <div key={vendor.id} className="card p-5 border border-slate-100 dark:border-slate-800">
@@ -98,7 +99,7 @@ export default function AdminPerformance() {
               <span className="text-center">Active</span>
               <span className="text-right">Total Value Recovered</span>
             </div>
-            {clients.filter(c => c.status === "active").map(client => {
+            {clients.map(client => {
               const s = getClientStats(client.id);
               return (
                 <div key={client.id} className="p-4 grid grid-cols-5 gap-4 items-center hover:bg-slate-50/50 dark:hover:bg-slate-800/30">

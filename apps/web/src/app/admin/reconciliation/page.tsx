@@ -3,13 +3,13 @@
 import { useApp } from "@/context/AppContext";
 
 export default function AdminReconciliationPage() {
-  const { listings, verifyReconciliation } = useApp();
+  const { listings, bids, verifyReconciliation } = useApp();
 
-  const reconListings = listings.filter(l => l.reconciliationStatus && l.reconciliationStatus !== 'pending');
+  const reconListings = listings.filter(l => l.status === 'completed' || l.auctionPhase === 'completed');
 
   const stats = {
     total: reconListings.length,
-    submitted: reconListings.filter(l => l.reconciliationStatus === 'submitted').length,
+    submitted: reconListings.filter(l => l.reconciliationStatus !== 'verified').length,
     verified: reconListings.filter(l => l.reconciliationStatus === 'verified').length,
   };
 
@@ -62,8 +62,10 @@ export default function AdminReconciliationPage() {
       ) : (
         <div className="space-y-5">
           {reconListings.map(listing => {
+            const win = bids.find(b => b.listingId === listing.id && b.status === "accepted");
+            const expectedValue = win?.amount || listing.basePrice || listing.price || 0;
             const weightDev = deviation(listing.weight, listing.reconciliationFinalWeight);
-            const valueDev = deviation(listing.price, listing.reconciliationFinalValue);
+            const valueDev = deviation(expectedValue, listing.reconciliationFinalValue);
 
             return (
               <div key={listing.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -76,7 +78,7 @@ export default function AdminReconciliationPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${getStatusBadge(listing.reconciliationStatus)}`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold capitalize ${getStatusBadge(listing.reconciliationStatus || 'submitted')}`}>
                       {listing.reconciliationStatus === 'verified' ? 'Verified' : 'Pending Review'}
                     </span>
                     {listing.reconciliationSubmittedAt && (
@@ -124,7 +126,7 @@ export default function AdminReconciliationPage() {
                         </tr>
                         <tr>
                           <td className="py-3 font-bold text-slate-700 dark:text-slate-300">Commercial Value</td>
-                          <td className="py-3 text-slate-600 dark:text-slate-400">₹{(listing.price || 0).toLocaleString('en-IN')}</td>
+                          <td className="py-3 text-slate-600 dark:text-slate-400">₹{(expectedValue).toLocaleString('en-IN')}</td>
                           <td className="py-3 font-bold text-slate-900 dark:text-white">₹{(listing.reconciliationFinalValue || 0).toLocaleString('en-IN')}</td>
                           <td className="py-3">
                             {valueDev !== null && (

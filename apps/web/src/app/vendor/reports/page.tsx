@@ -46,8 +46,8 @@ export default function VendorReports() {
     if (!currentUser?.companyId) return;
     try {
       setLoading(true);
-      const res = await api.get("/auctions?status=COMPLETED");
-      const won = (res.data ?? []).filter((a: any) => a.winnerId === currentUser.companyId);
+      const res = await api.get(`/auctions?status=COMPLETED&winnerId=${currentUser.companyId}`).catch(() => ({ data: [] }));
+      const won = res.data ?? [];
       const enriched = await Promise.all(won.map(async (a: any) => {
         try {
           const [postRes, payRes, pickupRes] = await Promise.allSettled([

@@ -55,28 +55,46 @@ export default function ClientProfile() {
   const profile = currentUser?.onboardingProfile || {};
   const docs = currentUser?.documents || [];
   
-  const [tab, setTab] = useState<"profile" | "bids" | "documents" | "impact" | "settings">("profile");
+  const [tab, setTab] = useState<"profile" | "bids" | "impact" | "settings">("profile");
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     name: currentUser?.name || '',
     email: currentUser?.email || '',
-    phone: currentUser?.phone || ''
+    phone: currentUser?.phone || '',
+    gstin: profile?.gstin || '',
+    address: profile?.address || '',
+    city: profile?.city || '',
+    state: profile?.state || '',
+    pincode: profile?.pincode || ''
   });
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
 
-  const myListings = listings.filter(l => l.userId === currentUser?.id);
-  const completedListings = myListings.filter(l => l.status === "completed");
+  const myListings = listings.filter(l => l.userId === currentUser?.id || (l.userId === currentUser?.companyId && currentUser?.companyId));
+  const completedListings = myListings.filter(l => l.status === "completed" || l.auctionPhase === "completed");
   const myBids = bids.filter(b => myListings.some(l => l.id === b.listingId));
-  const totalWeight = completedListings.reduce((s, l) => s + l.weight, 0);
+  const totalWeight = completedListings.reduce((s, l) => s + (l.weight || 0), 0);
   const co2Saved = (totalWeight * 2.4).toFixed(1);
   const energySaved = (totalWeight * 15).toFixed(0);
   const metalsRecovered = (totalWeight * 0.08).toFixed(2);
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
-    updateUserProfile({ name: editData.name, email: editData.email, phone: editData.phone });
+    updateUserProfile({ 
+      name: editData.name, 
+      email: editData.email, 
+      phone: editData.phone,
+      onboardingProfile: {
+        ...profile,
+        gstin: editData.gstin,
+        address: editData.address,
+        city: editData.city,
+        state: editData.state,
+        pincode: editData.pincode,
+        phone: editData.phone
+      } as any
+    });
     setIsEditing(false);
     showFeedback('success', 'Profile updated successfully.');
   };
@@ -131,7 +149,6 @@ export default function ClientProfile() {
           {[
             { id: "profile", label: "Organization Info", icon: "business" },
             { id: "bids", label: "Recent Bids", icon: "gavel" },
-            { id: "documents", label: "Legal Documents", icon: "description" },
             { id: "impact", label: "Sustainability Hub", icon: "eco" },
             { id: "settings", label: "Account Settings", icon: "settings" },
           ].map((t) => (
@@ -188,6 +205,54 @@ export default function ClientProfile() {
                         onChange={e => setEditData(prev => ({ ...prev, email: e.target.value }))}
                       />
                     </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">Contact Phone</label>
+                      <input 
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-950 dark:border-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        value={editData.phone}
+                        onChange={e => setEditData(prev => ({ ...prev, phone: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">GSTIN</label>
+                      <input 
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-950 dark:border-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        value={editData.gstin}
+                        onChange={e => setEditData(prev => ({ ...prev, gstin: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5 col-span-2">
+                      <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">Registered Address</label>
+                      <input 
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-950 dark:border-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        value={editData.address}
+                        onChange={e => setEditData(prev => ({ ...prev, address: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">City</label>
+                      <input 
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-950 dark:border-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        value={editData.city}
+                        onChange={e => setEditData(prev => ({ ...prev, city: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">State</label>
+                      <input 
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-950 dark:border-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        value={editData.state}
+                        onChange={e => setEditData(prev => ({ ...prev, state: e.target.value }))}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300 ml-1">Pincode</label>
+                      <input 
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 dark:bg-slate-950 dark:border-slate-700 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                        value={editData.pincode}
+                        onChange={e => setEditData(prev => ({ ...prev, pincode: e.target.value }))}
+                      />
+                    </div>
                   </div>
                   <div className="flex gap-3">
                     <button type="submit" className="px-6 py-2.5 bg-[#1E8E3E] text-white rounded-xl text-xs font-bold">Save Changes</button>
@@ -198,9 +263,11 @@ export default function ClientProfile() {
                 <div className="grid grid-cols-2 gap-6">
                   {[
                     { label: "GSTIN", value: (profile as any).gstin || "—", icon: "receipt_long" },
+                    { label: "Contact Phone", value: currentUser?.phone || (profile as any).phone || "—", icon: "phone" },
                     { label: "Industry", value: (profile as any).industrySector || "IT Services", icon: "category" },
                     { label: "Employees", value: (profile as any).numberOfEmployees || "500+", icon: "groups" },
-                    { label: "City", value: (profile as any).city ? `${(profile as any).city}, ${(profile as any).state}` : "Bengaluru", icon: "location_on" },
+                    { label: "City", value: (profile as any).city ? `${(profile as any).city}, ${(profile as any).state}` : "—", icon: "location_on" },
+                    { label: "Pincode", value: (profile as any).pincode || "—", icon: "pin_drop" },
                   ].map((item) => (
                     <div key={item.label} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 dark:bg-slate-950 dark:border-slate-800">
                       <div className="flex items-center gap-2 mb-1">
@@ -212,7 +279,7 @@ export default function ClientProfile() {
                   ))}
                   <div className="col-span-2 p-4 bg-slate-50 rounded-2xl border border-slate-100 dark:bg-slate-950 dark:border-slate-800">
                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">Registered Address</p>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">{(profile as any).address || "Global Village Tech Park, Whitefield, Bengaluru - 560066"}</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{(profile as any).address || "—"}</p>
                   </div>
                 </div>
               )}
@@ -278,34 +345,7 @@ export default function ClientProfile() {
             </div>
           )}
 
-          {tab === "documents" && (
-            <div className="p-8 space-y-6 animate-fade-in">
-              <h4 className="text-xl font-black text-slate-900 dark:text-white">Legal Repository</h4>
-              <div className="space-y-3">
-                {docs.length > 0 ? docs.map((doc: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-2xl group hover:border-emerald-200 transition-all dark:bg-slate-950 dark:border-slate-800">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-200 shadow-sm dark:bg-slate-900 dark:border-slate-700">
-                        <span className="material-symbols-outlined text-slate-400">description</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">{doc.fileName}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase">{doc.size} • Verified {formatDate(doc.uploadedAt)}</p>
-                      </div>
-                    </div>
-                    <button className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-[#1E8E3E] hover:border-[#1E8E3E] transition-all dark:bg-slate-900 dark:border-slate-700">
-                      <span className="material-symbols-outlined text-lg">download</span>
-                    </button>
-                  </div>
-                )) : (
-                  <div className="py-20 text-center space-y-2">
-                    <span className="material-symbols-outlined text-4xl text-slate-200">folder_open</span>
-                    <p className="text-slate-400 font-bold text-sm italic">No custom documents uploaded yet.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+
 
           {tab === "impact" && (
             <div className="p-8 space-y-8 animate-fade-in">

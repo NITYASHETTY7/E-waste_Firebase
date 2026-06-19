@@ -34,7 +34,7 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950/40 p-4 md:p-6 space-y-5 pb-24">
 
       {/* ── Row 1: KPI Cards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 lg:gap-5">
         <KpiCard
           title="Total Revenue (MTD)"
           value={`₹${(totalRevenue / 100000).toFixed(1)}L`}

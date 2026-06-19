@@ -108,10 +108,33 @@ export default function VendorHandoverPage() {
   const fetchPickups = useCallback(async () => {
     if (!currentUser?.companyId) return;
     try {
-      const res = await api.get("/pickups");
+      const res = await api.get("/pickups").catch(() => ({ data: [] }));
       const all: any[] = res.data ?? [];
       const mine = all.filter(p => p.auction?.winner?.id === currentUser.companyId);
-      setPickups(mine);
+      
+      const aucRes = await api.get(`/auctions?status=COMPLETED&winnerId=${currentUser.companyId}`).catch(() => ({ data: [] }));
+      const wonAuctions = aucRes.data || [];
+      
+      const merged = wonAuctions.map((auc: any) => {
+        const existingPickup = mine.find((p: any) => p.auction?.id === auc.id);
+        if (existingPickup) return existingPickup;
+        
+        return {
+          id: `pending_${auc.id}`,
+          status: "PENDING",
+          auction: auc,
+        };
+      });
+
+      mine.forEach((p: any) => {
+        if (!merged.find((m: any) => m.id === p.id && !m.id.startsWith('pending_'))) {
+          if (!wonAuctions.find((a: any) => a.id === p.auction?.id)) {
+            merged.push(p);
+          }
+        }
+      });
+
+      setPickups(merged);
     } catch { /* silently fail */ }
     finally { setLoading(false); }
   }, [currentUser?.companyId]);

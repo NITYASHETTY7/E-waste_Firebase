@@ -35,19 +35,23 @@ function ScoreRing({ score }: { score: number }) {
 }
 
 export function TopPerformingVendors() {
-  const { users, bids } = useApp();
+  const { users, bids, vendorRatings } = useApp();
 
   const topVendors = useMemo(() => {
     const vendors = users.filter(u => u.role === 'vendor');
     const vendorStats = vendors.map(v => {
       const vendorBids = bids.filter(b => b.vendorId === v.id && b.status === 'accepted');
       const totalRevenue = vendorBids.reduce((sum, b) => sum + b.amount, 0);
+      const ratings = (vendorRatings || []).filter(r => r.vendorId === v.id);
+      const score = ratings.length > 0 
+        ? Math.round((ratings.reduce((sum, r) => sum + r.overall, 0) / ratings.length) * 20) 
+        : (v.rating ? v.rating * 20 : 0);
       return {
         id: v.id,
         name: v.name,
         initial: v.name.charAt(0),
         revenue: totalRevenue,
-        score: 95, // Mock score for now as we don't have rating system fully mapped yet
+        score,
       };
     }).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
 

@@ -213,7 +213,6 @@ export default function Sidebar() {
             </div>
           )}
 
-          {role === 'admin' && !isSidebarCollapsed && <AiAssistantCard />}
         </div>
 
         {/* Collapse toggle + User profile footer */}

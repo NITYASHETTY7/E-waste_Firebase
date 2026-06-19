@@ -72,7 +72,7 @@ function InvitationCard({ listing, status }: { listing: Listing; status: "pendin
 export default function VendorInvitations() {
   const { listings, currentUser } = useApp();
 
-  const myId = currentUser?.id || "";
+  const myId = currentUser?.companyId || currentUser?.id || "";
   // Show all listings the vendor is invited to (pending, accepted, or declined) — including live phase
   const invitationListings = listings.filter(l =>
     (l.auctionPhase === 'invitation_window' || l.auctionPhase === 'sealed_bid' || l.auctionPhase === 'live') &&

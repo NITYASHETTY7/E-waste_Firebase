@@ -45,6 +45,11 @@ export class PaymentsController {
     return this.svc.findByCompany(companyId);
   }
 
+  @Get('payments/by-user/:userId')
+  findByUser(@Param('userId') userId: string) {
+    return this.svc.findByUser(userId);
+  }
+
   @Patch('payments/:id/upload-proof')
   @UseInterceptors(FileInterceptor('file'))
   uploadProof(

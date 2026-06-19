@@ -2,14 +2,40 @@
 
 import { useState } from "react";
 import { useApp } from "@/context/AppContext";
+import api from "@/lib/api";
 
 export default function AdminCompliance() {
   const { listings, bids, users, verifyCompliance } = useApp();
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [downloadingUrl, setDownloadingUrl] = useState<string | null>(null);
+
+  const handleOpenDoc = async (url: string) => {
+    if (!url) return;
+    
+    // If it's already a full HTTP URL (e.g. Firebase Storage, AWS direct, or localhost local file), just open it!
+    if (url.startsWith('http')) {
+      window.open(url, "_blank");
+      return;
+    }
+
+    try {
+      setDownloadingUrl(url);
+      const res = await api.get("/companies/signed-url", {
+        params: { s3Key: url }
+      });
+      window.open(res.data.url || res.data.signedUrl, "_blank");
+    } catch (err) {
+      console.error("Failed to get signed URL", err);
+      // Fallback: If the API fails, we alert instead of opening a broken relative URL
+      alert("Failed to securely open the document. The file might not exist or the server is unreachable.");
+    } finally {
+      setDownloadingUrl(null);
+    }
+  };
 
   // Listings with compliance documents uploaded
   const complianceListings = listings.filter(l =>
-    l.complianceStatus === "documents_uploaded" || l.complianceStatus === "verified"
+    l.status === "completed" || l.auctionPhase === "completed"
   );
 
   const getWinner = (listingId: string) =>
@@ -65,9 +91,8 @@ export default function AdminCompliance() {
             const allDocsPresent = DOCS.every(d => !!listing[d.key]);
 
             return (
-              <div key={listing.id} className={`card p-0 overflow-hidden border-2 ${isVerified ? "border-emerald-200" : "border-slate-100"}`}>
-                <div className={`p-5 border-b ${isVerified ? "bg-emerald-50/50 border-emerald-100" : "bg-slate-50/50 border-slate-100"}`}>
-                  <div className="flex items-start justify-between gap-4">
+              <div key={listing.id} className="card p-0 overflow-hidden border border-slate-200 dark:border-slate-800">
+                <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-start justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-black text-slate-400">{listing.id}</span>
@@ -91,21 +116,29 @@ export default function AdminCompliance() {
                     {isVerified && (
                       <span className="material-symbols-outlined text-2xl text-emerald-600 shrink-0">verified</span>
                     )}
-                  </div>
                 </div>
 
                 <div className="p-5">
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                     {DOCS.map(doc => {
                       const url = listing[doc.key];
+                      const isDownloading = downloadingUrl === url;
                       return (
-                        <div key={doc.key} className={`p-3 rounded-xl border text-center ${url ? "border-emerald-200 bg-emerald-50" : "border-dashed border-slate-200 bg-slate-50"}`}>
-                          <span className={`material-symbols-outlined text-xl block mb-1 ${url ? "text-emerald-600" : "text-slate-300"}`}>{doc.icon}</span>
-                          <p className="text-[9px] font-black uppercase text-slate-600 leading-tight dark:text-slate-400">{doc.label}</p>
+                        <div key={doc.key} className="p-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col items-center justify-center text-center">
+                          <span className={`material-symbols-outlined text-2xl block mb-2 ${url ? "text-emerald-500" : "text-slate-300"}`}>{doc.icon}</span>
+                          <p className="text-[10px] font-bold text-slate-800 dark:text-slate-200 leading-tight mb-2">{doc.label}</p>
                           {url ? (
-                            <a href={url} download className="text-[9px] text-primary font-bold hover:underline block mt-1">Download</a>
+                            <button 
+                              onClick={() => handleOpenDoc(url)}
+                              disabled={isDownloading}
+                              className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[14px]">
+                                {isDownloading ? "hourglass_empty" : "download"}
+                              </span>
+                              {isDownloading ? "Opening..." : "Download"}
+                            </button>
                           ) : (
-                            <p className="text-[9px] text-slate-400 mt-1">Not uploaded</p>
+                            <span className="text-[10px] text-slate-400 font-medium px-2 py-1 bg-slate-50 dark:bg-slate-800 rounded-md">Not available</span>
                           )}
                         </div>
                       );

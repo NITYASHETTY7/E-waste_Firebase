@@ -284,7 +284,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const fetchAllData = async () => {
     try {
-      const [requirementsRes, userProductsRes, bidsRes, usersRes, auctionsRes, auditsRes, notificationsRes] = await Promise.all([
+      const [requirementsRes, userProductsRes, bidsRes, usersRes, auctionsRes, auditsRes, notificationsRes, pickupsRes] = await Promise.all([
         api.get('/requirements').catch(() => ({ data: [] })),
         api.get('/user-products/admin/all').catch(() => ({ data: [] })),
         api.get('/auctions/bids').catch(() => ({ data: [] })),
@@ -292,12 +292,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         api.get('/auctions').catch(() => ({ data: [] })),
         api.get('/audits/invitations').catch(() => ({ data: [] })),
         api.get('/notifications').catch(() => ({ data: [] })),
+        api.get('/pickups').catch(() => ({ data: [] })),
       ]);
 
+      const pickups = pickupsRes.data || [];
       const backendListings = [
         ...(requirementsRes.data || []).map(mapRequirementToListing),
         ...(userProductsRes.data || []).map(mapUserProductToListing),
-      ];
+      ].map(listing => {
+        const pickup = pickups.find((p: any) => p.auctionId === listing.auctionId || p.requirementId === listing.id);
+        if (pickup && Array.isArray(pickup.pickupDocs)) {
+          const docs = pickup.pickupDocs;
+          return {
+            ...listing,
+            form6Url: docs.find((d: any) => d.type === 'FORM_6')?.paymentProofUrl || docs.find((d: any) => d.type === 'FORM_6')?.s3Key || listing.form6Url,
+            weightSlipEmptyUrl: docs.find((d: any) => d.type === 'WEIGHT_SLIP_EMPTY')?.paymentProofUrl || docs.find((d: any) => d.type === 'WEIGHT_SLIP_EMPTY')?.s3Key || listing.weightSlipEmptyUrl,
+            weightSlipLoadedUrl: docs.find((d: any) => d.type === 'WEIGHT_SLIP_LOADED')?.paymentProofUrl || docs.find((d: any) => d.type === 'WEIGHT_SLIP_LOADED')?.s3Key || listing.weightSlipLoadedUrl,
+            recyclingCertUrl: docs.find((d: any) => d.type === 'RECYCLING_CERTIFICATE')?.paymentProofUrl || docs.find((d: any) => d.type === 'RECYCLING_CERTIFICATE')?.s3Key || listing.recyclingCertUrl,
+            disposalCertUrl: docs.find((d: any) => d.type === 'DISPOSAL_CERTIFICATE')?.paymentProofUrl || docs.find((d: any) => d.type === 'DISPOSAL_CERTIFICATE')?.s3Key || listing.disposalCertUrl,
+          };
+        }
+        return listing;
+      });
       
       const backendBidsRaw = bidsRes.data || [];
       const bidsByAuction: Record<string, any[]> = {};
@@ -1172,13 +1188,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await fetchAllData();
     } catch (error) {
       console.error('Failed to verify compliance via API, updating locally', error);
-      setState(prev => ({
-        ...prev,
-        listings: prev.listings.map(l => l.id === listingId ? {
-          ...l, complianceStatus: 'verified', status: 'completed',
-        } : l),
-      }));
     }
+    setState(prev => ({
+      ...prev,
+      listings: prev.listings.map(l => l.id === listingId ? {
+        ...l, complianceStatus: 'verified', status: 'completed',
+      } : l),
+    }));
   };
 
   const rateVendor = async (listingId: string, vendorId: string, vendorName: string, overall: number, auditR: number, timelinessR: number, complianceR: number, comment: string) => {

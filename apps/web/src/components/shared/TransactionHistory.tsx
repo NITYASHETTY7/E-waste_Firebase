@@ -22,11 +22,47 @@ export default function TransactionHistory() {
     if (!currentUser) return;
     try {
       setLoading(true);
-      const url = currentUser.role === 'vendor' 
+      const url = (currentUser.role === 'vendor' || currentUser.role === 'client') && currentUser.companyId
         ? `/payments/by-company/${currentUser.companyId}`
         : `/payments/by-user/${currentUser.id}`;
-      const res = await api.get(url);
-      setPayments(res.data || []);
+      const res = await api.get(url).catch(() => ({ data: [] }));
+      const fetchedPayments = res.data || [];
+
+      // Also fetch completed auctions to show pending transactions
+      if (currentUser.role === 'vendor' && currentUser.companyId) {
+        const aucRes = await api.get(`/auctions?status=COMPLETED&winnerId=${currentUser.companyId}`).catch(() => ({ data: [] }));
+        const wonAuctions = aucRes.data || [];
+        
+        // Merge them: if a payment exists for the auction, use it, else create a pending representation
+        const merged = wonAuctions.map((auc: any) => {
+          const existingPayment = fetchedPayments.find((p: any) => p.auction?.id === auc.id);
+          if (existingPayment) return existingPayment;
+          
+          // Fallback to pending representation using real auction data
+          return {
+            id: `pending_${auc.id}`,
+            status: "PENDING",
+            amount: auc.amount || auc.basePrice || 0, // Fallback, normally bid amount
+            createdAt: auc.createdAt,
+            auction: auc,
+          };
+        });
+
+        // Add any payments that don't belong to wonAuctions (e.g. penalties, or older data)
+        fetchedPayments.forEach((p: any) => {
+          if (!merged.find((m: any) => m.id === p.id && !m.id.startsWith('pending_'))) {
+            if (!wonAuctions.find((a: any) => a.id === p.auction?.id)) {
+               merged.push(p);
+            }
+          }
+        });
+        
+        // Sort by date
+        merged.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        setPayments(merged);
+      } else {
+        setPayments(fetchedPayments);
+      }
     } catch {
       showToast("Failed to fetch transaction history", "error");
     } finally {

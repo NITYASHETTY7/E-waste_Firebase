@@ -444,7 +444,7 @@ export class AuctionsService {
     return auctionDoc;
   }
 
-  async findAll(status?: AuctionStatus, clientId?: string) {
+  async findAll(status?: AuctionStatus, clientId?: string, winnerId?: string) {
     const db = this.firebaseService.db;
     let query: admin.firestore.Query = db.collection('auctions');
     if (status) {
@@ -453,9 +453,13 @@ export class AuctionsService {
     if (clientId) {
       query = query.where('clientId', '==', clientId);
     }
+    if (winnerId) {
+      query = query.where('winnerId', '==', winnerId);
+    }
 
+    // Removed orderBy to avoid requiring new Firestore composite indexes for status+winnerId
     // Limit to prevent quota issues - use pagination for large datasets
-    const snap = await query.limit(25).get();
+    const snap = await query.limit(200).get();
     const auctions = snap.docs.map((doc: any) => {
       const data = doc.data();
       return {

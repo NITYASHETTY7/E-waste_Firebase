@@ -124,19 +124,23 @@ export class PaymentsService {
     }
 
     // Also fetch penalty payments linked to this company
-    const penaltySnap = await this.db.collectionGroup('payment')
-      .where('isPenalty', '==', true)
-      .where('penaltyCompanyId', '==', companyId)
-      .get();
-    
-    for (const pDoc of penaltySnap.docs) {
-      const pData = pDoc.data();
-      results.push({
-        id: pDoc.id,
-        ...pData,
-        createdAt: convertDate(pData.createdAt),
-        updatedAt: convertDate(pData.updatedAt),
-      });
+    try {
+      const penaltySnap = await this.db.collectionGroup('payment')
+        .where('isPenalty', '==', true)
+        .where('penaltyCompanyId', '==', companyId)
+        .get();
+      
+      for (const pDoc of penaltySnap.docs) {
+        const pData = pDoc.data();
+        results.push({
+          id: pDoc.id,
+          ...pData,
+          createdAt: convertDate(pData.createdAt),
+          updatedAt: convertDate(pData.updatedAt),
+        });
+      }
+    } catch (e) {
+      console.warn('Could not fetch penalty payments, possibly missing collection group index');
     }
 
     return results.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));

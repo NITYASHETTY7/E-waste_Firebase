@@ -94,7 +94,10 @@ export default function AdminReports() {
 
   const eprData = useMemo(() => {
     return clients.map(client => {
-      const clientListings = listings.filter(l => l.userId === client.id && (l.status === "completed" || l.auctionPhase === "completed"));
+      const clientListings = listings.filter(l => 
+        (l.userId === client.id || (client.companyId && l.userId === client.companyId)) && 
+        (l.status === "completed" || l.auctionPhase === "completed")
+      );
       const achieved = clientListings.reduce((s, l) => s + (l.weight || 0), 0) / 1000; // MT
       const target = 5.0; // Default target 5MT
       return {
@@ -136,7 +139,7 @@ export default function AdminReports() {
     } else if (name.includes("Revenue")) {
       headers = "Client Name,Total Lots,Total Weight (KG),Total Revenue (INR)";
       rows = clients.map(c => {
-        const clientListings = listings.filter(l => l.userId === c.id);
+        const clientListings = listings.filter(l => l.userId === c.id || (c.companyId && l.userId === c.companyId));
         const weight = clientListings.reduce((s, l) => s + (l.weight || 0), 0);
         const revenue = bids.filter(b => b.status === "accepted" && clientListings.some(l => l.id === b.listingId)).reduce((s, b) => s + b.amount, 0);
         return `${clean(c.name)},${clientListings.length},${weight},${revenue}`;
@@ -422,7 +425,7 @@ export default function AdminReports() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {clients.map(client => {
-                       const clientListings = listings.filter(l => l.userId === client.id);
+                       const clientListings = listings.filter(l => l.userId === client.id || (client.companyId && l.userId === client.companyId));
                        const clientWeight = clientListings.reduce((s, l) => s + (l.weight || 0), 0);
                        const clientRevenue = bids.filter(b => b.status === "accepted" && clientListings.some(l => l.id === b.listingId)).reduce((s, b) => s + b.amount, 0);
                        return (

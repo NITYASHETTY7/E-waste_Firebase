@@ -37,10 +37,33 @@ export default function VendorRatingsPage() {
   const fetchData = useCallback(async () => {
     if (!currentUser?.companyId) return;
     try {
-      const res = await api.get("/pickups");
-      const completed = (res.data ?? []).filter((p: any) =>
+      const res = await api.get("/pickups").catch(() => ({ data: [] }));
+      const completedPickups = (res.data ?? []).filter((p: any) =>
         p.status === "COMPLETED" && p.auction?.winner?.id === currentUser.companyId
       );
+      
+      const aucRes = await api.get(`/auctions?status=COMPLETED&winnerId=${currentUser.companyId}`).catch(() => ({ data: [] }));
+      const wonAuctions = aucRes.data || [];
+
+      // Include all won auctions in the ratings list
+      const completed = wonAuctions.map((auc: any) => {
+        const existingPickup = completedPickups.find((p: any) => p.auction?.id === auc.id);
+        if (existingPickup) return existingPickup;
+        
+        return {
+          id: `pending_${auc.id}`,
+          status: "PENDING",
+          auction: auc,
+        };
+      });
+
+      // Add any completed pickups that might not be in wonAuctions
+      completedPickups.forEach((p: any) => {
+        if (!completed.find((c: any) => c.auction?.id === p.auction?.id)) {
+          completed.push(p);
+        }
+      });
+
       setPickups(completed);
 
       // Fetch existing ratings for each auction

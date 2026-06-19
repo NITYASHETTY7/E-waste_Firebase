@@ -4,7 +4,7 @@ import { NotificationService } from '../notifications/notification.service';
 import { DocumentsService } from '../documents/documents.service';
 import { FirebaseService } from '../firebase/firebase.service';
 import * as admin from 'firebase-admin';
-import { PickupStatus, DocumentType, S3Document } from '../firebase/firestore-types';
+import { PickupStatus, DocumentType, S3Document, AuctionStatus } from '../firebase/firestore-types';
 import archiver from 'archiver';
 import { PassThrough } from 'stream';
 
@@ -622,6 +622,35 @@ export class PickupsService {
         updatedAt: convertDate(pickupData.updatedAt),
         auction,
       });
+    }
+
+    if (!status || status === PickupStatus.PENDING) {
+      const existingAuctionIds = new Set(pickups.map((p) => p.auction?.id).filter(Boolean));
+      const completedAuctionsSnap = await this.db.collection('auctions').where('status', '==', AuctionStatus.COMPLETED).get();
+      for (const aDoc of completedAuctionsSnap.docs) {
+        if (!existingAuctionIds.has(aDoc.id)) {
+          const aData = aDoc.data();
+          let client = null;
+          if (aData.clientId) {
+            const clientSnap = await this.db.collection('companies').doc(aData.clientId).get();
+            if (clientSnap.exists) client = { id: clientSnap.id, name: clientSnap.data()?.name };
+          }
+          let winner = null;
+          if (aData.winnerId) {
+            const winnerSnap = await this.db.collection('companies').doc(aData.winnerId).get();
+            if (winnerSnap.exists) winner = { id: winnerSnap.id, name: winnerSnap.data()?.name };
+          }
+          const auction = { id: aDoc.id, ...aData, client, winner, auctionDocs: aData.auctionDocs || [] };
+          pickups.push({
+            id: `virtual_${aDoc.id}`,
+            status: PickupStatus.PENDING,
+            createdAt: convertDate(aData.updatedAt || aData.createdAt),
+            updatedAt: convertDate(aData.updatedAt || aData.createdAt),
+            auction,
+            pickupDocs: [],
+          });
+        }
+      }
     }
 
     return Promise.all(

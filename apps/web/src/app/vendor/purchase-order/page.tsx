@@ -62,9 +62,9 @@ export default function VendorPurchaseOrderPage() {
   const fetchAuctions = useCallback(async () => {
     if (!currentUser?.companyId) return;
     try {
-      // Fetch all completed auctions won by this vendor
-      const res = await api.get("/auctions?status=COMPLETED");
-      const won = (res.data ?? []).filter((a: any) => a.winnerId === currentUser.companyId);
+      setLoading(true);
+      const res = await api.get(`/auctions?status=COMPLETED&winnerId=${currentUser.companyId}`).catch(() => ({ data: [] }));
+      const won = res.data ?? [];
       // Enrich each with post-auction details
       const enriched = await Promise.all(won.map(async (a: any) => {
         try {

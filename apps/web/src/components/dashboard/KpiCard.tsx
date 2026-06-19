@@ -55,15 +55,15 @@ export const KpiCard: React.FC<KpiCardProps> = ({
       </div>
 
       {/* Value + label */}
-      <p className="text-2xl font-headline font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1">
+      <p className="text-xl md:text-2xl font-headline font-black text-slate-900 dark:text-white tracking-tight leading-none mb-1">
         {value}
       </p>
-      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none">
+      <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none">
         {title}
       </p>
 
       {/* Sparkline */}
-      <div className="mt-4 h-12 w-full">
+      <div className="mt-3 h-10 w-full">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <AreaChart data={data}>
             <defs>
@@ -85,7 +85,7 @@ export const KpiCard: React.FC<KpiCardProps> = ({
     </div>
   );
 
-  const wrapperClass = "relative group p-5 rounded-[2rem] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/40 transition-all duration-500 overflow-hidden block h-full";
+  const wrapperClass = "relative group p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:shadow-slate-200/50 dark:hover:shadow-black/40 transition-all duration-500 overflow-hidden block h-full";
 
   if (href) {
     return (

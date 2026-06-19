@@ -209,7 +209,7 @@ export class RequirementsService {
       query = query.where('clientId', '==', clientId);
     }
     // Limit to prevent quota issues - use pagination for large datasets
-    const snapshot = await query.limit(25).get();
+    const snapshot = await query.limit(200).get();
     const requirements = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     // Sort in memory by createdAt descending to avoid composite indexes requirement

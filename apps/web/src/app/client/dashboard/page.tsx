@@ -20,12 +20,11 @@ export default function ClientDashboard() {
 
   const myListings = listings.filter(l => l.userId === currentUser?.id || (l.userId === currentUser?.companyId && currentUser?.companyId));
   const activeListings = myListings.filter(l => 
-    (l.status === "active" || 
-     l.auctionPhase === "live" || 
-     l.auctionPhase === "sealed_bid" ||
-     l.requirementStatus === "client_review") &&
+    (l.status === "active" || l.requirementStatus === "client_review") &&
     l.auctionPhase !== "completed" &&
-    l.status !== "completed"
+    l.status !== "completed" &&
+    l.auctionPhase !== "live" &&
+    l.auctionPhase !== "sealed_bid"
   ).sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
 
   const completedListings = myListings.filter(l => l.status === "completed" || l.auctionPhase === "completed");
@@ -76,15 +75,18 @@ export default function ClientDashboard() {
     });
   };
 
-  const tableItems = myBids.slice(0, 5).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(b => ({
-    id: b.id,
-    user: {
-      name: b.vendorName || 'Unknown Vendor',
-      phone: "Verified Recycler",
-    },
-    auctions: 1,
-    amount: `₹${b.amount.toLocaleString()}`
-  }));
+  const tableItems = myBids.slice(0, 5).sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(b => {
+    const listing = myListings.find(l => l.id === b.listingId);
+    return {
+      id: b.id,
+      user: {
+        name: b.vendorName || b.vendorCompany || 'Unknown Vendor',
+        phone: listing?.title || b.listingId || '—',
+      },
+      auctions: 1,
+      amount: `₹${b.amount.toLocaleString('en-IN')}`
+    };
+  });
 
   if (!mounted) return <div className="min-h-screen bg-slate-50 flex items-center justify-center dark:bg-slate-950"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div></div>;
 

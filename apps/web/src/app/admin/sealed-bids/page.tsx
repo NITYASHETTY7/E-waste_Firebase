@@ -13,7 +13,7 @@ export default function AdminSealedBids() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<{msg: string, type: "success" | "error"} | null>(null);
 
-  const sealedPhaseAuctions = listings.filter(l => l.auctionPhase === "sealed_bid" || l.auctionPhase === "open_configuration");
+  const sealedPhaseAuctions = listings;
 
   const fetchBids = async (requirementId: string) => {
     try {

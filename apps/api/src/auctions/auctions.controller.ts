@@ -47,8 +47,9 @@ export class AuctionsController {
   findAll(
     @Query('status') status?: AuctionStatus,
     @Query('clientId') clientId?: string,
+    @Query('winnerId') winnerId?: string,
   ) {
-    return this.svc.findAll(status, clientId);
+    return this.svc.findAll(status, clientId, winnerId);
   }
 
   // List all bids across auctions (used by frontend fetchAllData)

@@ -61,8 +61,27 @@ export default function ClientDocuments() {
     }
   };
 
+  const handleOpenComplianceDoc = async (url: string) => {
+    if (url.startsWith('http')) {
+      window.open(url, "_blank");
+      return;
+    }
+    setUrlLoading(url);
+    try {
+      const res = await api.get("/companies/signed-url", {
+        params: { s3Key: url },
+      });
+      window.open(res.data.url, "_blank");
+    } catch {
+      alert("Could not open document. Please try again.");
+    } finally {
+      setUrlLoading(null);
+    }
+  };
+
   const completedListings = listings.filter(l =>
-    l.userId === currentUser?.id && l.complianceStatus === "verified"
+    (l.userId === currentUser?.id || (l.userId === currentUser?.companyId && currentUser?.companyId)) && 
+    (l.status === "completed" || l.auctionPhase === "completed" || l.complianceStatus === "verified" || l.complianceStatus === "documents_uploaded")
   );
 
   const getWinBid = (listingId: string) =>
@@ -163,12 +182,12 @@ export default function ClientDocuments() {
             completedListings.map(listing => {
               const win = getWinBid(listing.id);
               return (
-                <div key={listing.id} className="card p-0 overflow-hidden border-2 border-emerald-200">
-                  <div className="p-5 bg-emerald-50/50 border-b border-emerald-100 flex items-start justify-between gap-4">
+                <div key={listing.id} className="bg-white dark:bg-slate-900 overflow-hidden rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md dark:border-slate-800">
+                  <div className="p-5 bg-slate-50 border-b border-slate-100 flex items-start justify-between gap-4 dark:bg-slate-800/50 dark:border-slate-800">
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs font-black text-slate-400">{listing.id}</span>
-                        <span className="text-[9px] px-2.5 py-0.5 rounded-full font-black uppercase bg-emerald-100 text-emerald-700">Disposal Verified</span>
+                        <span className="text-[9px] px-2.5 py-0.5 rounded-full font-black uppercase bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300">Disposal Verified</span>
                       </div>
                       <h3 className="font-bold text-slate-900 dark:text-white">{listing.title}</h3>
                       <p className="text-xs text-slate-500 mt-0.5">{listing.location} · {listing.weight} KG · Vendor: {win?.vendorName || "—"}</p>
@@ -177,7 +196,7 @@ export default function ClientDocuments() {
                       {!vendorRatings.some(r => r.listingId === listing.id) && (
                         <button
                           onClick={() => setRatingModal({ open: true, listingId: listing.id, vendorId: win?.vendorId || "", vendorName: win?.vendorName || "" })}
-                          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-emerald-200 text-emerald-700 text-xs font-bold hover:bg-emerald-100"
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                         >
                           <span className="material-symbols-outlined text-sm">star</span>Rate Vendor
                         </button>
@@ -188,16 +207,17 @@ export default function ClientDocuments() {
                     {COMPLIANCE_DOCS.map(doc => {
                       const url = listing[doc.key];
                       return (
-                        <div key={doc.key} className={`p-3 rounded-xl border text-center ${url ? "border-emerald-200 bg-emerald-50 hover:bg-emerald-100" : "border-dashed border-slate-200 bg-slate-50 opacity-50"}`}>
-                          <span className={`material-symbols-outlined text-xl block mb-1 ${url ? "text-emerald-600" : "text-slate-300"}`}>{doc.icon}</span>
-                          <p className="text-[9px] font-black uppercase text-slate-600 leading-tight mb-2 dark:text-slate-400">{doc.label}</p>
+                        <div key={doc.key} className={`p-4 rounded-xl border flex flex-col items-center justify-center text-center ${url ? "border-slate-200 bg-white shadow-sm dark:bg-slate-900 dark:border-slate-700" : "border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/30"}`}>
+                          <span className={`material-symbols-outlined text-xl block mb-2 ${url ? "text-[#0B5ED7]" : "text-slate-300 dark:text-slate-600"}`}>{doc.icon}</span>
+                          <p className="text-[9px] font-black uppercase text-slate-600 leading-tight mb-3 dark:text-slate-400">{doc.label}</p>
                           {url ? (
-                            <a href={url} target="_blank" rel="noreferrer"
-                              className="text-[9px] font-black text-primary px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary hover:text-white transition-colors block">
-                              Download
-                            </a>
+                            <button onClick={() => handleOpenComplianceDoc(url)} disabled={urlLoading === url}
+                              className="text-[10px] w-full font-bold text-white px-3 py-1.5 rounded-lg bg-[#0B5ED7] hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-1">
+                              {urlLoading === url ? <span className="material-symbols-outlined text-[10px] animate-spin">progress_activity</span> : null}
+                              {urlLoading === url ? "Loading..." : "Download"}
+                            </button>
                           ) : (
-                            <p className="text-[9px] text-slate-400">Not available</p>
+                            <p className="text-[10px] font-bold text-slate-400">Not available</p>
                           )}
                         </div>
                       );
