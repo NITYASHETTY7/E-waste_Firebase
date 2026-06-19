@@ -403,25 +403,7 @@ export default function VendorProfile() {
               </div>
 
               <div className="grid grid-cols-1 gap-8 mt-8">
-                <div className="bg-white border border-slate-100 rounded-3xl p-6 dark:bg-slate-900 dark:border-slate-800">
-                  <div className="flex justify-between items-center mb-6">
-                    <h4 className="font-bold text-slate-900 dark:text-white">Material Breakdown by Category</h4>
-                    <button onClick={handleDownloadAudit} className="text-xs font-bold text-blue-600">Export CSV</button>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {["Power Equipment", "E-Waste", "Mobile Devices", "Display Units"].map(cat => {
-                      const totalKg = auctionsWon
-                        .filter(a => (a.category || "E-Waste") === cat)
-                        .reduce((acc, a) => acc + (Number(a.weight) || 0), 0);
-                      return (
-                        <div key={cat} className="p-4 bg-slate-50 rounded-2xl dark:bg-slate-800">
-                          <p className="text-[10px] uppercase font-black text-slate-500 mb-1">{cat}</p>
-                          <p className="font-bold text-slate-900 dark:text-white">{totalKg.toLocaleString("en-IN")} KG</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+
 
                 <div className="bg-white border border-slate-100 rounded-3xl p-6 dark:bg-slate-900 dark:border-slate-800">
                   <div className="flex justify-between items-center mb-6">

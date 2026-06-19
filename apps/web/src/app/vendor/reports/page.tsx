@@ -129,15 +129,7 @@ export default function VendorReports() {
     downloadCSV("vendor_performance_report.csv", headers, rows);
   };
 
-  const downloadMaterialBreakdown = () => {
-    const headers = ["Category", "Total Material Purchased (KG)", "Percentage of Total"];
-    const rows = materialData.map(d => [
-      d.label,
-      String(d.kg),
-      `${totalKg > 0 ? Math.round((d.kg / totalKg) * 100) : 0}%`
-    ]);
-    downloadCSV("material_breakdown_report.csv", headers, rows);
-  };
+
 
   const downloadPaymentLedger = () => {
     const headers = [
@@ -312,37 +304,7 @@ export default function VendorReports() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Material Categories Detail */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-8">
-              <div className="flex items-center justify-between mb-8">
-                <h4 className="font-headline font-bold text-slate-900 dark:text-white">Material Breakdown by Category</h4>
-                <button onClick={downloadMaterialBreakdown} disabled={materialData.length === 0}
-                  className="text-[10px] font-black uppercase text-blue-600 hover:underline flex items-center gap-1 disabled:opacity-50">
-                  <span className="material-symbols-outlined text-xs">download</span>Export CSV
-                </button>
-              </div>
-              {materialData.length > 0 ? (
-                <div className="space-y-6">
-                  {materialData.map(m => (
-                    <div key={m.label}>
-                      <div className="flex justify-between text-xs font-bold mb-2">
-                        <span className="text-slate-600 dark:text-slate-400">{m.label}</span>
-                        <span className="text-slate-900 dark:text-white">{m.kg.toLocaleString()} KG</span>
-                      </div>
-                      <div className="h-2.5 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100 dark:bg-slate-950 dark:border-slate-800">
-                        <div className={`h-full ${m.color} rounded-full`} style={{ width: `${(m.kg / maxKg) * 100}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 dark:bg-slate-950 dark:border-slate-700">
-                  <p className="text-slate-400 text-sm font-bold">No acquisition data available yet.</p>
-                </div>
-              )}
-            </div>
-
+          <div className="grid grid-cols-1 gap-8">
             {/* Detailed Acquisitions & Payments Ledger */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-8">
               <div className="flex items-center justify-between mb-8">
